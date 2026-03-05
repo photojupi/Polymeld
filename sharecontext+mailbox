@@ -1,0 +1,353 @@
+# SharedContext + Mailbox 하이브리드 아키텍처 개편
+
+Agent Team CLI의 에이전트 간 통신 구조를 **Blackboard(SharedContext) + Mailbox 하이브리드 패턴**으로 전면 개편합니다.
+
+## 배경 및 문제점
+
+현재 에이전트 간 맥락 전달은 `previousDiscussion` 문자열 연결 + `substring()` 하드코딩 방식:
+- 정보 손실: `substring(0, 2000)` 등으로 임의 절삭
+- 비구조적: 모든 맥락이 raw 텍스트, 선택적 참조 불가
+- 추적 불가: 누가 누구에게 뭘 말했는지 기록 없음
+- 토큰 낭비: 불필요한 맥락이 프롬프트에 포함됨
+
+## User Review Required
+
+> [!IMPORTANT]
+> **새 모듈 3개 추가**: `SharedContext`, `Mailbox`, `ContextBuilder`가 `src/context/` 디렉터리에 추가됩니다.
+
+> [!WARNING]
+> **기존 API 변경**: `Agent.speak()`, `Agent.writeCode()` 등의 시그니처가 변경되어, `meeting` 커맨드에서 직접 `team.conductMeeting()`을 호출하는 `index.js` 부분도 수정이 필요합니다.
+
+> [!IMPORTANT]  
+> **테스트가 없는 프로젝트**: 현재 test 파일이 전혀 없습니다. 검증 방법에 대해 사용자 의견이 필요합니다.
+
+---
+
+## 아키텍처 개요
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   PipelineOrchestrator                       │
+│  (Phase 전환, 에러 처리, GitHub 연동)                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────────┐    ┌──────────────────┐               │
+│  │  SharedContext    │    │     Mailbox      │               │
+│  │  (Blackboard)     │    │  (메시지 큐)      │               │
+│  │                   │    │                   │               │
+│  │  requirement      │    │  김아키.inbox[]   │               │
+│  │  designDecisions  │    │  이서버.inbox[]   │               │
+│  │  techStack        │    │  박유아이.inbox[] │               │
+│  │  codeArtifacts{}  │    │  최배포.inbox[]   │               │
+│  │  meetingSummaries[]│    │  정테스트.inbox[] │               │
+│  └────────┬─────────┘    └────────┬─────────┘               │
+│           │                        │                         │
+│           └──────────┬─────────────┘                         │
+│                      ▼                                       │
+│           ┌──────────────────┐                               │
+│           │  ContextBuilder  │                               │
+│           │  (프롬프트 조립)  │                               │
+│           │                   │                               │
+│           │  SharedContext     │                               │
+│           │  + 내 inbox 메시지 │                               │
+│           │  → 토큰 예산 내    │                               │
+│           │    프롬프트 생성   │                               │
+│           └────────┬─────────┘                               │
+│                    ▼                                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
+│  │  Agent    │  │  Agent   │  │  Agent   │                  │
+│  │  (Claude) │  │ (Gemini) │  │ (OpenAI) │                  │
+│  └──────────┘  └──────────┘  └──────────┘                  │
+├─────────────────────────────────────────────────────────────┤
+│                    ModelAdapter (변경 없음)                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Proposed Changes
+
+### Context 모듈 (신규)
+
+#### [NEW] [shared-context.js](file:///c:/repos/AgentTeamCli/src/context/shared-context.js)
+
+전역 공유 상태 저장소 (Blackboard 패턴). 모든 에이전트가 읽고, 오케스트레이터가 쓰는 구조화된 저장소.
+
+```javascript
+export class SharedContext {
+  constructor() {
+    this.slots = new Map();   // 이름 → { value, metadata }
+    this.history = [];         // 변경 이력 (감사 로그)
+  }
+
+  // 슬롯 쓰기 (author 추적)
+  set(slotName, value, { author, phase, summary }) { ... }
+
+  // 슬롯 읽기
+  get(slotName) { ... }
+
+  // 특정 카테고리의 슬롯들만 조회
+  getByCategory(category) { ... }
+
+  // LLM 프롬프트용 직렬화 (토큰 예산 내)
+  serialize(slotNames, { maxChars, format }) { ... }
+
+  // 스냅샷 (GitHub 기록용)
+  snapshot() { ... }
+}
+```
+
+**슬롯 구조**:
+
+| 슬롯 이름 | 카테고리 | 쓰기 주체 | 설명 |
+|-----------|----------|----------|------|
+| `requirement` | project | orchestrator | 원본 요구사항 |
+| `projectTitle` | project | orchestrator | 프로젝트 제목 |
+| `kickoff.summary` | meeting | tech_lead | 킥오프 미팅 요약 |
+| `design.decisions` | meeting | tech_lead | 설계 결정사항 (구조화된 JSON) |
+| `design.techStack` | meeting | tech_lead | 기술 스택 |
+| `tasks` | planning | tech_lead | 분해된 태스크 목록 |
+| `code.<taskId>` | code | 담당 개발자 | 생성된 코드 아티팩트 |
+| `review.<taskId>` | review | tech_lead | 리뷰 결과 |
+| `qa.<taskId>` | qa | qa | QA 결과 |
+
+---
+
+#### [NEW] [mailbox.js](file:///c:/repos/AgentTeamCli/src/context/mailbox.js)
+
+에이전트 간 타입별 메시지 전달 시스템.
+
+```javascript
+export class Mailbox {
+  constructor() {
+    this.inboxes = new Map();  // agentId → Message[]
+    this.allMessages = [];     // 전체 메시지 로그
+  }
+
+  // 1:1 메시지 전송
+  send({ from, to, type, payload, replyTo }) { ... }
+
+  // 브로드캐스트 (회의용)
+  broadcast({ from, type, payload, exclude }) { ... }
+
+  // 수신함 조회 (타입 및 읽음 여부 필터링)
+  getInbox(agentId, { type, unreadOnly, since }) { ... }
+
+  // 특정 메시지에 대한 스레드 조회
+  getThread(messageId) { ... }
+
+  // 읽음 처리
+  markRead(agentId, messageIds) { ... }
+
+  // LLM 프롬프트용 직렬화
+  serializeInbox(agentId, { maxChars, types, unreadOnly }) { ... }
+
+  // 전체 로그 (GitHub 기록용)
+  exportLog() { ... }
+}
+```
+
+**메시지 타입**:
+
+| 타입 | 용도 | from → to |
+|------|------|-----------|
+| `meeting_speech` | 회의 발언 | 발언자 → broadcast |
+| `review_request` | 리뷰 요청 | 개발자 → tech_lead |
+| `review_feedback` | 리뷰 피드백 | tech_lead → 개발자 |
+| `fix_guidance` | 수정 지시 | tech_lead → 개발자 |
+| `qa_request` | QA 요청 | orchestrator → qa |
+| `qa_result` | QA 결과 | qa → tech_lead, 개발자 |
+| `task_assignment` | 작업 배정 | tech_lead → 담당자 |
+
+---
+
+#### [NEW] [context-builder.js](file:///c:/repos/AgentTeamCli/src/context/context-builder.js)
+
+SharedContext + Mailbox에서 특정 에이전트의 프롬프트에 필요한 맥락을 **토큰 예산 내에서** 조립하는 모듈.
+
+```javascript
+export class ContextBuilder {
+  constructor(sharedContext, mailbox, options = {}) {
+    this.shared = sharedContext;
+    this.mailbox = mailbox;
+    this.maxChars = options.maxChars || 6000;  // ~1500 토큰
+  }
+
+  // 회의 발언용 맥락 조립
+  buildForMeeting(agentId, topic) { ... }
+
+  // 코드 작성용 맥락 조립
+  buildForCoding(agentId, taskId) { ... }
+
+  // 코드 리뷰용 맥락 조립
+  buildForReview(agentId, taskId) { ... }
+
+  // QA용 맥락 조립
+  buildForQA(agentId, taskId) { ... }
+
+  // 수정 작업용 맥락 조립 (리뷰/QA 피드백 반영)
+  buildForFix(agentId, taskId) { ... }
+}
+```
+
+**조립 전략** (우선순위 기반):
+1. 항상 포함: `requirement`, `projectTitle`
+2. 작업별 필수: 해당 태스크의 관련 슬롯
+3. 소통 맥락: 자기 inbox의 unread 메시지 (최신순)
+4. 보조 참조: 설계 결정, 기술 스택 (남는 예산 내에서)
+
+---
+
+### Agent 모듈 (수정)
+
+#### [MODIFY] [agent.js](file:///c:/repos/AgentTeamCli/src/agents/agent.js)
+
+**변경 요약**: `previousDiscussion` 문자열 파라미터를 제거하고, `ContextBuilder`가 조립한 맥락을 사용.
+
+주요 변경:
+
+| 메서드 | Before | After |
+|--------|--------|-------|
+| `speak(topic, context, previousDiscussion)` | raw 텍스트 연결 | `speak(topic, contextBundle)` — ContextBuilder가 조립한 구조화된 맥락 |
+| `writeCode(taskDescription, techStack, criteria)` | 직접 파라미터 | `writeCode(taskId, contextBundle)` — SharedContext에서 태스크 정보 참조 |
+| `reviewCode(code, criteria, author)` | 직접 파라미터 | `reviewCode(taskId, contextBundle)` — 코드 아티팩트 + 기준을 SharedContext에서 |
+| `runQA(code, criteria, description)` | 직접 파라미터 | `runQA(taskId, contextBundle)` — 동일 패턴 |
+| `breakdownTasks(design, requirement)` | 직접 파라미터 | `breakdownTasks(contextBundle)` — SharedContext에서 |
+
+- `conversationHistory` 제거 → Mailbox가 대화 이력 관리
+- 응답 후 Mailbox에 메시지 자동 발행 로직 추가
+
+---
+
+### Team 모듈 (수정)
+
+#### [MODIFY] [team.js](file:///c:/repos/AgentTeamCli/src/agents/team.js)
+
+**변경 요약**: SharedContext와 Mailbox를 생성자에서 주입받고, `conductMeeting()`에서 Mailbox 기반 대화 루프 사용.
+
+- `conductMeeting()`: `previousDiscussion` 문자열 조립 → Mailbox `broadcast()` + `getInbox()`로 교체
+- `formatMeetingAsMarkdown()`: Mailbox의 `meeting_speech` 메시지에서 마크다운 생성
+- ContextBuilder 인스턴스를 보유하고, 각 에이전트 호출 시 맥락 조립을 위임
+
+---
+
+### Pipeline 모듈 (수정)
+
+#### [MODIFY] [orchestrator.js](file:///c:/repos/AgentTeamCli/src/pipeline/orchestrator.js)
+
+**변경 요약**: `this.state` 객체를 SharedContext로 대체. 모든 Phase에서 `substring()` 하드코딩 제거.
+
+Phase별 변경:
+
+| Phase | Before | After |
+|-------|--------|-------|
+| kickoff | `meetingLog` → `this.state` 저장 | SharedContext에 `kickoff.summary` 슬롯 저장, 발언들은 Mailbox에 기록 |
+| design | `designDecisions` substring | SharedContext에 `design.decisions` 구조화 저장 |
+| taskBreakdown | `result.tasks` → `this.state.tasks` | SharedContext `tasks` 슬롯 |
+| assignment | `task.assignedAgent` | Mailbox `task_assignment` 메시지 + SharedContext 업데이트 |
+| development | `designDecisions.substring(0, 2000)` 제거 | ContextBuilder가 토큰 예산 내 맥락 조립 |
+| codeReview | 리뷰→수정 루프의 텍스트 전달 | Mailbox `review_feedback` → `fix_guidance` 메시지 체인 |
+| QA | QA→분석→수정 루프의 텍스트 전달 | Mailbox `qa_result` → 팀장 분석 → `fix_guidance` 메시지 체인 |
+| PR | `this.state.completedTasks` | SharedContext + Mailbox 로그에서 PR body 생성 |
+
+`this.state` 객체는 GitHub issue number 등 **비 LLM 상태**만 유지하도록 축소:
+
+```javascript
+this.state = {
+  kickoffIssue: null,
+  designIssue: null,
+  taskIssues: [],        // { issueNumber, nodeId, taskId }
+  completedTasks: [],
+};
+```
+
+---
+
+### Entry Point (수정)
+
+#### [MODIFY] [index.js](file:///c:/repos/AgentTeamCli/src/index.js)
+
+- `run` 커맨드: SharedContext, Mailbox 생성 → Team, Orchestrator에 주입
+- `meeting` 커맨드: SharedContext, Mailbox 생성 → Team에 주입, `conductMeeting()` 호출 시그니처 변경
+
+---
+
+### 변경하지 않는 파일
+
+| 파일 | 이유 |
+|------|------|
+| `models/adapter.js` | AI 모델 호출 인터페이스 — 변경 불필요 |
+| `config/loader.js` | 설정 파일 로딩 — 변경 불필요 |
+| `config/interaction.js` | 사용자 인터랙션 — 변경 불필요 |
+| `github/client.js` | GitHub API 클라이언트 — 변경 불필요 |
+| `agent-team.config.yaml` | 설정 스키마 — 변경 불필요 |
+
+---
+
+## 구현 순서
+
+```mermaid
+graph TD
+    A[1. SharedContext] --> D[4. Agent 리팩터링]
+    B[2. Mailbox] --> D
+    C[3. ContextBuilder] --> D
+    D --> E[5. Team 리팩터링]
+    E --> F[6. Orchestrator 리팩터링]
+    F --> G[7. index.js 수정]
+    G --> H[8. 검증]
+```
+
+1. `SharedContext` — 의존성 없음, 독립 구현
+2. `Mailbox` — 의존성 없음, 독립 구현
+3. `ContextBuilder` — SharedContext + Mailbox 의존
+4. `Agent` — ContextBuilder 의존
+5. `Team` — Agent, SharedContext, Mailbox 의존
+6. `Orchestrator` — 모든 모듈 의존
+7. `index.js` — 배선(wiring) 변경
+8. 검증
+
+---
+
+## Verification Plan
+
+### Automated Tests
+
+현재 프로젝트에 테스트 프레임워크가 없습니다. 새 모듈 3개(`SharedContext`, `Mailbox`, `ContextBuilder`)에 대해 **기본 유닛 테스트**를 작성합니다.
+
+```bash
+# 테스트 실행 (Node.js 내장 test runner 사용, 추가 의존성 불필요)
+node --test src/context/__tests__/shared-context.test.js
+node --test src/context/__tests__/mailbox.test.js
+node --test src/context/__tests__/context-builder.test.js
+```
+
+테스트 대상:
+- `SharedContext`: set/get/getByCategory/serialize/snapshot
+- `Mailbox`: send/broadcast/getInbox/getThread/markRead/serializeInbox
+- `ContextBuilder`: 각 build 메서드가 maxChars를 초과하지 않는지, 필수 슬롯이 포함되는지
+
+### Manual Verification
+
+> [!IMPORTANT]
+> API 키가 필요한 통합 테스트는 사용자가 직접 실행해야 합니다.
+
+1. **모델 연결 테스트** (기존 기능 유지 확인):
+   ```bash
+   node src/index.js test-models
+   ```
+   - 기존과 동일하게 모델 연결 상태가 출력되는지 확인
+
+2. **회의 기능 통합 테스트**:
+   ```bash
+   node src/index.js meeting kickoff "테스트 프로젝트" --rounds 1
+   ```
+   - 각 에이전트가 이전 발언(Mailbox 기반)을 참조하여 응답하는지
+   - 회의록 마크다운이 정상 생성되는지
+
+3. **전체 파이프라인 테스트** (선택적):
+   ```bash
+   node src/index.js run "간단한 TODO API 구현" --title "TODO Test" --mode semi-auto
+   ```
+   - 모든 Phase가 순서대로 진행되는지
+   - SharedContext 슬롯에 데이터가 누적되는지 확인 (콘솔 로그)
+   - Mailbox 메시지가 올바른 에이전트에게 전달되는지 확인

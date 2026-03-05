@@ -1,0 +1,25 @@
+{
+  "name": "agent-team-cli",
+  "version": "0.1.0",
+  "description": "멀티 AI 모델 기반 개발팀 시뮬레이션 CLI - Claude Code, Gemini CLI, Codex CLI 협업",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "agent-team": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.1.1",
+    "inquirer": "^12.3.0",
+    "octokit": "^4.1.0",
+    "yaml": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
