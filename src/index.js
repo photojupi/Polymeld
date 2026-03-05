@@ -2,6 +2,7 @@
 
 // src/index.js
 // Agent Team CLI - 멀티 AI 모델 개발팀 시뮬레이션
+// SharedContext + Mailbox + ContextBuilder 하이브리드 아키텍처
 
 import { Command } from "commander";
 import chalk from "chalk";
@@ -11,6 +12,9 @@ import { ModelAdapter } from "./models/adapter.js";
 import { Team } from "./agents/team.js";
 import { GitHubClient } from "./github/client.js";
 import { PipelineOrchestrator } from "./pipeline/orchestrator.js";
+import { SharedContext } from "./context/shared-context.js";
+import { Mailbox } from "./context/mailbox.js";
+import { ContextBuilder } from "./context/context-builder.js";
 
 const program = new Command();
 
@@ -92,8 +96,28 @@ program
           ])
           .then((a) => a.title));
 
+    // SharedContext, Mailbox, ContextBuilder 인스턴스 생성
     const adapter = new ModelAdapter(config);
-    const team = new Team(config, adapter);
+    const sharedContext = new SharedContext();
+    const mailbox = new Mailbox();
+    const contextBuilder = new ContextBuilder(sharedContext, mailbox, {
+      maxChars: config.pipeline?.max_context_chars || 6000,
+    });
+
+    const contextDeps = { sharedContext, mailbox, contextBuilder };
+
+    // SharedContext 초기화
+    sharedContext.set("project.requirement", requirement, {
+      author: "orchestrator",
+      phase: "init",
+      summary: requirement.substring(0, 200),
+    });
+    sharedContext.set("project.title", title, {
+      author: "orchestrator",
+      phase: "init",
+    });
+
+    const team = new Team(config, adapter, contextDeps);
     const github = new GitHubClient(
       process.env.GITHUB_TOKEN,
       process.env.GITHUB_REPO
@@ -111,7 +135,8 @@ program
       team,
       github,
       config,
-      interactionMode
+      interactionMode,
+      contextDeps
     );
     await orchestrator.run(requirement, title);
   });
@@ -128,7 +153,20 @@ program
   .action(async (type, topic, options) => {
     const config = loadConfig(options.config);
     const adapter = new ModelAdapter(config);
-    const team = new Team(config, adapter);
+
+    // SharedContext, Mailbox, ContextBuilder 인스턴스 생성
+    const sharedContext = new SharedContext();
+    const mailbox = new Mailbox();
+    const contextBuilder = new ContextBuilder(sharedContext, mailbox);
+    const contextDeps = { sharedContext, mailbox, contextBuilder };
+
+    // SharedContext 초기화
+    sharedContext.set("project.requirement", topic, {
+      author: "orchestrator",
+      phase: "init",
+    });
+
+    const team = new Team(config, adapter, contextDeps);
 
     console.log(chalk.bold.cyan(`\n🗣️  ${type} 미팅 시작\n`));
 
