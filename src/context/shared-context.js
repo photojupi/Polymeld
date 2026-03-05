@@ -195,4 +195,35 @@ export class SharedContext {
     if (typeof value === "object") return JSON.stringify(value, null, 2);
     return String(value);
   }
+
+  /**
+   * JSON 직렬화 가능한 객체로 변환 (세션 저장용)
+   * @returns {Object}
+   */
+  toJSON() {
+    return {
+      slots: Object.fromEntries(
+        Array.from(this.slots.entries()).map(([k, v]) => [k, v])
+      ),
+      history: this.history,
+    };
+  }
+
+  /**
+   * JSON에서 SharedContext 복원
+   * @param {Object} data - toJSON()의 반환값
+   * @returns {SharedContext}
+   */
+  static fromJSON(data) {
+    const sc = new SharedContext();
+    if (data.slots) {
+      for (const [name, entry] of Object.entries(data.slots)) {
+        sc.slots.set(name, entry);
+      }
+    }
+    if (data.history) {
+      sc.history = data.history;
+    }
+    return sc;
+  }
 }

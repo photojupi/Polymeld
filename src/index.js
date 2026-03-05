@@ -15,6 +15,7 @@ import { PipelineOrchestrator } from "./pipeline/orchestrator.js";
 import { SharedContext } from "./context/shared-context.js";
 import { Mailbox } from "./context/mailbox.js";
 import { ContextBuilder } from "./context/context-builder.js";
+import { ReplShell } from "./repl/repl-shell.js";
 
 const program = new Command();
 
@@ -269,6 +270,36 @@ program
     console.log(chalk.gray("1. CLI 도구를 설치하세요 (claude, gemini, codex)"));
     console.log(chalk.gray("2. agent-team.config.yaml에서 페르소나별 모델을 지정하세요"));
     console.log(chalk.gray('3. agent-team run "요구사항" 으로 시작하세요\n'));
+  });
+
+// ─── 인터랙티브 REPL 모드 ────────────────────────────────
+
+program
+  .command("start")
+  .description("인터랙티브 REPL 모드 시작 (세션 유지, 슬래시 명령어)")
+  .option("-c, --config <path>", "설정 파일 경로")
+  .option("-r, --resume [sessionId]", "이전 세션 이어하기 (ID 생략 시 최근 세션)")
+  .option(
+    "-m, --mode <mode>",
+    "인터랙션 모드: full-auto | semi-auto | manual",
+    "semi-auto"
+  )
+  .action(async (options) => {
+    const config = loadConfig(options.config);
+
+    // 인터랙션 모드 설정
+    config.pipeline = {
+      ...config.pipeline,
+      interaction_mode: options.mode,
+    };
+
+    const repl = new ReplShell(config);
+
+    if (options.resume) {
+      repl.loadSession(options.resume);
+    }
+
+    await repl.start();
   });
 
 program.parse();

@@ -13,6 +13,11 @@ Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 │                  (Node.js 오케스트레이터)                     │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
+│  REPL Shell (Interactive)   ←→   Session (Context 유지)     │
+│  /help /status /save /load       SessionStore (디스크 저장)  │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
 │  SharedContext          Mailbox           ContextBuilder     │
 │  (Blackboard 패턴)     (메시지 라우팅)    (토큰 예산 조립)    │
 │                                                             │
@@ -24,12 +29,12 @@ Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 │  └────┬─────┘    └────┬─────┘    └────┬─────┘              │
 │       │               │               │                     │
 │  ┌────┴────┐   ┌──────┴──────┐  ┌─────┴─────┐             │
-│  │ 김아키   │   │ 이서버      │  │ 한코딩    │              │
+│  │ 김아키   │   │ 류창작      │  │ 한코딩    │              │
 │  │ (팀장)   │   │ 박유아이    │  │ (에이스)  │              │
 │  └─────────┘   │ 윤디자인*   │  │ 정테스트  │              │
-│                │ 그림솔*     │  │ 최배포    │              │
-│                └─────────────┘  └──────────┘              │
-│                                                             │
+│                │ 그림솔*     │  │ 이서버    │              │
+│                └─────────────┘  │ 최배포    │              │
+│                                  └──────────┘              │
 │  * 디자이너/원화가는 이미지 생성 시 Nano Banana 2 사용       │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
@@ -109,6 +114,10 @@ personas:
     name: 한코딩
     model: codex
 
+  creative_programmer:
+    name: 류창작
+    model: gemini
+
   qa:
     name: 정테스트
     model: codex
@@ -116,7 +125,7 @@ personas:
   # 온디맨드 (필요 시 소집)
   backend_dev:
     name: 이서버
-    model: gemini
+    model: codex
     on_demand: true
 
   designer:
@@ -140,8 +149,9 @@ personas:
 |---------|------|------|-----------|------|
 | 김아키 | Tech Lead | Claude Opus 4.6 | - | 상시 |
 | 한코딩 | Ace Programmer | GPT-5.3 Codex | - | 상시 |
+| 류창작 | Creative Programmer | Gemini 3.1 Pro | - | 상시 |
 | 정테스트 | QA Engineer | GPT-5.3 Codex | - | 상시 |
-| 이서버 | Backend Dev | Gemini 3.1 Pro | - | 온디맨드 |
+| 이서버 | Backend Dev | GPT-5.3 Codex | - | 온디맨드 |
 | 박유아이 | Frontend Dev | Gemini 3.1 Pro | - | 온디맨드 |
 | 최배포 | DevOps | GPT-5.3 Codex | - | 온디맨드 |
 | 윤디자인 | UI/UX Designer | Gemini 3.1 Pro | Nano Banana 2 | 온디맨드 |
@@ -179,6 +189,38 @@ node src/index.js meeting design "마이크로서비스 아키텍처 전환" --r
 ```bash
 node src/index.js test-models
 ```
+
+### 인터랙티브 REPL 모드
+```bash
+# REPL 시작
+node src/index.js start
+
+# 이전 세션 이어하기 (가장 최근 세션)
+node src/index.js start --resume
+
+# 특정 세션 복원
+node src/index.js start --resume <sessionId>
+
+# 인터랙션 모드 지정
+node src/index.js start --mode full-auto
+```
+
+REPL 모드에서는 프롬프트에서 자연어로 요구사항을 입력하면 전체 파이프라인이 실행됩니다.
+실행이 끝나면 다시 프롬프트로 돌아와 새로운 명령을 내릴 수 있습니다.
+세션 컨텍스트(SharedContext, Mailbox, 실행 이력)가 유지됩니다.
+
+**슬래시 명령어:**
+
+| 명령어 | 설명 |
+|--------|------|
+| `/help` | 사용 가능한 명령어 목록 |
+| `/status` | 현재 세션 상태 |
+| `/history` | 파이프라인 실행 이력 |
+| `/context` | SharedContext 슬롯 확인 |
+| `/team` | 팀 구성 확인 |
+| `/save` | 세션 저장 |
+| `/load [id]` | 세션 복원 |
+| `/exit` | REPL 종료 |
 
 ### 설정 초기화
 ```bash
@@ -269,6 +311,20 @@ src/
 │   └── context-builder.js    # 토큰 예산 맥락 조립기
 ├── pipeline/
 │   └── orchestrator.js       # 8-Phase 파이프라인 실행
+├── repl/
+│   ├── repl-shell.js         # 인터랙티브 REPL 루프 (readline)
+│   ├── command-router.js     # 슬래시 명령어 라우팅
+│   └── commands/             # 슬래시 명령어 핸들러
+│       ├── help.js
+│       ├── status.js
+│       ├── history.js
+│       ├── context.js
+│       ├── team.js
+│       ├── save.js
+│       └── load.js
+├── session/
+│   ├── session.js            # 세션 (컨텍스트 + 실행 이력 묶음)
+│   └── session-store.js      # 세션 디스크 저장/복원
 └── github/
     └── client.js             # GitHub API (Issues, PRs, Projects)
 ```

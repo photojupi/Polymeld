@@ -268,4 +268,39 @@ export class Mailbox {
 
     return lines.join("\n");
   }
+
+  /**
+   * JSON 직렬화 가능한 객체로 변환 (세션 저장용)
+   * @returns {Object}
+   */
+  toJSON() {
+    return {
+      allMessages: this.allMessages,
+      inboxes: Object.fromEntries(
+        Array.from(this.inboxes.entries()).map(([k, v]) => [k, v])
+      ),
+      nextId: this._nextId,
+    };
+  }
+
+  /**
+   * JSON에서 Mailbox 복원
+   * @param {Object} data - toJSON()의 반환값
+   * @returns {Mailbox}
+   */
+  static fromJSON(data) {
+    const mb = new Mailbox();
+    if (data.allMessages) {
+      mb.allMessages = data.allMessages;
+    }
+    if (data.nextId != null) {
+      mb._nextId = data.nextId;
+    }
+    if (data.inboxes) {
+      for (const [agentId, messages] of Object.entries(data.inboxes)) {
+        mb.inboxes.set(agentId, messages);
+      }
+    }
+    return mb;
+  }
 }
