@@ -1,14 +1,28 @@
 // src/agents/team.js
 // 팀 관리자 - 모든 에이전트를 오케스트레이션
+// SharedContext + Mailbox + ContextBuilder 기반 대화 루프
 
 import { Agent } from "./agent.js";
 
 export class Team {
-  constructor(config, modelAdapter) {
+  /**
+   * @param {Object} config - 설정 객체
+   * @param {Object} modelAdapter - ModelAdapter 인스턴스
+   * @param {Object} contextDeps - 컨텍스트 의존성
+   * @param {import('../context/shared-context.js').SharedContext} contextDeps.sharedContext
+   * @param {import('../context/mailbox.js').Mailbox} contextDeps.mailbox
+   * @param {import('../context/context-builder.js').ContextBuilder} contextDeps.contextBuilder
+   */
+  constructor(config, modelAdapter, { sharedContext, mailbox, contextBuilder }) {
     this.config = config;
     this.adapter = modelAdapter;
+    this.shared = sharedContext;
+    this.mailbox = mailbox;
+    this.contextBuilder = contextBuilder;
     this.agents = {};
     this._initAgents();
+    // Mailbox에 에이전트 등록
+    this.mailbox.registerAgents(Object.keys(this.agents));
   }
 
   _initAgents() {
@@ -42,8 +56,10 @@ export class Team {
 
   /**
    * 회의 진행 - 모든 에이전트가 순서대로 발언
+   * ContextBuilder가 토큰 예산 내 맥락을 조립하고, Mailbox에 발언을 기록
+   *
    * @param {string} topic - 회의 주제
-   * @param {string} context - 추가 컨텍스트
+   * @param {string} context - 추가 컨텍스트 (하위 호환용, 사용하지 않음)
    * @param {object} options - { rounds: 토론 라운드 수, onSpeak: 콜백 }
    */
   async conductMeeting(topic, context = "", options = {}) {
@@ -59,13 +75,9 @@ export class Team {
 
     for (let round = 0; round < rounds; round++) {
       const roundLog = { round: round + 1, speeches: [] };
-      const previousDiscussion = meetingLog.rounds
-        .flatMap((r) => r.speeches)
-        .map((s) => `**${s.agent} (${s.role})**: ${s.content}`)
-        .join("\n\n---\n\n");
 
-      // 첫 라운드: 팀장 → 나머지 → 팀장 정리
-      // 이후 라운드: 자유 토론 → 팀장 정리
+      // 첫 라운드: 팀장 -> 나머지 -> 팀장 정리
+      // 이후 라운드: 자유 토론 -> 팀장 정리
       const speakOrder =
         round === 0
           ? [this.lead, ...this.getDevelopers(), this.qa]
@@ -74,27 +86,42 @@ export class Team {
       for (const agent of speakOrder) {
         onSpeak({ phase: "speaking", agent: agent.name, round: round + 1 });
 
-        const speech = await agent.speak(topic, context, previousDiscussion);
+        // ContextBuilder가 토큰 예산 내 맥락 조립
+        const contextBundle = this.contextBuilder.buildForMeeting(agent.id, topic);
+        const speech = await agent.speak(topic, contextBundle);
+
+        // Mailbox에 발언 기록 (broadcast)
+        this.mailbox.broadcast({
+          from: agent.id,
+          type: "meeting_speech",
+          payload: { content: speech.content, round: round + 1 },
+        });
+
         roundLog.speeches.push(speech);
 
         onSpeak({ phase: "spoke", agent: agent.name, content: speech.content });
       }
 
-      // 팀장 정리 (마지막 라운드 또는 매 라운드)
+      // 팀장 정리 (마지막 라운드)
       if (round === rounds - 1) {
         onSpeak({ phase: "speaking", agent: this.lead.name, round: round + 1 });
 
-        const allDiscussion = [
-          ...meetingLog.rounds.flatMap((r) => r.speeches),
-          ...roundLog.speeches,
-        ]
-          .map((s) => `**${s.agent} (${s.role})**: ${s.content}`)
-          .join("\n\n---\n\n");
+        // 팀장이 전체 논의를 정리하기 위한 맥락 조립
+        const summaryBundle = this.contextBuilder.buildForMeeting(this.lead.id, topic, {
+          maxPreviousSpeeches: 20, // 정리 시 더 많은 발언 참조
+        });
 
         const summary = await this.lead.speak(
-          `지금까지의 논의를 종합하여 최종 결론과 액션 아이템을 정리해주세요.\n\n## 전체 논의 내용:\n${allDiscussion}`,
-          context
+          `지금까지의 논의를 종합하여 최종 결론과 액션 아이템을 정리해주세요.`,
+          summaryBundle
         );
+
+        // 정리 발언도 Mailbox에 기록
+        this.mailbox.broadcast({
+          from: this.lead.id,
+          type: "meeting_speech",
+          payload: { content: summary.content, round: round + 1, isSummary: true },
+        });
 
         roundLog.speeches.push({ ...summary, isSummary: true });
         onSpeak({
@@ -112,10 +139,11 @@ export class Team {
 
   /**
    * 회의 로그를 마크다운으로 변환
+   * meetingLog 구조를 유지하여 호환성 확보
    */
   formatMeetingAsMarkdown(meetingLog, meetingType = "회의") {
     const lines = [];
-    const typeEmoji = meetingType === "kickoff" ? "📋" : "🏗️";
+    const typeEmoji = meetingType === "kickoff" ? "\uD83D\uDCCB" : "\uD83C\uDFD7\uFE0F";
     const typeKor = meetingType === "kickoff" ? "킥오프 미팅" : "기술 설계 미팅";
 
     lines.push(`## ${typeEmoji} ${typeKor} 기록\n`);
@@ -129,7 +157,7 @@ export class Team {
       for (const speech of round.speeches) {
         const modelTag = `\`[${speech.model}]\``;
         if (speech.isSummary) {
-          lines.push(`#### 💡 ${speech.agent} (${speech.role}) - 종합 정리 ${modelTag}\n`);
+          lines.push(`#### \uD83D\uDCA1 ${speech.agent} (${speech.role}) - 종합 정리 ${modelTag}\n`);
         } else {
           lines.push(`#### ${speech.agent} (${speech.role}) ${modelTag}\n`);
         }
@@ -140,7 +168,7 @@ export class Team {
 
     // 어떤 모델이 어떤 역할을 했는지 요약
     lines.push(`---\n`);
-    lines.push(`### 🤖 모델 배정 현황\n`);
+    lines.push(`### \uD83E\uDD16 모델 배정 현황\n`);
     lines.push(`| 페르소나 | 역할 | AI 모델 |`);
     lines.push(`|---------|------|---------|`);
     for (const agent of this.getAllAgents()) {

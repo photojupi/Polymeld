@@ -1,6 +1,7 @@
 // src/agents/agent.js
 // 개별 에이전트 (페르소나) 클래스
 // 각 에이전트는 특정 AI 모델에 의해 구동됩니다
+// contextBundle 패턴: 모든 메서드가 ContextBuilder가 조립한 구조화된 맥락을 받음
 
 export class Agent {
   constructor(personaConfig, modelAdapter) {
@@ -12,7 +13,7 @@ export class Agent {
     this.expertise = personaConfig.expertise || [];
     this.style = personaConfig.style || "";
     this.adapter = modelAdapter;
-    this.conversationHistory = [];
+    // conversationHistory 제거됨 - Mailbox가 대화 이력 관리
   }
 
   /**
@@ -43,14 +44,26 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
 
   /**
    * 회의에서 발언
+   * @param {string} topic - 회의 주제
+   * @param {Object} contextBundle - ContextBuilder.buildForMeeting()의 반환값
+   * @param {string} contextBundle.context - 조립된 맥락
+   * @param {string} [contextBundle.previousDiscussion] - 이전 논의 (호환성)
    */
-  async speak(topic, context = "", previousDiscussion = "") {
+  async speak(topic, contextBundle) {
+    // contextBundle이 문자열인 경우 하위 호환 처리 (직접 context 문자열 전달)
+    const context = typeof contextBundle === "string"
+      ? contextBundle
+      : (contextBundle?.context || "");
+    const previousDiscussion = typeof contextBundle === "object"
+      ? contextBundle?.previousDiscussion
+      : undefined;
+
     const systemPrompt = this._buildSystemPrompt(context);
 
     let userMessage = `## 현재 논의 주제\n${topic}`;
     if (previousDiscussion) {
-      userMessage += `\n\n## 이전 논의 내용\n${previousDiscussion}`;
-      userMessage += `\n\n위 논의를 참고하여 ${this.name} (${this.role})로서 의견을 제시해주세요. 동의/반대/보완 의견 모두 가능합니다.`;
+      userMessage += `\n\n## 이전 논의\n${previousDiscussion}`;
+      userMessage += `\n\n${this.name}(${this.role})로서 의견을 제시해주세요.`;
     } else {
       userMessage += `\n\n${this.name} (${this.role})로서 이 주제에 대한 의견을 제시해주세요.`;
     }
@@ -61,11 +74,7 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
       userMessage
     );
 
-    this.conversationHistory.push(
-      { role: "user", content: userMessage },
-      { role: "assistant", content: response }
-    );
-
+    // conversationHistory 제거 - Mailbox에서 관리
     return {
       agent: this.name,
       role: this.role,
@@ -76,19 +85,24 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
 
   /**
    * 코드 작성
+   * @param {Object} contextBundle - ContextBuilder.buildForCoding() 또는 buildForFix()의 반환값
+   * @param {string} contextBundle.systemContext - 시스템 맥락
+   * @param {string} contextBundle.taskDescription - 태스크 설명
+   * @param {string} contextBundle.acceptanceCriteria - 수용 기준
+   * @param {string} [contextBundle.currentCode] - 현재 코드 (수정 시)
    */
-  async writeCode(taskDescription, techStack, acceptanceCriteria) {
-    const systemPrompt = this._buildSystemPrompt(
-      `현재 작업 중인 기술 스택: ${techStack}`
-    );
+  async writeCode(contextBundle) {
+    const systemPrompt = this._buildSystemPrompt(contextBundle.systemContext);
 
-    const prompt = `## 개발 태스크
-${taskDescription}
+    let prompt = `## 개발 태스크\n${contextBundle.taskDescription}\n\n## 수용 기준\n${contextBundle.acceptanceCriteria}`;
 
-## 수용 기준
-${acceptanceCriteria}
-
-위 태스크를 구현해주세요. ${this.name}(${this.role})의 코딩 스타일과 전문성을 반영하여 작성합니다.`;
+    // 수정 모드: 현재 코드가 있으면 포함
+    if (contextBundle.currentCode) {
+      prompt += `\n\n## 현재 코드\n${contextBundle.currentCode}`;
+      prompt += `\n\n위 코드를 수정하여 피드백을 반영해주세요. ${this.name}(${this.role})의 코딩 스타일과 전문성을 반영하여 수정된 전체 코드를 작성합니다.`;
+    } else {
+      prompt += `\n\n위 태스크를 구현해주세요. ${this.name}(${this.role})의 코딩 스타일과 전문성을 반영하여 작성합니다.`;
+    }
 
     const response = await this.adapter.generateCode(
       this.modelKey,
@@ -106,17 +120,22 @@ ${acceptanceCriteria}
 
   /**
    * 코드 리뷰
+   * @param {Object} contextBundle - ContextBuilder.buildForReview()의 반환값
+   * @param {string} contextBundle.systemContext - 시스템 맥락
+   * @param {string} contextBundle.code - 리뷰 대상 코드
+   * @param {string} contextBundle.criteria - 수용 기준
+   * @param {string} authorAgent - 코드 작성자 이름
    */
-  async reviewCode(code, criteria, authorAgent) {
+  async reviewCode(contextBundle, authorAgent) {
     const systemPrompt = this._buildSystemPrompt(
-      `${authorAgent}가 작성한 코드를 리뷰합니다.`
+      `${authorAgent}가 작성한 코드를 리뷰합니다.\n\n${contextBundle.systemContext}`
     );
 
     const response = await this.adapter.reviewCode(
       this.modelKey,
       systemPrompt,
-      code,
-      criteria
+      contextBundle.code,
+      contextBundle.criteria
     );
 
     return {
@@ -129,22 +148,27 @@ ${acceptanceCriteria}
 
   /**
    * QA 테스트
+   * @param {Object} contextBundle - ContextBuilder.buildForQA()의 반환값
+   * @param {string} contextBundle.systemContext - 시스템 맥락
+   * @param {string} contextBundle.code - 검증 대상 코드
+   * @param {string} contextBundle.criteria - 수용 기준
+   * @param {string} contextBundle.taskDescription - 태스크 설명
    */
-  async runQA(code, acceptanceCriteria, taskDescription) {
+  async runQA(contextBundle) {
     const systemPrompt = this._buildSystemPrompt(
-      "QA 엔지니어로서 코드의 품질과 수용 기준 충족 여부를 검증합니다."
+      `QA 엔지니어로서 코드의 품질과 수용 기준 충족 여부를 검증합니다.\n\n${contextBundle.systemContext}`
     );
 
     const prompt = `## 검증 대상 코드
 \`\`\`
-${code}
+${contextBundle.code}
 \`\`\`
 
 ## 태스크 설명
-${taskDescription}
+${contextBundle.taskDescription}
 
 ## 수용 기준
-${acceptanceCriteria}
+${contextBundle.criteria}
 
 위 코드에 대해 QA 검증을 수행해주세요.
 
@@ -170,17 +194,20 @@ ${acceptanceCriteria}
 
   /**
    * 태스크 분해 (팀장 전용)
+   * @param {Object} contextBundle - SharedContext에서 가져온 맥락
+   * @param {string} contextBundle.designDecisions - 설계 결정사항
+   * @param {string} contextBundle.requirement - 프로젝트 요구사항
    */
-  async breakdownTasks(designDecisions, requirement) {
+  async breakdownTasks(contextBundle) {
     const systemPrompt = this._buildSystemPrompt(
       "프로젝트의 기술 설계가 완료되었습니다. 이를 실행 가능한 태스크로 분해합니다."
     );
 
     const prompt = `## 프로젝트 요구사항
-${requirement}
+${contextBundle.requirement}
 
 ## 기술 설계 결정사항
-${designDecisions}
+${contextBundle.designDecisions}
 
 위 내용을 기반으로 태스크를 분해해주세요.
 
@@ -222,10 +249,5 @@ ${designDecisions}
     };
   }
 
-  /**
-   * 대화 히스토리 초기화
-   */
-  resetHistory() {
-    this.conversationHistory = [];
-  }
+  // resetHistory() 제거됨 - conversationHistory가 없으므로 불필요
 }
