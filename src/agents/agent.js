@@ -9,6 +9,7 @@ export class Agent {
     this.name = personaConfig.name; // e.g., "김아키"
     this.role = personaConfig.role; // e.g., "Tech Lead"
     this.modelKey = personaConfig.model; // e.g., "claude"
+    this.imageModelKey = personaConfig.image_model || null; // e.g., "gemini_image"
     this.description = personaConfig.description;
     this.expertise = personaConfig.expertise || [];
     this.style = personaConfig.style || "";
@@ -249,5 +250,43 @@ ${contextBundle.designDecisions}
     };
   }
 
-  // resetHistory() 제거됨 - conversationHistory가 없으므로 불필요
+  /**
+   * 이미지 생성이 가능한 에이전트인지 확인
+   */
+  get canGenerateImages() {
+    return this.imageModelKey !== null;
+  }
+
+  /**
+   * 이미지 생성
+   * @param {Object} contextBundle - ContextBuilder.buildForImageGeneration()의 반환값
+   * @param {string} contextBundle.systemContext - 시스템 맥락
+   * @param {string} contextBundle.imagePrompt - 이미지 생성 프롬프트
+   * @param {string} contextBundle.outputDir - 이미지 저장 디렉토리
+   */
+  async generateImage(contextBundle) {
+    if (!this.imageModelKey) {
+      throw new Error(`${this.name}(${this.role})은 image_model이 설정되지 않아 이미지 생성 불가`);
+    }
+
+    const systemPrompt = this._buildSystemPrompt(contextBundle.systemContext);
+
+    const prompt = `## 이미지 생성 요청\n${contextBundle.imagePrompt}\n\n` +
+      `위 설명에 맞는 이미지를 생성해주세요. ${this.name}(${this.role})의 디자인 감각과 전문성을 반영합니다.`;
+
+    const result = await this.adapter.generateImage(
+      this.imageModelKey,
+      systemPrompt,
+      prompt,
+      { outputDir: contextBundle.outputDir || "./output/images" }
+    );
+
+    return {
+      agent: this.name,
+      role: this.role,
+      model: this.imageModelKey,
+      images: result.images,
+      textResponse: result.text,
+    };
+  }
 }

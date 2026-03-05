@@ -3,6 +3,8 @@
 // Claude Code, Gemini CLI, Codex CLI를 서브프로세스로 호출
 
 import { spawn, execFileSync } from "child_process";
+import fs from "fs";
+import path from "path";
 import os from "os";
 
 /**
@@ -258,6 +260,82 @@ export class ModelAdapter {
   async reviewCode(modelKey, systemPrompt, code, criteria, options = {}) {
     const reviewPrompt = `다음 코드를 리뷰해주세요.\n\n## 코드\n\`\`\`\n${code}\n\`\`\`\n\n## 수용 기준\n${criteria}\n\n## 리뷰 형식\n- 전체 평가: Approved / Changes Requested\n- 좋은 점\n- 개선 필요 사항 (구체적 라인/로직 지적)\n- 보안 이슈\n- 성능 이슈`;
     return this.chat(modelKey, systemPrompt, reviewPrompt, options);
+  }
+
+  /**
+   * 이미지 생성 특화 호출
+   * Gemini image model의 JSON 응답에서 base64 이미지를 추출하여 파일로 저장
+   */
+  async generateImage(modelKey, systemPrompt, imageRequest, options = {}) {
+    const modelConfig = this.config.models[modelKey];
+    if (!modelConfig) {
+      throw new Error(`모델 설정을 찾을 수 없습니다: ${modelKey}`);
+    }
+    if (modelConfig.cli !== "gemini") {
+      throw new Error(`이미지 생성은 현재 gemini CLI만 지원합니다. (${modelConfig.cli})`);
+    }
+
+    const outputDir = options.outputDir || "./output/images";
+    return this._generateImageGemini(modelConfig.model, systemPrompt, imageRequest, outputDir);
+  }
+
+  /**
+   * Gemini CLI로 이미지 생성 호출 (JSON 모드)
+   */
+  async _generateImageGemini(model, systemPrompt, userMessage, outputDir) {
+    const prompt = systemPrompt
+      ? this._buildCombinedPrompt(systemPrompt, userMessage)
+      : userMessage;
+
+    const args = ["--output-format", "json"];
+    if (model) args.push("-m", model);
+
+    const raw = await this._spawnCli("gemini", args, prompt, {
+      timeout: this.config.cli?.timeouts?.gemini_image || 600000,
+    });
+
+    return this._parseImageResponse(raw, outputDir);
+  }
+
+  /**
+   * Gemini CLI JSON 응답에서 이미지 데이터와 텍스트를 추출
+   */
+  _parseImageResponse(rawJson, outputDir) {
+    const images = [];
+    let text = "";
+
+    try {
+      const response = JSON.parse(rawJson);
+      const parts = response?.candidates?.[0]?.content?.parts
+        || response?.parts
+        || [];
+
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      let imageIndex = 0;
+      for (const part of parts) {
+        if (part.text) {
+          text += part.text;
+        } else if (part.inlineData) {
+          imageIndex++;
+          const mimeType = part.inlineData.mimeType || "image/png";
+          const ext = mimeType.includes("jpeg") ? "jpg" : "png";
+          const filename = `generated_${Date.now()}_${imageIndex}.${ext}`;
+          const filePath = path.join(outputDir, filename);
+
+          const buffer = Buffer.from(part.inlineData.data, "base64");
+          fs.writeFileSync(filePath, buffer);
+
+          images.push({ path: filePath, mimeType });
+        }
+      }
+    } catch {
+      text = this._normalizeOutput(rawJson, "gemini");
+    }
+
+    return { images, text };
   }
 
   /**

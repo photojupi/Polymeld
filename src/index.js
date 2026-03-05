@@ -237,8 +237,11 @@ program
     for (const [id, persona] of Object.entries(config.personas)) {
       const modelAvailable = available.includes(persona.model);
       const status = modelAvailable ? "✅" : "❌";
+      const imageTag = persona.image_model
+        ? chalk.gray(` + image:${persona.image_model}`)
+        : "";
       console.log(
-        `  ${status} ${persona.name} (${persona.role}) → ${persona.model}`
+        `  ${status} ${persona.name} (${persona.role}) → ${persona.model}${imageTag}`
       );
     }
   });

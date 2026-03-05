@@ -1,34 +1,41 @@
-# 🤖 Agent Team CLI
+# Agent Team CLI
 
 **멀티 AI 모델 기반 개발팀 시뮬레이션**
 
-Claude Code, Gemini CLI, Codex CLI를 각 페르소나(팀장, 백엔드, 프론트엔드, DevOps, QA)에 배정하고,
+Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 회의 → 설계 → 개발 → 리뷰 → QA → PR 생성까지 자동화합니다.
 
 ## 아키텍처
 
 ```
-┌─────────────────────────────────────────────────┐
-│                 Agent Team CLI                   │
-│              (Node.js 오케스트레이터)              │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
-│  │  Claude   │  │ Gemini   │  │ Codex    │      │
-│  │  Code CLI │  │ CLI      │  │ CLI      │      │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘      │
-│       │              │              │            │
-│  ┌────▼─────┐  ┌────▼─────┐  ┌────▼─────┐      │
-│  │ 김아키    │  │ 이서버    │  │ 정테스트  │      │
-│  │ (팀장)    │  │ (백엔드)  │  │ (QA)     │      │
-│  └──────────┘  │ 박유아이   │  │ 최배포    │      │
-│                │ (프론트)   │  │ (DevOps) │      │
-│                └──────────┘  └──────────┘      │
-│                                                  │
-├─────────────────────────────────────────────────┤
-│              GitHub Integration                  │
-│  Issues │ Comments │ Projects │ Branches │ PRs   │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                      Agent Team CLI                         │
+│                  (Node.js 오케스트레이터)                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  SharedContext          Mailbox           ContextBuilder     │
+│  (Blackboard 패턴)     (메시지 라우팅)    (토큰 예산 조립)    │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐              │
+│  │ Claude   │    │ Gemini   │    │ Codex    │              │
+│  │ Code CLI │    │ CLI      │    │ CLI      │              │
+│  └────┬─────┘    └────┬─────┘    └────┬─────┘              │
+│       │               │               │                     │
+│  ┌────┴────┐   ┌──────┴──────┐  ┌─────┴─────┐             │
+│  │ 김아키   │   │ 이서버      │  │ 한코딩    │              │
+│  │ (팀장)   │   │ 박유아이    │  │ (에이스)  │              │
+│  └─────────┘   │ 윤디자인*   │  │ 정테스트  │              │
+│                │ 그림솔*     │  │ 최배포    │              │
+│                └─────────────┘  └──────────┘              │
+│                                                             │
+│  * 디자이너/원화가는 이미지 생성 시 Nano Banana 2 사용       │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                  GitHub Integration                         │
+│      Issues │ Comments │ Projects │ Branches │ PRs          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## 빠른 시작
@@ -67,35 +74,78 @@ GITHUB_REPO=owner/repo            # 대상 리포지터리
 
 ### agent-team.config.yaml
 
-페르소나별 모델 배정을 자유롭게 변경할 수 있습니다:
+#### 모델 정의
+
+사용할 AI 모델과 CLI 매핑을 정의합니다:
+
+```yaml
+models:
+  claude:
+    cli: claude
+    model: claude-opus-4-6
+  gemini:
+    cli: gemini
+    model: gemini-3.1-pro-preview
+  codex:
+    cli: codex
+    model: gpt-5.3-codex
+  gemini_image:
+    cli: gemini
+    model: gemini-3.1-flash-image    # Nano Banana 2 (이미지 생성 특화)
+```
+
+#### 페르소나 배정
+
+각 페르소나에 모델을 배정합니다. `on_demand: true`로 설정하면 팀장이 필요 시에만 소집합니다:
 
 ```yaml
 personas:
+  # 상시 투입
   tech_lead:
     name: 김아키
-    model: claude          # 팀장은 Claude Code
-  backend_dev:
-    name: 이서버
-    model: gemini          # 백엔드는 Gemini CLI
-  frontend_dev:
-    name: 박유아이
-    model: gemini          # 프론트도 Gemini CLI
-  devops:
-    name: 최배포
-    model: codex           # DevOps는 Codex CLI
+    model: claude
+
+  ace_programmer:
+    name: 한코딩
+    model: codex
+
   qa:
     name: 정테스트
-    model: codex           # QA도 Codex CLI
+    model: codex
+
+  # 온디맨드 (필요 시 소집)
+  backend_dev:
+    name: 이서버
+    model: gemini
+    on_demand: true
+
+  designer:
+    name: 윤디자인
+    model: gemini             # 대화/설계 시 Gemini 3.1 Pro
+    image_model: gemini_image # 이미지 생성 시 Nano Banana 2
+    on_demand: true
 ```
 
-**조합 예시:**
+#### image_model (이미지 생성)
 
-| 구성 | 팀장 | 백엔드 | 프론트 | DevOps | QA |
-|------|------|--------|--------|--------|-----|
-| 풀 멀티 | Claude | Gemini | Gemini | Codex | Codex |
-| Claude 중심 | Claude | Claude | Claude | Claude | Codex |
-| 비용 절약 | Gemini | Gemini | Gemini | Gemini | Gemini |
-| 고품질 | Claude | Claude | Gemini | Codex | Claude |
+`image_model` 필드를 설정하면 해당 페르소나가 이미지 생성 태스크를 수행할 수 있습니다:
+- **대화/설계/리뷰**: 기본 `model` 사용 (예: Gemini 3.1 Pro)
+- **이미지 생성**: `image_model` 사용 (예: Nano Banana 2)
+- 이미지 태스크 자동 감지: 태스크 제목/설명에 디자인, 목업, 아이콘, 일러스트 등 키워드 포함 시
+- `image_model`은 선택적 — 미설정 시 텍스트 전용 에이전트로 동작
+
+### 페르소나 구성 (기본값)
+
+| 페르소나 | 역할 | 모델 | 이미지 모델 | 투입 |
+|---------|------|------|-----------|------|
+| 김아키 | Tech Lead | Claude Opus 4.6 | - | 상시 |
+| 한코딩 | Ace Programmer | GPT-5.3 Codex | - | 상시 |
+| 정테스트 | QA Engineer | GPT-5.3 Codex | - | 상시 |
+| 이서버 | Backend Dev | Gemini 3.1 Pro | - | 온디맨드 |
+| 박유아이 | Frontend Dev | Gemini 3.1 Pro | - | 온디맨드 |
+| 최배포 | DevOps | GPT-5.3 Codex | - | 온디맨드 |
+| 윤디자인 | UI/UX Designer | Gemini 3.1 Pro | Nano Banana 2 | 온디맨드 |
+| 그림솔 | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | 온디맨드 |
 
 ## 사용법
 
@@ -109,6 +159,11 @@ node src/index.js run "실시간 채팅 기능 구현" --no-interactive
 
 # 프로젝트 제목 지정
 node src/index.js run "채팅 기능" --title "실시간 채팅 v1.0"
+
+# 인터랙션 모드 지정
+node src/index.js run "채팅 기능" --mode full-auto
+node src/index.js run "채팅 기능" --mode semi-auto   # 기본값
+node src/index.js run "채팅 기능" --mode manual
 ```
 
 ### 회의만 진행
@@ -125,11 +180,16 @@ node src/index.js meeting design "마이크로서비스 아키텍처 전환" --r
 node src/index.js test-models
 ```
 
+### 설정 초기화
+```bash
+node src/index.js init
+```
+
 ## 파이프라인 상세
 
 ```
 Phase 1: 킥오프 미팅
-  → 5명의 페르소나가 각자의 AI 모델로 의견 제시
+  → 페르소나들이 각자의 AI 모델로 의견 제시
   → 회의록이 GitHub Issue에 자동 등록
 
 Phase 2: 기술 설계 미팅
@@ -138,28 +198,79 @@ Phase 2: 기술 설계 미팅
   → 설계 결정 문서가 GitHub Issue에 등록
 
 Phase 3: 태스크 분해
-  → 팀장(Claude)이 1-4시간 단위로 태스크 분해
+  → 팀장이 1-4시간 단위로 태스크 분해
   → 각 태스크가 GitHub Issue로 생성 (backlog 라벨)
 
 Phase 4: 작업 분배
   → 팀장이 각 태스크를 적합한 페르소나에게 배정
+  → 이미지 태스크는 image_model 보유 에이전트에게 우선 배정
   → 배정 이유가 Issue Comment로 기록
 
 Phase 5: 개발
   → 각 페르소나가 자신의 AI 모델로 코드 작성
+  → 이미지 태스크: image_model로 이미지 생성 (output/images/ 저장)
   → feature 브랜치에 커밋
   → 진행 상황이 Issue Comment로 업데이트
 
 Phase 6: 코드 리뷰
-  → 팀장(Claude)이 다른 모델이 작성한 코드를 리뷰
+  → 팀장이 다른 모델이 작성한 코드를 리뷰
+  → 리뷰 → 수정 → 재리뷰 사이클 (최대 3회)
   → 리뷰 결과가 Issue Comment로 기록
 
 Phase 7: QA
-  → QA(Codex)가 코드 검증
+  → QA가 코드 검증
+  → QA 실패 → 팀장 분석 → 수정 → 재검증 (최대 3회)
   → 테스트 결과가 Issue Comment에 표 형태로 기록
 
 Phase 8: PR 생성
   → 모든 이력(회의록, 리뷰, QA)이 링크된 PR 자동 생성
+```
+
+## 내부 아키텍처
+
+### 3대 컨텍스트 구성요소
+
+| 구성요소 | 역할 | 비유 |
+|---------|------|------|
+| **SharedContext** | 전역 공유 저장소 (Blackboard 패턴) | 화이트보드 |
+| **Mailbox** | 에이전트 간 메시지 라우팅 | 우편함 |
+| **ContextBuilder** | 토큰 예산 내 맥락 조립 | 비서 |
+
+### SharedContext 슬롯 카탈로그
+
+```
+project.requirement     - 원본 요구사항 텍스트
+project.title           - 프로젝트 제목
+meeting.kickoff.*       - 킥오프 미팅 요약/핵심 포인트
+design.*                - 설계 결정, 기술 스택, 아키텍처
+planning.*              - 태스크 목록, 담당자 매핑
+code.<taskId>           - 생성된 코드 아티팩트
+review.<taskId>         - 리뷰 결과 및 판정
+qa.<taskId>             - QA 결과 및 판정
+image.<taskId>          - 이미지 생성 결과
+```
+
+### 프로젝트 구조
+
+```
+src/
+├── index.js                  # CLI 엔트리포인트 (Commander.js)
+├── config/
+│   ├── loader.js             # YAML 설정 로더 + CLI 검증
+│   └── interaction.js        # 인터랙션 모드 관리
+├── models/
+│   └── adapter.js            # CLI 추상화 (claude/gemini/codex)
+├── agents/
+│   ├── agent.js              # 개별 에이전트 (페르소나)
+│   └── team.js               # 팀 관리자 (오케스트레이션)
+├── context/
+│   ├── shared-context.js     # Blackboard 패턴 전역 저장소
+│   ├── mailbox.js            # 에이전트 간 메시지 라우팅
+│   └── context-builder.js    # 토큰 예산 맥락 조립기
+├── pipeline/
+│   └── orchestrator.js       # 8-Phase 파이프라인 실행
+└── github/
+    └── client.js             # GitHub API (Issues, PRs, Projects)
 ```
 
 ## GitHub에 기록되는 항목
@@ -170,6 +281,7 @@ Phase 8: PR 생성
 - **태스크**: Issue (backlog → todo → in-progress → done)
 - **배정 기록**: Issue Comment
 - **개발 로그**: Issue Comment + Commit
+- **이미지 생성 결과**: Issue Comment (파일 경로 + 텍스트 설명)
 - **페르소나 간 논의**: Issue Comment
 - **코드 리뷰**: Issue Comment
 - **QA 결과**: Issue Comment
@@ -190,7 +302,7 @@ node /path/to/agent-team-cli/src/index.js run "요구사항" --no-interactive
 ```markdown
 ## Agent Team
 프로젝트 요구사항이 주어지면 agent-team CLI를 실행하세요:
-\`node ./agent-team-cli/src/index.js run "요구사항" --no-interactive\`
+`node ./agent-team-cli/src/index.js run "요구사항" --no-interactive`
 ```
 
 ## 페르소나 커스터마이징
@@ -208,6 +320,17 @@ personas:
       - 보안 취약점 분석
       - 인증/인가 설계
       - 암호화 전략
+
+  concept_artist:
+    name: 이컨셉
+    role: Concept Artist
+    model: gemini              # 토론/기획 시 텍스트 모델
+    image_model: gemini_image  # 이미지 생성 시 이미지 모델
+    on_demand: true
+    description: "컨셉 아트와 비주얼 디자인 전문가"
+    expertise:
+      - 컨셉 아트 제작
+      - 캐릭터/배경 디자인
 ```
 
 ## 라이선스

@@ -101,6 +101,17 @@ export class PipelineOrchestrator {
     }
   }
 
+  /**
+   * 태스크가 이미지 생성 관련인지 판단
+   */
+  _isImageTask(task) {
+    const keywords = ["이미지", "image", "디자인", "design", "목업", "mockup",
+      "아이콘", "icon", "일러스트", "illustrat", "배너", "banner",
+      "로고", "logo", "UI", "와이어프레임", "wireframe"];
+    const text = `${task.title || ""} ${task.description || ""} ${task.category || ""}`.toLowerCase();
+    return keywords.some(kw => text.includes(kw.toLowerCase()));
+  }
+
   _printModelAssignment() {
     console.log(chalk.bold("\uD83E\uDD16 모델 배정 현황:"));
     console.log(chalk.gray("\u2500".repeat(50)));
@@ -111,8 +122,11 @@ export class PipelineOrchestrator {
           : agent.modelKey === "gemini"
             ? chalk.hex("#4285F4")
             : chalk.hex("#10A37F");
+      const imageTag = agent.imageModelKey
+        ? chalk.gray(` + image:${agent.imageModelKey}`)
+        : "";
       console.log(
-        `  ${agent.name} (${agent.role}): ${modelColor(agent.modelKey)}`
+        `  ${agent.name} (${agent.role}): ${modelColor(agent.modelKey)}${imageTag}`
       );
     }
     console.log(chalk.gray("\u2500".repeat(50)) + "\n");
@@ -484,6 +498,41 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
           taskId: task.taskId,
         },
       });
+
+      // 이미지 생성 (이미지 관련 태스크 && 이미지 모델 보유 에이전트)
+      if (agent.canGenerateImages && this._isImageTask(task)) {
+        const imageSpinner = ora(`  ${agent.name} 이미지 생성 중...`).start();
+        try {
+          const imageBundle = this.contextBuilder.buildForImageGeneration(
+            agent.id,
+            task.description || task.title,
+            { taskId: task.taskId, outputDir: `./output/images/${task.taskId}` }
+          );
+          const imageResult = await agent.generateImage(imageBundle);
+          imageSpinner.succeed(
+            `  ${agent.name} 이미지 ${imageResult.images.length}개 생성 완료`
+          );
+
+          this.shared.set(`image.${task.taskId}`, {
+            images: imageResult.images,
+            text: imageResult.textResponse,
+          }, {
+            author: agent.id,
+            phase: "development",
+            summary: `${task.title} 이미지 ${imageResult.images.length}개 생성`,
+          });
+
+          if (imageResult.images.length > 0) {
+            const imageList = imageResult.images.map(img => `- \`${img.path}\``).join("\n");
+            await this.github.addComment(
+              task.issueNumber,
+              `🎨 **${agent.name}** (\`${agent.imageModelKey}\`): 이미지 생성 완료\n\n${imageList}\n\n${imageResult.textResponse || ""}`
+            );
+          }
+        } catch (e) {
+          imageSpinner.fail(`  이미지 생성 실패: ${e.message}`);
+        }
+      }
 
       // 완료 코멘트
       await this.github.addComment(

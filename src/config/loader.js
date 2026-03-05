@@ -102,6 +102,16 @@ function validateCli(config) {
         `   - ${persona.name} (${persona.role}) → ${modelConfig.cli} (미설치)`
       );
     }
+
+    // image_model 검증 (선택적 - 경고만)
+    if (persona.image_model) {
+      const imageModelConfig = config.models[persona.image_model];
+      if (!imageModelConfig) {
+        console.warn(`  ⚠️  ${persona.name}의 image_model "${persona.image_model}"이 models에 정의되지 않았습니다.`);
+      } else if (missingClis.has(imageModelConfig.cli)) {
+        console.warn(`  ⚠️  ${persona.name}의 image_model "${persona.image_model}" → ${imageModelConfig.cli} (미설치, 이미지 생성 불가)`);
+      }
+    }
   }
 
   if (blocked.length > 0) {

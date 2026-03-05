@@ -349,6 +349,59 @@ export class ContextBuilder {
   // ─── 내부 헬퍼 ─────────────────────────────────────────
 
   /**
+   * 이미지 생성용 맥락 조립
+   *
+   * 우선순위:
+   * 1. [필수] project.requirement + project.title
+   * 2. [작업별] design.decisions (디자인 가이드라인)
+   * 3. [보조] 관련 태스크 설명
+   *
+   * @param {string} agentId
+   * @param {string} imagePrompt - 이미지 생성 프롬프트
+   * @param {Object} [options]
+   * @param {string} [options.taskId] - 관련 태스크 ID
+   * @param {string} [options.outputDir] - 이미지 저장 경로
+   * @returns {{ systemContext: string, imagePrompt: string, outputDir: string }}
+   */
+  buildForImageGeneration(agentId, imagePrompt, options = {}) {
+    const budget = options.maxChars || this.maxChars;
+    const sections = [];
+    let used = 0;
+
+    // 1. 필수: 프로젝트 정보
+    const projectInfo = this._buildProjectSection();
+    sections.push(projectInfo);
+    used += projectInfo.length;
+
+    // 2. 작업별: 디자인 가이드라인
+    const designSummary = this._getSlotSummaryOrTruncate(
+      "design.decisions", Math.min(2000, budget - used - 500)
+    );
+    if (designSummary) {
+      const section = `## 디자인 가이드라인\n${designSummary}`;
+      sections.push(section);
+      used += section.length;
+    }
+
+    // 3. 보조: 관련 태스크 설명
+    if (options.taskId) {
+      const task = this._findTask(options.taskId);
+      if (task?.description) {
+        const section = `## 관련 태스크\n${task.description}`;
+        if (used + section.length < budget) {
+          sections.push(section);
+        }
+      }
+    }
+
+    return {
+      systemContext: sections.join("\n\n"),
+      imagePrompt,
+      outputDir: options.outputDir || "./output/images",
+    };
+  }
+
+  /**
    * 프로젝트 기본 정보 섹션 생성
    * @private
    */
