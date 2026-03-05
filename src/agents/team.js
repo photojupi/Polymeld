@@ -48,6 +48,17 @@ export class Team {
     return Object.values(this.agents);
   }
 
+  /**
+   * 이미지 생성 가능한 에이전트 목록 반환
+   */
+  getImageAgents() {
+    return Object.values(this.agents).filter(a => a.canGenerateImages);
+  }
+
+  getAllAgents() {
+    return Object.values(this.agents);
+  }
+
   getDevelopers() {
     return Object.entries(this.agents)
       .filter(([id]) => !["tech_lead", "qa"].includes(id))

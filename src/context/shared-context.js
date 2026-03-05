@@ -11,7 +11,7 @@
  * - 슬롯 기반 구조: 이름으로 접근, 카테고리로 그룹 조회
  * - 변경 이력 자동 기록
  *
- * 슬롯 카탈로그 (15개):
+ * 슬롯 카탈로그 (16개):
  *   project.requirement  - 원본 요구사항 텍스트
  *   project.title         - 프로젝트 제목
  *   meeting.kickoff.summary   - 킥오프 미팅 최종 정리
@@ -27,6 +27,7 @@
  *   review.<taskId>.verdict - "approved" or "changes_requested"
  *   qa.<taskId>          - QA 결과
  *   qa.<taskId>.verdict  - "pass" or "fail"
+ *   image.<taskId>       - 이미지 생성 결과 (paths, text)
  */
 export class SharedContext {
   constructor() {
