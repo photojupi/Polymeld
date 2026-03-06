@@ -204,6 +204,8 @@ export class PipelineOrchestrator {
         if (phase === "speaking") {
           streamBuf = "";
           spinner.text = `${agent} 발언 중...`;
+        } else if (phase === "passed") {
+          spinner.text = `${agent} 패스`;
         }
       },
       onStream: ({ agent, chunk }) => {

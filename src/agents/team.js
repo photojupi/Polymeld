@@ -129,10 +129,19 @@ export class Team {
       for (const agent of speakOrder) {
         onSpeak({ phase: "speaking", agent: agent.name, round: round + 1 });
 
+        const isLead = agent.id === this.lead.id;
         const contextBundle = this.assembler.forMeeting(this.state, { agentId: agent.id, topic });
+        if (!isLead) contextBundle.allowPass = true;
+
         const speech = await agent.speak(topic, contextBundle, {
           onData: onStream ? (chunk) => onStream({ agent: agent.name, chunk }) : undefined,
         });
+
+        // [PASS] 응답이면 메시지에 기록하지 않고 스킵
+        if (speech.content.trim() === "[PASS]") {
+          onSpeak({ phase: "passed", agent: agent.name });
+          continue;
+        }
 
         this.state.broadcastMessage({
           from: agent.id,
