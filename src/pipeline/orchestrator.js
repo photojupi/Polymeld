@@ -185,39 +185,44 @@ export class PipelineOrchestrator {
    */
   _meetingCallbacks(spinner) {
     let streamBuf = "";
-    const cols = () => process.stdout.columns || 80;
+    const cols = () => process.stderr.columns || 80;
     const MAX_PREVIEW_LINES = 5;
 
+    // spinner를 멈추지 않고 텍스트를 영구 출력하는 헬퍼
+    // stopAndPersist()+start()는 stdinDiscarder를 토글하여
+    // Enter 키 입력 시 스피너 라인이 중복되는 버그를 유발함
+    const persist = (symbol, text) => {
+      spinner.clear();
+      process.stderr.write(`${symbol} ${text}\n`);
+      spinner.render();
+    };
+
     const printSpeechPreview = (agent, content, { symbol = chalk.green("✔"), label } = {}) => {
-      spinner.stopAndPersist({ symbol, text: label || agent });
+      spinner.clear();
+      process.stderr.write(`${symbol} ${label || agent}\n`);
       const lines = content.split("\n").filter((l) => l.trim());
       const preview = lines.slice(0, MAX_PREVIEW_LINES);
       const maxLen = cols() - 4;
       preview.forEach((line) => {
-        console.log(chalk.dim(`  ${line.substring(0, maxLen)}`));
+        process.stderr.write(chalk.dim(`  ${line.substring(0, maxLen)}`) + "\n");
       });
       if (lines.length > MAX_PREVIEW_LINES) {
-        console.log(chalk.dim("  ..."));
+        process.stderr.write(chalk.dim("  ...") + "\n");
       }
-      spinner.start();
+      spinner.render();
     };
 
     return {
       onSpeak: ({ phase, agent, content, round, totalRounds }) => {
         if (phase === "round_start") {
-          spinner.stopAndPersist({
-            symbol: chalk.cyan("●"),
-            text: chalk.cyan(`라운드 ${round}/${totalRounds}`),
-          });
-          spinner.start();
+          persist(chalk.cyan("●"), chalk.cyan(`라운드 ${round}/${totalRounds}`));
         } else if (phase === "speaking") {
           streamBuf = "";
           spinner.text = `${agent} 발언 중...`;
         } else if (phase === "spoke" && content) {
           printSpeechPreview(agent, content);
         } else if (phase === "passed") {
-          spinner.stopAndPersist({ symbol: chalk.yellow("–"), text: `${agent} 패스` });
-          spinner.start();
+          persist(chalk.yellow("–"), `${agent} 패스`);
         } else if (phase === "summary" && content) {
           printSpeechPreview(agent, content, { symbol: chalk.cyan("★"), label: `${agent} (정리)` });
         }
