@@ -6,7 +6,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { InteractionManager } from "../config/interaction.js";
 import { ResponseParser } from "../models/response-parser.js";
-import { ModelSelector } from "../models/model-selector.js";
+
 
 export class PipelineOrchestrator {
   /**
@@ -41,10 +41,6 @@ export class PipelineOrchestrator {
     if (!this.state.project.title) {
       this.state.project.title = projectTitle;
     }
-
-    // 동적 모델 선택기 초기화
-    const available = this.team.adapter.getAvailableModels();
-    this.modelSelector = new ModelSelector(this.config, available);
 
     // 재개 시 에이전트 참조 재연결
     this._relinkAgents();
@@ -377,15 +373,11 @@ ${requirement}
     // 사용 가능한 역할 목록 (ID만 전달하여 AI가 정확한 ID를 반환하도록 유도)
     const availableRoles = Object.keys(this.config.personas).join(", ");
 
-    const modelOverride = this.modelSelector.selectModel({
-      operation: "breakdownTasks",
-      agentDefault: this.team.lead.modelKey,
-    });
     const result = await this.team.lead.breakdownTasks({
       designDecisions,
       requirement,
       availableRoles,
-    }, { modelOverride });
+    });
 
     spinner.succeed("태스크 분해 완료");
 
@@ -554,11 +546,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       // PromptAssembler로 코딩 맥락 조립
       const spinner = ora(`  ${agent.name} 코드 작성 중...`).start();
       const contextBundle = this.assembler.forCoding(this.state, { agentId: agent.id, taskId: task.id, codebaseContext });
-      const codeModelOverride = this.modelSelector.selectModel({
-        operation: "writeCode",
-        agentDefault: agent.modelKey,
-      });
-      const result = await agent.writeCode(contextBundle, { modelOverride: codeModelOverride });
+      const result = await agent.writeCode(contextBundle);
       spinner.succeed(`  ${agent.name} 코드 작성 완료`);
 
       // 코드를 태스크에 저장
@@ -685,11 +673,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
           `  ${lead.name} (${lead.modelKey}) 리뷰 중...`
         ).start();
         const reviewBundle = this.assembler.forReview(this.state, { taskId: task.id });
-        const reviewModelOverride = this.modelSelector.selectModel({
-          operation: "reviewCode",
-          agentDefault: lead.modelKey,
-        });
-        const result = await lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown", { modelOverride: reviewModelOverride });
+        const result = await lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown");
         spinner.succeed(`  리뷰 완료`);
 
         // 리뷰 결과를 태스크에 저장
@@ -778,11 +762,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         ).start();
 
         const fixBundle = this.assembler.forFix(this.state, { agentId: task.assignedAgentId, taskId: task.id, feedbackSource: "review" });
-        const fixModelOverride = this.modelSelector.selectModel({
-          operation: "writeCode",
-          agentDefault: task.assignedAgent?.modelKey,
-        });
-        const fixResult = await task.assignedAgent?.writeCode(fixBundle, { modelOverride: fixModelOverride });
+        const fixResult = await task.assignedAgent?.writeCode(fixBundle);
 
         if (fixResult) {
           task.code = fixResult.code;
@@ -850,11 +830,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
           `  ${qaAgent.name} (${qaAgent.modelKey}) 테스트 중...`
         ).start();
         const qaBundle = this.assembler.forQA(this.state, { taskId: task.id });
-        const qaModelOverride = this.modelSelector.selectModel({
-          operation: "runQA",
-          agentDefault: qaAgent.modelKey,
-        });
-        const result = await qaAgent.runQA(qaBundle, { modelOverride: qaModelOverride });
+        const result = await qaAgent.runQA(qaBundle);
         spinner.succeed(`  QA 완료`);
 
         // QA 결과를 태스크에 저장
@@ -960,11 +936,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         ).start();
 
         const fixBundle = this.assembler.forFix(this.state, { agentId: task.assignedAgentId, taskId: task.id, feedbackSource: "qa" });
-        const qaFixModelOverride = this.modelSelector.selectModel({
-          operation: "writeCode",
-          agentDefault: task.assignedAgent?.modelKey,
-        });
-        const fixResult = await task.assignedAgent?.writeCode(fixBundle, { modelOverride: qaFixModelOverride });
+        const fixResult = await task.assignedAgent?.writeCode(fixBundle);
 
         if (fixResult) {
           task.code = fixResult.code;
