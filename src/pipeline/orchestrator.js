@@ -282,7 +282,7 @@ export class PipelineOrchestrator {
       requirement,
       `프로젝트: ${projectTitle}`,
       {
-        rounds: 2,
+        rounds: this.config.pipeline?.max_discussion_rounds || 5,
         ...this._meetingCallbacks(spinner),
       }
     );

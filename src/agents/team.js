@@ -76,7 +76,7 @@ export class Team {
    * @param {object} options - { rounds: 토론 라운드 수, onSpeak: 콜백, onStream: 실시간 출력 콜백 }
    */
   async conductMeeting(topic, context = "", options = {}) {
-    const rounds = options.rounds || this.config.pipeline?.max_discussion_rounds || 2;
+    const rounds = Math.max(1, options.rounds || this.config.pipeline?.max_discussion_rounds || 2);
     const onSpeak = options.onSpeak || (() => {});
     const onStream = options.onStream;
 
@@ -89,9 +89,10 @@ export class Team {
 
     for (let round = 0; round < rounds; round++) {
       const roundLog = { round: round + 1, speeches: [] };
+      const isLastRound = round === rounds - 1;
 
       // 첫 라운드: 팀장 -> 나머지 -> 팀장 정리
-      // 이후 라운드: 자유 토론 -> 팀장 정리
+      // 이후 라운드: 자유 토론 -> 팀장 결론 확인 또는 정리
       const speakOrder =
         round === 0
           ? [this.lead, ...this.getDevelopers(), this.qa]
@@ -132,8 +133,47 @@ export class Team {
         onSpeak({ phase: "spoke", agent: agent.name, content: speech.content });
       }
 
+      // 중간 라운드: 팀장 결론 확인 (결론 시 조기 종료)
+      let shouldBreak = false;
+      if (round > 0 && !isLastRound) {
+        onSpeak({ phase: "speaking", agent: this.lead.name, round: round + 1 });
+
+        const checkBundle = this.assembler.forMeeting(this.state, {
+          agentId: this.lead.id,
+          topic,
+          maxPreviousSpeeches: 10,
+        });
+
+        const checkResponse = await this.lead.speak(
+          `지금까지의 논의를 검토해주세요. 충분히 결론이 도출되었다면 [CONCLUDE]로 시작하여 최종 결론과 액션 아이템을 정리해주세요. 아직 추가 논의가 필요하다면 다음 라운드에서 집중할 포인트를 제시해주세요.`,
+          checkBundle,
+          { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
+        );
+
+        const content = checkResponse.content.trim();
+        const concluded = /^\[CONCLUDE\]/i.test(content);
+
+        if (concluded) {
+          const stripped = content.replace(/^\[CONCLUDE\]\s*/i, "");
+          if (stripped.length > 0) {
+            // 결론 도출 → 종합 정리로 기록, 조기 종료
+            this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content: stripped });
+            roundLog.speeches.push({ ...checkResponse, content: stripped, isSummary: true });
+            onSpeak({ phase: "summary", agent: this.lead.name, content: stripped });
+            shouldBreak = true;
+          } else {
+            // [CONCLUDE]만 있고 내용 없음 → broadcast 스킵, 다음 라운드 속행
+          }
+        } else {
+          // 결론 안 냄 → 방향 제시 발언으로 기록
+          this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content });
+          roundLog.speeches.push(checkResponse);
+          onSpeak({ phase: "spoke", agent: this.lead.name, content });
+        }
+      }
+
       // 팀장 정리 (마지막 라운드)
-      if (round === rounds - 1) {
+      if (isLastRound) {
         onSpeak({ phase: "speaking", agent: this.lead.name, round: round + 1 });
 
         const summaryBundle = this.assembler.forMeeting(this.state, {
@@ -163,6 +203,7 @@ export class Team {
       }
 
       meetingLog.rounds.push(roundLog);
+      if (shouldBreak) break;
     }
 
     return meetingLog;

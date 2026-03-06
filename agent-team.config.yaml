@@ -224,7 +224,7 @@ pipeline:
   # 자동 브랜치 생성
   auto_branch: true
   # 회의 시 최대 라운드 수 (페르소나 간 토론)
-  max_discussion_rounds: 3
+  max_discussion_rounds: 5
   # AI 사고 깊이 (0-100). 페르소나별 오버라이드 가능.
   # CLI별 매핑:
   #   Claude  → --effort (low/medium/high)
