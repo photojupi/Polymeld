@@ -2,6 +2,7 @@
 // 슬래시 커맨드 vs 자연어 분기 처리
 
 import chalk from "chalk";
+import inquirer from "inquirer";
 import { statusCommand } from "./commands/status.js";
 import { historyCommand } from "./commands/history.js";
 import { saveCommand } from "./commands/save.js";
@@ -10,6 +11,18 @@ import { teamCommand } from "./commands/team.js";
 import { contextCommand } from "./commands/context.js";
 import { helpCommand } from "./commands/help.js";
 import { resumeCommand } from "./commands/resume.js";
+
+const COMMAND_MENU = [
+  { name: "/resume   — 중단된 파이프라인 재개", value: "/resume" },
+  { name: "/status   — 현재 세션 상태", value: "/status" },
+  { name: "/context  — 파이프라인 컨텍스트 조회", value: "/context" },
+  { name: "/history  — 실행 이력", value: "/history" },
+  { name: "/team     — 팀 구성 확인", value: "/team" },
+  { name: "/save     — 세션 저장", value: "/save" },
+  { name: "/load     — 세션 복원", value: "/load" },
+  { name: "/help     — 도움말", value: "/help" },
+  { name: "/exit     — 종료", value: "/exit" },
+];
 
 export class CommandRouter {
   constructor(replShell) {
@@ -36,6 +49,18 @@ export class CommandRouter {
   }
 
   async handleSlash(input) {
+    // "/" 만 입력 → 커맨드 메뉴 표시
+    if (input === "/") {
+      const { cmd } = await inquirer.prompt([{
+        type: "list",
+        name: "cmd",
+        message: "커맨드 선택:",
+        choices: [...COMMAND_MENU, { name: chalk.gray("취소"), value: null }],
+      }]);
+      if (!cmd) return "continue";
+      input = cmd;
+    }
+
     const [cmd, ...argParts] = input.split(/\s+/);
     const args = argParts.join(" ").trim() || null;
 
