@@ -4,10 +4,11 @@
 // Agent Team CLI - 멀티 AI 모델 개발팀 시뮬레이션
 // PipelineState + PromptAssembler 기반 아키텍처
 
+import "dotenv/config";
 import { Command } from "commander";
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { loadConfig } from "./config/loader.js";
+import { loadConfig, validateConnections } from "./config/loader.js";
 import { ModelAdapter } from "./models/adapter.js";
 import { Team } from "./agents/team.js";
 import { GitHubClient, NoOpGitHub } from "./github/client.js";
@@ -46,6 +47,7 @@ program
   .option("--no-interactive", "full-auto 모드의 단축 옵션")
   .action(async (requirement, options) => {
     const config = loadConfig(options.config);
+    await validateConnections(config);
 
     // 인터랙션 모드 결정
     let interactionMode = options.mode;
@@ -142,6 +144,7 @@ program
   .option("-r, --rounds <n>", "토론 라운드 수", "2")
   .action(async (type, topic, options) => {
     const config = loadConfig(options.config);
+    await validateConnections(config);
     const adapter = new ModelAdapter(config);
 
     const state = new PipelineState();
@@ -189,6 +192,7 @@ program
   .option("-c, --config <path>", "설정 파일 경로")
   .action(async (options) => {
     const config = loadConfig(options.config);
+    await validateConnections(config);
     const adapter = new ModelAdapter(config);
 
     console.log(chalk.bold("\n🔌 모델 연결 테스트\n"));
@@ -267,6 +271,7 @@ program
   )
   .action(async (options) => {
     const config = loadConfig(options.config);
+    await validateConnections(config);
 
     // 인터랙션 모드 설정
     config.pipeline = {
