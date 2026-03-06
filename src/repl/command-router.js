@@ -59,7 +59,7 @@ export class CommandRouter {
         contextCommand(this.session);
         break;
       case "/resume":
-        await resumeCommand(this.session);
+        await resumeCommand(this.session, this.replShell);
         break;
       case "/help":
         helpCommand();
