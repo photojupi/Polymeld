@@ -235,7 +235,7 @@ github:
 # 파이프라인 설정
 pipeline:
   # 인터랙션 모드: full-auto | semi-auto | manual
-  interaction_mode: semi-auto
+  interaction_mode: full-auto
   # Phase 전환 시 자동 진행 전 대기 시간 (초). 0이면 즉시 확인.
   auto_timeout: 0
   # 태스크 최대 크기 (시간)
