@@ -24,7 +24,8 @@ models:
     # model: gemini-3-flash  # 빠른 응답이 필요할 때
   codex:
     cli: codex
-    model: gpt-5.3-codex
+    model: gpt-5.4
+    # model: gpt-5.3-codex       # 이전 코딩 특화 모델
     # model: gpt-5.3-codex-spark  # 저지연 실시간 코딩용
   gemini_image:
     cli: gemini
