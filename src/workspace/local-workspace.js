@@ -202,6 +202,21 @@ export class LocalWorkspace {
     }
   }
 
+  /**
+   * origin remote에서 owner/repo 추출
+   * @returns {string|null} "owner/repo" 형식, 실패 시 null
+   */
+  getRemoteRepo() {
+    try {
+      const url = this._git(["remote", "get-url", "origin"]);
+      // https://github.com/owner/repo.git 또는 git@github.com:owner/repo.git
+      const match = url.match(/github\.com[/:]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
+      return match ? `${match[1]}/${match[2]}` : null;
+    } catch {
+      return null;
+    }
+  }
+
   gitCheckoutNewBranch(name, base) {
     try {
       // 이미 해당 브랜치가 있으면 checkout만

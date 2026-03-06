@@ -10,8 +10,8 @@
 # 프로젝트 설정 (선택사항)
 # 로컬 Git 레포 경로를 지정하면 에이전트가 기존 코드를 참고하여 개발합니다.
 # 미설정 시 현재 디렉토리의 .git을 자동 감지합니다.
-# project:
-#   local_path: ~/projects/my-app
+project:
+  local_path: /Users/jupi/Repos/GirlTetris
 
 models:
   claude:
@@ -40,6 +40,7 @@ personas:
     name: 김아키
     role: Tech Lead (팀장)
     model: claude          # Claude가 아키텍처/오케스트레이션에 강점
+    thinking_budget: 100   # 팀장은 최대 깊이로 사고
     description: |
       꼼꼼하고 전략적. 큰 그림을 보면서도 디테일을 놓치지 않음.
       의견 충돌 시 데이터와 경험 기반으로 중재.
@@ -90,6 +91,7 @@ personas:
     name: 정테스트
     role: QA Engineer
     model: codex           # Codex를 QA에 배정
+    thinking_budget: 100   # QA는 최대 깊이로 사고
     description: |
       의심이 많고 엣지 케이스를 찾는 데 재미를 느낌.
       문서화를 중시하며 수용 기준이 모호하면 반드시 명확화를 요구.
@@ -220,6 +222,9 @@ pipeline:
   auto_branch: true
   # 회의 시 최대 라운드 수 (페르소나 간 토론)
   max_discussion_rounds: 3
+  # AI 사고 깊이 (0-100). 100이면 최대 깊이, 0이면 사고 비활성.
+  # 페르소나별 thinking_budget 오버라이드 가능.
+  thinking_budget: 70
 
   # ─── 수정 루프 설정 ───────────────────────────────
   # 코드 리뷰 최대 재시도 횟수

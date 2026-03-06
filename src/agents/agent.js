@@ -11,6 +11,7 @@ export class Agent {
     this.modelKey = personaConfig.model; // e.g., "claude"
     this.imageModelKey = personaConfig.image_model || null; // e.g., "gemini_image"
     this.onDemand = personaConfig.on_demand || false;
+    this.thinkingBudget = personaConfig.thinking_budget; // 0-100 or undefined
     this.description = personaConfig.description;
     this.expertise = personaConfig.expertise || [];
     this.style = personaConfig.style || "";
@@ -51,7 +52,7 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
    * @param {string} contextBundle.context - 조립된 맥락
    * @param {string} [contextBundle.previousDiscussion] - 이전 논의 (호환성)
    */
-  async speak(topic, contextBundle, { modelOverride } = {}) {
+  async speak(topic, contextBundle, { modelOverride, onData } = {}) {
     const modelKey = modelOverride || this.modelKey;
     // contextBundle이 문자열인 경우 하위 호환 처리 (직접 context 문자열 전달)
     const context = typeof contextBundle === "string"
@@ -74,7 +75,8 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     const response = await this.adapter.chat(
       modelKey,
       systemPrompt,
-      userMessage
+      userMessage,
+      { thinkingBudget: this.thinkingBudget, onData }
     );
 
     return {
@@ -110,7 +112,8 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     const response = await this.adapter.generateCode(
       modelKey,
       systemPrompt,
-      prompt
+      prompt,
+      { thinkingBudget: this.thinkingBudget }
     );
 
     return {
@@ -139,7 +142,8 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
       modelKey,
       systemPrompt,
       contextBundle.code,
-      contextBundle.criteria
+      contextBundle.criteria,
+      { thinkingBudget: this.thinkingBudget }
     );
 
     return {
@@ -191,7 +195,8 @@ ${contextBundle.criteria}
     const response = await this.adapter.chat(
       modelKey,
       systemPrompt,
-      prompt
+      prompt,
+      { thinkingBudget: this.thinkingBudget }
     );
 
     return {
@@ -249,7 +254,8 @@ ${contextBundle.designDecisions}
     const response = await this.adapter.chat(
       modelKey,
       systemPrompt,
-      prompt
+      prompt,
+      { thinkingBudget: this.thinkingBudget }
     );
 
     return {

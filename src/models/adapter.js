@@ -99,7 +99,11 @@ export class ModelAdapter {
         }, timeout);
       }
 
-      proc.stdout.on("data", (d) => (stdout += d.toString()));
+      proc.stdout.on("data", (d) => {
+        const chunk = d.toString();
+        stdout += chunk;
+        if (options.onData) options.onData(chunk);
+      });
       proc.stderr.on("data", (d) => (stderr += d.toString()));
       proc.on("error", (err) => {
         if (timer) clearTimeout(timer);
@@ -160,6 +164,37 @@ export class ModelAdapter {
   }
 
   /**
+   * thinking_budget (0-100) → CLI별 인자 배열로 변환
+   */
+  _resolveThinkingArgs(cli, budget) {
+    if (budget == null) return [];
+
+    switch (cli) {
+      case "claude": {
+        // Claude: --thinking-budget-tokens (0-100 → 0-10240 토큰)
+        const tokens = Math.round((budget / 100) * 10240);
+        return ["--thinking-budget-tokens", String(tokens)];
+      }
+      case "gemini": {
+        // Gemini: --thinking-budget (0-100 → 0-24576 토큰)
+        const tokens = Math.round((budget / 100) * 24576);
+        return ["--thinking-budget", String(tokens)];
+      }
+      case "codex": {
+        // Codex: --reasoning-effort (low/medium/high/xhigh)
+        let effort = "medium";
+        if (budget <= 25) effort = "low";
+        else if (budget <= 60) effort = "medium";
+        else if (budget <= 85) effort = "high";
+        else effort = "xhigh";
+        return ["--reasoning-effort", effort];
+      }
+      default:
+        return [];
+    }
+  }
+
+  /**
    * 지정된 모델로 메시지를 보내고 응답을 받음
    */
   async chat(modelKey, systemPrompt, userMessage, options = {}) {
@@ -168,13 +203,16 @@ export class ModelAdapter {
       throw new Error(`모델 설정을 찾을 수 없습니다: ${modelKey}`);
     }
 
+    const thinkingBudget = options.thinkingBudget;
+    const onData = options.onData;
+
     switch (modelConfig.cli) {
       case "claude":
-        return this._chatClaude(modelConfig.model, systemPrompt, userMessage);
+        return this._chatClaude(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
       case "gemini":
-        return this._chatGemini(modelConfig.model, systemPrompt, userMessage);
+        return this._chatGemini(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
       case "codex":
-        return this._chatCodex(modelConfig.model, systemPrompt, userMessage);
+        return this._chatCodex(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
       default:
         throw new Error(`지원하지 않는 CLI: ${modelConfig.cli}`);
     }
@@ -184,7 +222,7 @@ export class ModelAdapter {
    * Claude Code: --system-prompt 플래그 지원, stdin으로 메시지 전달
    * --max-turns로 무한 에이전트 루프 방지
    */
-  async _chatClaude(model, systemPrompt, userMessage) {
+  async _chatClaude(model, systemPrompt, userMessage, thinkingBudget, onData) {
     const args = ["-p", "--output-format", "text"];
     if (model) args.push("--model", model);
     if (systemPrompt) args.push("--system-prompt", systemPrompt);
@@ -193,8 +231,11 @@ export class ModelAdapter {
     const maxTurns = this.config.cli?.max_turns?.claude ?? 3;
     args.push("--max-turns", String(maxTurns));
 
+    args.push(...this._resolveThinkingArgs("claude", thinkingBudget));
+
     const raw = await this._spawnCli("claude", args, userMessage, {
       timeout: this.config.cli?.timeouts?.claude,
+      onData,
     });
     return this._normalizeOutput(raw, "claude");
   }
@@ -203,7 +244,7 @@ export class ModelAdapter {
    * Gemini CLI: stdin pipe로 프롬프트 전달 (안전한 방식)
    * 최신 Gemini CLI(v0.28+)는 stdin/pipe 입력을 정식 지원
    */
-  async _chatGemini(model, systemPrompt, userMessage) {
+  async _chatGemini(model, systemPrompt, userMessage, thinkingBudget, onData) {
     const prompt = systemPrompt
       ? this._buildCombinedPrompt(systemPrompt, userMessage)
       : userMessage;
@@ -212,8 +253,11 @@ export class ModelAdapter {
     const args = ["--output-format", "text"];
     if (model) args.push("-m", model);
 
+    args.push(...this._resolveThinkingArgs("gemini", thinkingBudget));
+
     const raw = await this._spawnCli("gemini", args, prompt, {
       timeout: this.config.cli?.timeouts?.gemini,
+      onData,
     });
     return this._normalizeOutput(raw, "gemini");
   }
@@ -225,7 +269,7 @@ export class ModelAdapter {
    * --skip-git-repo-check: 임의 디렉토리에서 실행 가능
    * --sandbox read-only: 파일 수정 방지
    */
-  async _chatCodex(model, systemPrompt, userMessage) {
+  async _chatCodex(model, systemPrompt, userMessage, thinkingBudget, onData) {
     const prompt = systemPrompt
       ? this._buildCombinedPrompt(systemPrompt, userMessage)
       : userMessage;
@@ -237,8 +281,11 @@ export class ModelAdapter {
       "--full-auto",
     ];
 
+    args.push(...this._resolveThinkingArgs("codex", thinkingBudget));
+
     const raw = await this._spawnCli("codex", args, prompt, {
       timeout: this.config.cli?.timeouts?.codex,
+      onData,
     });
     return this._normalizeOutput(raw, "codex");
   }
@@ -248,7 +295,7 @@ export class ModelAdapter {
    */
   async generateCode(modelKey, systemPrompt, codeRequest, options = {}) {
     const codePrompt = `${codeRequest}\n\n응답은 반드시 코드만 포함해주세요. 설명이 필요하면 코드 주석으로 작성해주세요.\n마크다운 코드블록(\`\`\`)으로 감싸주세요.`;
-    return this.chat(modelKey, systemPrompt, codePrompt, options);
+    return this.chat(modelKey, systemPrompt, codePrompt, { ...options });
   }
 
   /**
@@ -256,7 +303,7 @@ export class ModelAdapter {
    */
   async reviewCode(modelKey, systemPrompt, code, criteria, options = {}) {
     const reviewPrompt = `다음 코드를 리뷰해주세요.\n\n## 코드\n\`\`\`\n${code}\n\`\`\`\n\n## 수용 기준\n${criteria}\n\n## 리뷰 형식\n- 좋은 점\n- 개선 필요 사항 (구체적 라인/로직 지적)\n- 보안 이슈\n- 성능 이슈\n\n마지막에 다음 JSON 블록을 반드시 추가해주세요:\n\`\`\`json\n{ "verdict": "APPROVED 또는 CHANGES_REQUESTED", "summary": "한줄 요약" }\n\`\`\``;
-    return this.chat(modelKey, systemPrompt, reviewPrompt, options);
+    return this.chat(modelKey, systemPrompt, reviewPrompt, { ...options });
   }
 
   /**

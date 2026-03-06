@@ -170,6 +170,34 @@ export class PipelineOrchestrator {
     }
   }
 
+  /**
+   * 회의용 스트리밍 콜백 생성 - spinner에 실시간 발언 미리보기 표시
+   */
+  _meetingCallbacks(spinner) {
+    let streamBuf = "";
+    return {
+      onSpeak: ({ phase, agent }) => {
+        if (phase === "speaking") {
+          streamBuf = "";
+          spinner.text = `${agent} 발언 중...`;
+        }
+      },
+      onStream: ({ agent, chunk }) => {
+        streamBuf += chunk;
+        const lines = streamBuf.split("\n").filter((l) => l.trim());
+        const lastLine = lines[lines.length - 1] || "";
+        if (lastLine) {
+          const cols = process.stdout.columns || 80;
+          const prefix = `${agent} 발언 중... `;
+          const maxLen = cols - prefix.length - 5;
+          if (maxLen > 10) {
+            spinner.text = prefix + chalk.dim(lastLine.substring(0, maxLen));
+          }
+        }
+      },
+    };
+  }
+
   // ─── Phase 1: 킥오프 미팅 ─────────────────────────────
 
   async phaseKickoff() {
@@ -183,11 +211,7 @@ export class PipelineOrchestrator {
       `프로젝트: ${projectTitle}`,
       {
         rounds: 2,
-        onSpeak: ({ phase, agent }) => {
-          if (phase === "speaking") {
-            spinner.text = `${agent} 발언 중...`;
-          }
-        },
+        ...this._meetingCallbacks(spinner),
       }
     );
 
@@ -242,9 +266,7 @@ ${requirement}
 
     const meetingLog = await this.team.conductMeeting(topic, "", {
       rounds: this.config.pipeline?.max_discussion_rounds || 3,
-      onSpeak: ({ phase, agent }) => {
-        if (phase === "speaking") spinner.text = `${agent} 발언 중...`;
-      },
+      ...this._meetingCallbacks(spinner),
     });
 
     spinner.succeed("기술 설계 미팅 완료");

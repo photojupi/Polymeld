@@ -24,8 +24,14 @@ export class Team {
 
   _initAgents() {
     const personas = this.config.personas;
+    const defaultThinking = this.config.pipeline?.thinking_budget;
     for (const [id, persona] of Object.entries(personas)) {
-      this.agents[id] = new Agent({ id, ...persona }, this.adapter);
+      const merged = { id, ...persona };
+      // 페르소나에 thinking_budget이 없으면 pipeline 기본값 사용
+      if (merged.thinking_budget == null && defaultThinking != null) {
+        merged.thinking_budget = defaultThinking;
+      }
+      this.agents[id] = new Agent(merged, this.adapter);
     }
   }
 
@@ -96,11 +102,12 @@ export class Team {
    *
    * @param {string} topic - 회의 주제
    * @param {string} context - 추가 컨텍스트 (하위 호환용, 사용하지 않음)
-   * @param {object} options - { rounds: 토론 라운드 수, onSpeak: 콜백 }
+   * @param {object} options - { rounds: 토론 라운드 수, onSpeak: 콜백, onStream: 실시간 출력 콜백 }
    */
   async conductMeeting(topic, context = "", options = {}) {
     const rounds = options.rounds || this.config.pipeline?.max_discussion_rounds || 2;
     const onSpeak = options.onSpeak || (() => {});
+    const onStream = options.onStream;
 
     const meetingLog = {
       topic,
@@ -123,7 +130,9 @@ export class Team {
         onSpeak({ phase: "speaking", agent: agent.name, round: round + 1 });
 
         const contextBundle = this.assembler.forMeeting(this.state, { agentId: agent.id, topic });
-        const speech = await agent.speak(topic, contextBundle);
+        const speech = await agent.speak(topic, contextBundle, {
+          onData: onStream ? (chunk) => onStream({ agent: agent.name, chunk }) : undefined,
+        });
 
         this.state.broadcastMessage({
           from: agent.id,
@@ -148,7 +157,8 @@ export class Team {
 
         const summary = await this.lead.speak(
           `지금까지의 논의를 종합하여 최종 결론과 액션 아이템을 정리해주세요.`,
-          summaryBundle
+          summaryBundle,
+          { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
         );
 
         this.state.broadcastMessage({
