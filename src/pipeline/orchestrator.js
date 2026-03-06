@@ -158,6 +158,7 @@ export class PipelineOrchestrator {
     const execute = async () => {
       try {
         await fn();
+        return { skipped: false };
       } catch (error) {
         console.log(chalk.red(`\n\u274C 에러 발생: ${error.message}`));
         const { action } = await this.interaction.confirmWarning(
@@ -165,18 +166,14 @@ export class PipelineOrchestrator {
           "error"
         );
         if (action === "retry") return execute();
-        if (action === "skip") return;
+        if (action === "skip") return { skipped: true };
         if (action === "abort") throw new Error("Pipeline aborted by user");
+        // proceed: 에러를 무시하고 계속 (Phase는 미완료로 유지)
+        return { skipped: true };
       }
     };
 
-    await execute();
-
-    // Phase 완료 체크포인트
-    if (phaseId) {
-      this.state.markPhaseComplete(phaseId);
-      await this._saveCheckpoint();
-    }
+    let result = await execute();
 
     // Phase 전환 확인
     const { action } = await this.interaction.confirmPhaseTransition(
@@ -185,12 +182,16 @@ export class PipelineOrchestrator {
     );
 
     if (action === "retry") {
-      await execute();
-      // retry 후에도 체크포인트 재저장
-      await this._saveCheckpoint();
+      result = await execute();
     } else if (action === "abort") {
       console.log(chalk.yellow("\n\u23F9\uFE0F  파이프라인 중단"));
       throw new Error("Pipeline aborted by user");
+    }
+
+    // Phase 완료 체크포인트: skip되지 않은 경우에만 기록
+    if (phaseId && !result?.skipped) {
+      this.state.markPhaseComplete(phaseId);
+      await this._saveCheckpoint();
     }
   }
 
@@ -1149,7 +1150,7 @@ ${this.team
 
     // 태스크별 에이전트 참조 재연결
     for (const task of this.state.tasks) {
-      if (task.assignedAgentId && !task.assignedAgent) {
+      if (task.assignedAgentId && typeof task.assignedAgent?.writeCode !== "function") {
         task.assignedAgent = this.team.getAgent(task.assignedAgentId);
         if (!task.assignedAgent) {
           console.log(chalk.yellow(

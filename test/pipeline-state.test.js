@@ -91,6 +91,35 @@ describe("PipelineState 직렬화", () => {
     assert.deepEqual(restored.github, { kickoffIssue: 1, designIssue: 2 });
   });
 
+  it("toJSON: assignedAgent 인스턴스가 직렬화에서 제외되고 assignedAgentId는 보존", () => {
+    const state = new PipelineState();
+    const fakeAgent = { id: "backend_dev", name: "박백엔", writeCode: () => {} };
+    state.tasks = [
+      { id: "t1", title: "API 구현", assignedAgentId: "backend_dev", assignedAgent: fakeAgent },
+      { id: "t2", title: "UI 구현", assignedAgentId: "frontend_dev" },
+    ];
+    state.completedTasks = [
+      { id: "t0", title: "설정", assignedAgentId: "devops", assignedAgent: { id: "devops", writeCode: () => {} } },
+    ];
+
+    const json = state.toJSON();
+
+    // assignedAgent가 직렬화에 포함되지 않아야 함
+    assert.equal(json.tasks[0].assignedAgent, undefined);
+    assert.equal(json.tasks[1].assignedAgent, undefined);
+    assert.equal(json.completedTasks[0].assignedAgent, undefined);
+
+    // assignedAgentId는 보존
+    assert.equal(json.tasks[0].assignedAgentId, "backend_dev");
+    assert.equal(json.tasks[1].assignedAgentId, "frontend_dev");
+    assert.equal(json.completedTasks[0].assignedAgentId, "devops");
+
+    // fromJSON 후에도 assignedAgent가 없어야 재연결 가능
+    const restored = PipelineState.fromJSON(json);
+    assert.equal(restored.tasks[0].assignedAgent, undefined);
+    assert.equal(restored.tasks[0].assignedAgentId, "backend_dev");
+  });
+
   it("v0 마이그레이션: SharedContext + Mailbox → PipelineState", () => {
     const v0Data = {
       sharedContext: {
