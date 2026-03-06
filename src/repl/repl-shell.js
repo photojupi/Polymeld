@@ -100,10 +100,25 @@ export class ReplShell {
     const promptStr = `${prefix}${chalk.bold.green(">")} `;
 
     return new Promise((resolve) => {
+      let timer = null;
+      const onKeypress = () => {
+        if (this.rl.line === "/") {
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            if (this.rl.line === "/") {
+              process.stdin.removeListener("keypress", onKeypress);
+              this.rl.write("\n");
+            }
+          }, 80);
+        }
+      };
+      process.stdin.on("keypress", onKeypress);
+
       this.rl.question(promptStr, (answer) => {
+        clearTimeout(timer);
+        process.stdin.removeListener("keypress", onKeypress);
         resolve(answer);
       });
-      // readline close 시 null 반환하여 루프 종료
       this.rl.once("close", () => resolve(null));
     });
   }
