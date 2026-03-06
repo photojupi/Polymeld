@@ -72,6 +72,10 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
       userMessage += `\n\n${this.name} (${this.role})로서 이 주제에 대한 의견을 제시해주세요.`;
     }
 
+    if (contextBundle?.allowPass) {
+      userMessage += `\n\n이 주제가 본인의 전문 영역 밖이거나 의미 있는 의견이 없다면 [PASS]로만 응답하세요.`;
+    }
+
     const response = await this.adapter.chat(
       modelKey,
       systemPrompt,
