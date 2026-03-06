@@ -10,7 +10,7 @@ import inquirer from "inquirer";
 import { loadConfig } from "./config/loader.js";
 import { ModelAdapter } from "./models/adapter.js";
 import { Team } from "./agents/team.js";
-import { GitHubClient } from "./github/client.js";
+import { GitHubClient, NoOpGitHub } from "./github/client.js";
 import { PipelineOrchestrator } from "./pipeline/orchestrator.js";
 import { PipelineState } from "./state/pipeline-state.js";
 import { PromptAssembler } from "./state/prompt-assembler.js";
@@ -106,17 +106,14 @@ program
 
     const deps = { state, assembler };
     const team = new Team(config, adapter, deps);
-    const github = new GitHubClient(
-      process.env.GITHUB_TOKEN,
-      process.env.GITHUB_REPO
-    );
+    const github = (process.env.GITHUB_TOKEN && process.env.GITHUB_REPO)
+      ? new GitHubClient(process.env.GITHUB_TOKEN, process.env.GITHUB_REPO)
+      : new NoOpGitHub();
 
     // GitHub 초기화
-    if (process.env.GITHUB_TOKEN) {
+    if (process.env.GITHUB_TOKEN && process.env.GITHUB_REPO) {
       await github.ensureLabels(config.github?.labels || {});
-      await github.findOrCreateProject(
-        config.github?.project_name || "Agent Team Board"
-      );
+      await github.findOrCreateProject(`${github.repo}_autollm`);
     }
 
     const orchestrator = new PipelineOrchestrator(
@@ -126,7 +123,12 @@ program
       interactionMode,
       deps
     );
-    await orchestrator.run(requirement, title);
+    try {
+      await orchestrator.run(requirement, title);
+    } catch (error) {
+      console.error(chalk.red(`\n${error.message}`));
+      process.exit(1);
+    }
   });
 
 // ─── 회의만 실행 ────────────────────────────────────────

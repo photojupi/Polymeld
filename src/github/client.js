@@ -3,6 +3,23 @@
 
 import { Octokit } from "octokit";
 
+/**
+ * GitHub 미설정 시 사용하는 No-op 클라이언트
+ * PipelineOrchestrator가 github 메서드를 호출해도 에러 나지 않음
+ */
+export class NoOpGitHub {
+  async ensureLabels() {}
+  async findOrCreateProject() {}
+  async createIssue() { return { number: 0, node_id: "" }; }
+  async addComment() {}
+  async updateLabels() {}
+  async closeIssue() {}
+  async addIssueToProject() {}
+  async createBranch() {}
+  async commitFile() {}
+  async createPR() { return { number: 0 }; }
+}
+
 export class GitHubClient {
   constructor(token, repo) {
     this.octokit = new Octokit({ auth: token });

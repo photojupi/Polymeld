@@ -136,59 +136,6 @@ export class InteractionManager {
     });
   }
 
-  /**
-   * 코드 리뷰 결과에 따른 처리
-   */
-  async confirmReviewResult(reviewContent) {
-    const hasChangesRequested = reviewContent
-      .toLowerCase()
-      .includes("changes requested");
-
-    if (hasChangesRequested) {
-      return this._confirm({
-        level: "detail",
-        message: "코드 리뷰에서 수정이 요청되었습니다. 어떻게 처리할까요?",
-        autoIn: ["full-auto"],   // full-auto면 자동 수정
-        askIn: ["semi-auto", "manual"],
-        choices: [
-          { name: "자동 수정 후 재리뷰", value: "fix" },
-          { name: "수정 없이 진행", value: "proceed" },
-          { name: "수동으로 수정", value: "manual" },
-        ],
-        default: "fix",
-      });
-    }
-
-    return { action: "proceed" };
-  }
-
-  /**
-   * QA 실패 시 처리
-   */
-  async confirmQAFailure(qaResult) {
-    const hasFail =
-      qaResult.toLowerCase().includes("fail") &&
-      !qaResult.toLowerCase().includes("no fail");
-
-    if (hasFail) {
-      return this._confirm({
-        level: "warning",
-        message: "QA 테스트 실패. 어떻게 처리할까요?",
-        autoIn: [],  // QA 실패는 항상 확인
-        askIn: ["full-auto", "semi-auto", "manual"],
-        choices: [
-          { name: "자동 수정 후 재테스트", value: "fix" },
-          { name: "실패한 채로 진행", value: "proceed" },
-          { name: "해당 태스크 건너뛰기", value: "skip" },
-          { name: "파이프라인 중단", value: "abort" },
-        ],
-        default: "fix",
-      });
-    }
-
-    return { action: "proceed" };
-  }
-
   // ─── 내부 구현 ─────────────────────────────────────────
 
   async _confirm({ level, message, autoIn, askIn, choices, default: defaultVal }) {

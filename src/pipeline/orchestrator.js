@@ -148,7 +148,7 @@ export class PipelineOrchestrator {
         );
         if (action === "retry") return execute();
         if (action === "skip") return;
-        if (action === "abort") process.exit(1);
+        if (action === "abort") throw new Error("Pipeline aborted by user");
       }
     };
 
@@ -164,7 +164,7 @@ export class PipelineOrchestrator {
       await execute();
     } else if (action === "abort") {
       console.log(chalk.yellow("\n\u23F9\uFE0F  파이프라인 중단"));
-      process.exit(0);
+      throw new Error("Pipeline aborted by user");
     }
   }
 
@@ -453,7 +453,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
       // 코드를 태스크에 저장
       task.code = result.code;
-      task.generatedCode = result.code;
+
 
       // 코드를 커밋 (가능한 경우)
       try {
@@ -655,7 +655,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
         if (fixResult) {
           task.code = fixResult.code;
-          task.generatedCode = fixResult.code;
+
 
           await this.github.addComment(
             task.issueNumber,
@@ -780,7 +780,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
             );
             break;
           } else if (action === "abort") {
-            process.exit(1);
+            throw new Error("Pipeline aborted by user");
           }
           // "proceed" -> 실패 상태로 Done 처리
           await this.github.addComment(
@@ -829,7 +829,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
         if (fixResult) {
           task.code = fixResult.code;
-          task.generatedCode = fixResult.code;
+
 
           await this.github.addComment(
             task.issueNumber,
