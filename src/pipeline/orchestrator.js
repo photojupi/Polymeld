@@ -19,20 +19,21 @@ export class PipelineOrchestrator {
    * @param {import('../state/prompt-assembler.js').PromptAssembler} deps.assembler
    * @param {import('../workspace/local-workspace.js').LocalWorkspace|import('../workspace/noop-workspace.js').NoOpWorkspace} [deps.workspace]
    */
-  constructor(team, github, config, interactionMode = "semi-auto", { state, assembler, workspace }) {
+  constructor(team, github, config, interactionMode = "semi-auto", { state, assembler, workspace, onPhaseSave }) {
     this.team = team;
     this.github = github;
     this.config = config;
     this.state = state;
     this.assembler = assembler;
     this.workspace = workspace;
+    this.onPhaseSave = onPhaseSave || null;
     this.interaction = new InteractionManager(interactionMode, {
       timeout: config.pipeline?.auto_timeout || 0,
       defaultYes: true,
     });
   }
 
-  async run(requirement, projectTitle) {
+  async run(requirement, projectTitle, { isModification = false } = {}) {
     // 프로젝트 정보가 없으면 설정 (index.js에서 이미 초기화되었을 수 있음)
     if (!this.state.project.requirement) {
       this.state.project.requirement = requirement;
@@ -45,7 +46,11 @@ export class PipelineOrchestrator {
     const available = this.team.adapter.getAvailableModels();
     this.modelSelector = new ModelSelector(this.config, available);
 
-    console.log(chalk.bold.cyan("\n\uD83D\uDE80 Agent Team 파이프라인 시작\n"));
+    // 재개 시 에이전트 참조 재연결
+    this._relinkAgents();
+
+    const modeLabel = isModification ? "수정" : "신규";
+    console.log(chalk.bold.cyan(`\n\uD83D\uDE80 Agent Team 파이프라인 시작 [${modeLabel}]\n`));
     console.log(chalk.gray(`프로젝트: ${projectTitle}`));
     console.log(chalk.gray(`요구사항: ${requirement}`));
     console.log(chalk.gray(`인터랙션: ${this.interaction.mode}\n`));
@@ -53,29 +58,34 @@ export class PipelineOrchestrator {
     // 모델 배정 현황 출력
     this._printModelAssignment();
 
+    // Phase 0: 코드베이스 분석 (수정 모드 + 로컬 워크스페이스)
+    if (isModification && this.workspace?.isLocal) {
+      await this._phase("0\uFE0F\u20E3  코드베이스 분석", () => this.phaseCodebaseAnalysis(requirement), { phaseId: "codebaseAnalysis" });
+    }
+
     // Phase 1: 킥오프 미팅
-    await this._phase("1\uFE0F\u20E3  킥오프 미팅", () => this.phaseKickoff());
+    await this._phase("1\uFE0F\u20E3  킥오프 미팅", () => this.phaseKickoff(), { phaseId: "kickoff" });
 
     // Phase 2: 기술 설계 미팅
-    await this._phase("2\uFE0F\u20E3  기술 설계 미팅", () => this.phaseDesign());
+    await this._phase("2\uFE0F\u20E3  기술 설계 미팅", () => this.phaseDesign(), { phaseId: "design" });
 
     // Phase 3: 태스크 분해
-    await this._phase("3\uFE0F\u20E3  태스크 분해", () => this.phaseTaskBreakdown());
+    await this._phase("3\uFE0F\u20E3  태스크 분해", () => this.phaseTaskBreakdown(), { phaseId: "taskBreakdown" });
 
     // Phase 4: 작업 분배
-    await this._phase("4\uFE0F\u20E3  작업 분배", () => this.phaseAssignment());
+    await this._phase("4\uFE0F\u20E3  작업 분배", () => this.phaseAssignment(), { phaseId: "assignment" });
 
     // Phase 5: 개발
-    await this._phase("5\uFE0F\u20E3  개발", () => this.phaseDevelopment());
+    await this._phase("5\uFE0F\u20E3  개발", () => this.phaseDevelopment(), { phaseId: "development" });
 
     // Phase 6: 코드 리뷰
-    await this._phase("6\uFE0F\u20E3  코드 리뷰", () => this.phaseCodeReview());
+    await this._phase("6\uFE0F\u20E3  코드 리뷰", () => this.phaseCodeReview(), { phaseId: "codeReview" });
 
     // Phase 7: QA
-    await this._phase("7\uFE0F\u20E3  QA", () => this.phaseQA());
+    await this._phase("7\uFE0F\u20E3  QA", () => this.phaseQA(), { phaseId: "qa" });
 
     // Phase 8: PR 생성
-    await this._phase("8\uFE0F\u20E3  PR 생성", () => this.phasePR());
+    await this._phase("8\uFE0F\u20E3  PR 생성", () => this.phasePR(), { phaseId: "pr" });
 
     console.log(chalk.bold.green("\n\u2705 파이프라인 완료!\n"));
 
@@ -134,7 +144,13 @@ export class PipelineOrchestrator {
     console.log(chalk.gray("\u2500".repeat(50)) + "\n");
   }
 
-  async _phase(name, fn) {
+  async _phase(name, fn, { phaseId } = {}) {
+    // 이미 완료된 Phase → 스킵
+    if (phaseId && this.state.isPhaseComplete(phaseId)) {
+      console.log(chalk.gray(`\n\u23ED\uFE0F  ${name} (이전 실행에서 완료됨 — 건너뜀)`));
+      return;
+    }
+
     console.log(chalk.bold.yellow(`\n${"═".repeat(60)}`));
     console.log(chalk.bold.yellow(`  ${name}`));
     console.log(chalk.bold.yellow(`${"═".repeat(60)}\n`));
@@ -156,6 +172,12 @@ export class PipelineOrchestrator {
 
     await execute();
 
+    // Phase 완료 체크포인트
+    if (phaseId) {
+      this.state.markPhaseComplete(phaseId);
+      await this._saveCheckpoint();
+    }
+
     // Phase 전환 확인
     const { action } = await this.interaction.confirmPhaseTransition(
       name,
@@ -164,6 +186,8 @@ export class PipelineOrchestrator {
 
     if (action === "retry") {
       await execute();
+      // retry 후에도 체크포인트 재저장
+      await this._saveCheckpoint();
     } else if (action === "abort") {
       console.log(chalk.yellow("\n\u23F9\uFE0F  파이프라인 중단"));
       throw new Error("Pipeline aborted by user");
@@ -196,6 +220,61 @@ export class PipelineOrchestrator {
         }
       },
     };
+  }
+
+  // ─── Phase 0: 코드베이스 분석 (수정 모드) ──────────────
+
+  async phaseCodebaseAnalysis(requirement) {
+    const spinner = ora("코드베이스 분석 중...").start();
+
+    const parts = [];
+
+    // 1. 디렉토리 구조
+    const tree = this.workspace.getTree();
+    if (tree) {
+      parts.push(`## 디렉토리 구조\n\`\`\`\n${tree}\n\`\`\``);
+    }
+
+    // 2. 요구사항에서 키워드 추출 → 관련 파일 탐색
+    const keywords = requirement
+      .split(/[\s,./]+/)
+      .filter(w => w.length >= 2)
+      .slice(0, 10);
+
+    // 2a. 파일명 기반 탐색
+    const relevantByName = this.workspace.findRelevantFiles(keywords, {
+      maxFiles: 8,
+      maxCharsPerFile: 800,
+    });
+
+    // 2b. 내용 기반 탐색 (grep)
+    const grepResults = [];
+    for (const kw of keywords.slice(0, 5)) {
+      const hits = this.workspace.grepFiles(kw, { maxResults: 3, contextLines: 2 });
+      for (const hit of hits) {
+        if (!grepResults.find(r => r.path === hit.path)) {
+          grepResults.push(hit);
+        }
+      }
+    }
+
+    if (relevantByName.length > 0) {
+      parts.push("## 관련 파일 (파일명 매칭)\n" + relevantByName.map(
+        f => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``
+      ).join("\n\n"));
+    }
+
+    if (grepResults.length > 0) {
+      parts.push("## 관련 코드 (내용 검색)\n" + grepResults.slice(0, 8).map(
+        r => `### ${r.path}\n\`\`\`\n${r.matches.join("\n")}\n\`\`\``
+      ).join("\n\n"));
+    }
+
+    const analysis = parts.join("\n\n");
+    this.state.codebaseAnalysis = analysis;
+
+    spinner.succeed(`코드베이스 분석 완료 (파일명 ${relevantByName.length}건, 내용 검색 ${grepResults.length}건)`);
+    console.log(chalk.gray(`  분석 크기: ${analysis.length}자`));
   }
 
   // ─── Phase 1: 킥오프 미팅 ─────────────────────────────
@@ -442,6 +521,12 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       const agent = task.assignedAgent;
       if (!agent) continue;
 
+      // 재개 시 이미 코드가 있는 태스크 스킵
+      if (task.code) {
+        console.log(chalk.gray(`  \u23ED\uFE0F ${task.title} (이미 개발 완료 — 건너뜀)`));
+        continue;
+      }
+
       console.log(
         chalk.cyan(`\n\uD83D\uDD28 ${agent.name} (${agent.modelKey})이 개발 시작: ${task.title}`)
       );
@@ -607,6 +692,12 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     for (const task of this.state.tasks) {
       if (!task.code) continue;
 
+      // 재개 시 이미 리뷰 완료된 태스크 스킵
+      if (task.reviewApproved != null) {
+        console.log(chalk.gray(`  \u23ED\uFE0F ${task.title} (이미 리뷰 완료 — 건너뜀)`));
+        continue;
+      }
+
       let attempt = 0;
       let approved = false;
 
@@ -751,6 +842,12 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
     for (const task of this.state.tasks) {
       if (!task.code) continue;
+
+      // 재개 시 이미 QA 완료된 태스크 스킵
+      if (task.qaPassed != null) {
+        console.log(chalk.gray(`  \u23ED\uFE0F ${task.title} (이미 QA 완료 — 건너뜀)`));
+        continue;
+      }
 
       await this.github.updateLabels(
         task.issueNumber,
@@ -1026,6 +1123,42 @@ ${this.team
         console.log(
           chalk.yellow(`  \u26A0\uFE0F PR 생성 건너뜀 (${category}): ${e.message}`)
         );
+      }
+    }
+  }
+
+  async _saveCheckpoint() {
+    if (!this.onPhaseSave) return;
+    try {
+      await this.onPhaseSave();
+    } catch (e) {
+      console.log(chalk.yellow(`  \u26A0\uFE0F 체크포인트 저장 실패: ${e.message}`));
+    }
+  }
+
+  // ─── 재개 헬퍼 ──────────────────────────────────────────
+
+  /**
+   * 재개 시 태스크의 assignedAgentId → assignedAgent 참조 복원
+   * 온디맨드 에이전트도 재소집
+   */
+  _relinkAgents() {
+    // 온디맨드 에이전트 재소집
+    if (this.state.mobilizedAgents.length > 0) {
+      this.team.mobilize(this.state.mobilizedAgents);
+    }
+
+    // 태스크별 에이전트 참조 재연결
+    for (const task of this.state.tasks) {
+      if (task.assignedAgentId && !task.assignedAgent) {
+        task.assignedAgent = this.team.getAgent(task.assignedAgentId);
+        if (!task.assignedAgent) {
+          console.log(chalk.yellow(
+            `  \u26A0\uFE0F 에이전트 "${task.assignedAgentId}"를 찾을 수 없습니다 (태스크: ${task.title}). 팀장에게 재배정합니다.`
+          ));
+          task.assignedAgent = this.team.lead;
+          task.assignedAgentId = this.team.lead.id;
+        }
       }
     }
   }

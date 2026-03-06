@@ -9,6 +9,7 @@ export function helpCommand() {
   console.log("  /context      파이프라인 상태 조회");
   console.log("  /save         세션 저장");
   console.log("  /load [id]    세션 복원 (인자 없으면 목록)");
+  console.log("  /resume       중단된 파이프라인 재개");
   console.log("  /help         이 도움말");
   console.log("  /exit         REPL 종료 (자동 저장)\n");
   console.log(chalk.bold("  자연어 입력:"));
