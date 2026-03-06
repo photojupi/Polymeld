@@ -183,16 +183,39 @@ export class PipelineOrchestrator {
 
   /**
    * 회의용 스트리밍 콜백 생성 - spinner에 실시간 발언 미리보기 표시
+   * 발언 완료 시 내용 미리보기를 영구 출력하여 진행 상황 가시성 확보
    */
   _meetingCallbacks(spinner) {
     let streamBuf = "";
+    const cols = () => process.stdout.columns || 80;
+    const MAX_PREVIEW_LINES = 5;
+
+    const printSpeechPreview = (agent, content, { symbol = chalk.green("✔"), label } = {}) => {
+      spinner.stopAndPersist({ symbol, text: label || agent });
+      const lines = content.split("\n").filter((l) => l.trim());
+      const preview = lines.slice(0, MAX_PREVIEW_LINES);
+      const maxLen = cols() - 4;
+      preview.forEach((line) => {
+        console.log(chalk.dim(`  ${line.substring(0, maxLen)}`));
+      });
+      if (lines.length > MAX_PREVIEW_LINES) {
+        console.log(chalk.dim("  ..."));
+      }
+      spinner.start();
+    };
+
     return {
-      onSpeak: ({ phase, agent }) => {
+      onSpeak: ({ phase, agent, content }) => {
         if (phase === "speaking") {
           streamBuf = "";
           spinner.text = `${agent} 발언 중...`;
+        } else if (phase === "spoke" && content) {
+          printSpeechPreview(agent, content);
         } else if (phase === "passed") {
-          spinner.text = `${agent} 패스`;
+          spinner.stopAndPersist({ symbol: chalk.yellow("–"), text: `${agent} 패스` });
+          spinner.start();
+        } else if (phase === "summary" && content) {
+          printSpeechPreview(agent, content, { symbol: chalk.cyan("★"), label: `${agent} (정리)` });
         }
       },
       onStream: ({ agent, chunk }) => {
@@ -200,9 +223,8 @@ export class PipelineOrchestrator {
         const lines = streamBuf.split("\n").filter((l) => l.trim());
         const lastLine = lines[lines.length - 1] || "";
         if (lastLine) {
-          const cols = process.stdout.columns || 80;
           const prefix = `${agent} 발언 중... `;
-          const maxLen = cols - prefix.length - 5;
+          const maxLen = cols() - prefix.length - 5;
           if (maxLen > 10) {
             spinner.text = prefix + chalk.dim(lastLine.substring(0, maxLen));
           }
