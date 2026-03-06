@@ -1,6 +1,5 @@
 // src/state/pipeline-state.js
 // 파이프라인 전체 상태를 관리하는 단일 데이터 객체
-// SharedContext + Mailbox를 대체하는 명시적 구조체
 
 export class PipelineState {
   constructor() {
@@ -18,7 +17,7 @@ export class PipelineState {
     /** @type {Array<Object>} */
     this.completedTasks = [];
 
-    // --- 메시지 로그 (Mailbox 대체) ---
+    // --- 메시지 로그 ---
     /** @type {Array<Message>} */
     this.messages = [];
     this._nextMsgId = 1;
@@ -53,7 +52,7 @@ export class PipelineState {
   }
 
   /**
-   * 메시지 추가 (Mailbox.send 대체)
+   * 메시지 추가
    */
   addMessage({ from, to, type, content, taskId = null }) {
     const msg = {
@@ -71,7 +70,6 @@ export class PipelineState {
 
   /**
    * 브로드캐스트 메시지 (회의 발언 등)
-   * Mailbox.broadcast와 달리 복제하지 않고 단일 메시지로 기록
    */
   broadcastMessage({ from, type, content, taskId = null }) {
     return this.addMessage({ from, to: "all", type, content, taskId });
@@ -170,55 +168,8 @@ export class PipelineState {
       state._nextMsgId = data.nextMsgId || 1;
       state.github = data.github || { kickoffIssue: null, designIssue: null };
       state.completedPhases = data.completedPhases || [];
-    } else {
-      // v0: 기존 SharedContext + Mailbox 포맷 마이그레이션
-      state._migrateFromV0(data);
     }
 
     return state;
-  }
-
-  /**
-   * 기존 세션 데이터(SharedContext + Mailbox) → PipelineState 변환
-   * @private
-   */
-  _migrateFromV0(data) {
-    const slots = data.sharedContext?.slots || {};
-    const getVal = (name) => slots[name]?.value;
-
-    this.project.requirement = getVal("project.requirement") || "";
-    this.project.title = getVal("project.title") || "";
-    this.kickoffSummary = getVal("meeting.kickoff.summary") || "";
-    this.designDecisions = getVal("design.decisions") || "";
-    this.techStack = getVal("design.techStack") || "";
-
-    // tasks 마이그레이션: planning.tasks + 개별 code/review/qa 슬롯 병합
-    const rawTasks = getVal("planning.tasks");
-    if (Array.isArray(rawTasks)) {
-      this.tasks = rawTasks.map((t) => ({
-        ...t,
-        code: getVal(`code.${t.id}`) || null,
-        codeSummary: getVal(`code.${t.id}.summary`) || null,
-        review: getVal(`review.${t.id}`) || null,
-        reviewVerdict: getVal(`review.${t.id}.verdict`) || null,
-        qa: getVal(`qa.${t.id}`) || null,
-        qaVerdict: getVal(`qa.${t.id}.verdict`) || null,
-        images: getVal(`image.${t.id}`) || null,
-      }));
-    }
-
-    // Mailbox 메시지 마이그레이션
-    if (data.mailbox?.allMessages) {
-      this.messages = data.mailbox.allMessages.map((m) => ({
-        id: m.id,
-        from: m.from,
-        to: m.to,
-        type: m.type,
-        content: m.payload?.content || "",
-        taskId: m.payload?.taskId || null,
-        timestamp: m.timestamp,
-      }));
-      this._nextMsgId = data.mailbox.nextId || this.messages.length + 1;
-    }
   }
 }

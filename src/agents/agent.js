@@ -15,7 +15,6 @@ export class Agent {
     this.expertise = personaConfig.expertise || [];
     this.style = personaConfig.style || "";
     this.adapter = modelAdapter;
-    // conversationHistory 제거됨 - Mailbox가 대화 이력 관리
   }
 
   /**
@@ -212,7 +211,7 @@ ${contextBundle.criteria}
 
   /**
    * 태스크 분해 (팀장 전용)
-   * @param {Object} contextBundle - SharedContext에서 가져온 맥락
+   * @param {Object} contextBundle - PromptAssembler가 조립한 맥락
    * @param {string} contextBundle.designDecisions - 설계 결정사항
    * @param {string} contextBundle.requirement - 프로젝트 요구사항
    */

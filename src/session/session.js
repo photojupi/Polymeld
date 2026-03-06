@@ -308,10 +308,7 @@ export class Session {
     session.id = data.id;
     session.createdAt = data.createdAt;
     session.runs = data.runs || [];
-    // v1: state 필드 존재 → 직접 로드
-    // v0: sharedContext/mailbox 필드 → 마이그레이션
-    const stateData = data.state || { sharedContext: data.sharedContext, mailbox: data.mailbox };
-    session.state = PipelineState.fromJSON(stateData);
+    session.state = PipelineState.fromJSON(data.state || {});
     return session;
   }
 
