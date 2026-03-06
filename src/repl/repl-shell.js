@@ -50,9 +50,15 @@ export class ReplShell {
     this._printBanner();
     this._running = true;
 
+    const commands = ["/status", "/history", "/save", "/load", "/team", "/context", "/resume", "/help", "/exit", "/quit"];
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
+      completer: (line) => {
+        if (!line.startsWith("/")) return [[], line];
+        const hits = commands.filter(c => c.startsWith(line));
+        return [hits, line];
+      },
     });
 
     // Ctrl+C 핸들링
