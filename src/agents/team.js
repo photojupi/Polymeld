@@ -232,14 +232,46 @@ export class Team {
   }
 
   /**
+   * AI 응답의 suitable_role을 에이전트 ID로 정규화
+   * @param {string} role - AI가 반환한 role 문자열
+   * @returns {string} 정규화된 에이전트 ID (매칭 실패 시 원본 반환)
+   */
+  normalizeRole(role) {
+    if (!role) return role;
+    const trimmed = role.trim();
+
+    // 1차: 정확한 ID 매칭
+    if (this.agents[trimmed]) return trimmed;
+
+    // 2차: "id(role)" 형식에서 ID 추출
+    const parenMatch = trimmed.match(/^([a-z_]+)\s*\(/);
+    if (parenMatch && this.agents[parenMatch[1]]) return parenMatch[1];
+
+    // 3차: role 이름으로 역방향 매칭
+    const lower = trimmed.toLowerCase();
+    for (const [id, agent] of Object.entries(this.agents)) {
+      if (agent.role.toLowerCase() === lower) return id;
+    }
+
+    // 4차: 부분 문자열 매칭 (최소 3자 이상, ID가 입력을 포함하는 방향만)
+    if (lower.length >= 3) {
+      for (const id of Object.keys(this.agents)) {
+        if (id.includes(lower)) return id;
+      }
+    }
+
+    return role;
+  }
+
+  /**
    * 가장 적합한 에이전트에게 태스크 배정
    */
   assignTask(task) {
-    const suitableRole = task.suitable_role;
-    const agent = this.agents[suitableRole];
+    const roleId = this.normalizeRole(task.suitable_role);
+    const agent = this.agents[roleId];
 
     // 에이전트가 존재하고 활성(상시 또는 소집됨)인 경우 배정
-    if (agent && (!agent.onDemand || this._mobilizedOnDemand.has(suitableRole))) {
+    if (agent && (!agent.onDemand || this._mobilizedOnDemand.has(roleId))) {
       return agent;
     }
 

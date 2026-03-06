@@ -383,10 +383,8 @@ ${requirement}
     const designDecisions = this.state.designDecisions || "";
     const requirement = this.state.project.requirement || "";
 
-    // 사용 가능한 역할 목록 동적 생성
-    const availableRoles = Object.entries(this.config.personas)
-      .map(([id, p]) => `${id}(${p.role})`)
-      .join(", ");
+    // 사용 가능한 역할 목록 (ID만 전달하여 AI가 정확한 ID를 반환하도록 유도)
+    const availableRoles = Object.keys(this.config.personas).join(", ");
 
     const modelOverride = this.modelSelector.selectModel({
       operation: "breakdownTasks",
@@ -402,15 +400,14 @@ ${requirement}
 
     const parsed = ResponseParser.parseTasks(result.tasks);
     if (!parsed.success) {
-      console.log(chalk.yellow("\u26A0\uFE0F  태스크 JSON 파싱 실패, 원본 텍스트를 사용합니다."));
-      console.log(result.tasks);
-      return;
+      throw new Error(`태스크 JSON 파싱 실패: AI 응답을 구조화된 JSON으로 변환할 수 없습니다.\n원본(앞 200자): ${(result.tasks || "").substring(0, 200)}`);
     }
     let tasks = parsed.tasks;
 
-    // 각 태스크에 ID 부여
+    // 각 태스크에 ID 부여 + suitable_role 정규화
     for (let i = 0; i < tasks.length; i++) {
       tasks[i].id = `task-${i + 1}`;
+      tasks[i].suitable_role = this.team.normalizeRole(tasks[i].suitable_role);
     }
 
     // 온디맨드 페르소나 소집: suitable_role 분석
