@@ -71,7 +71,11 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     }
 
     if (contextBundle?.allowPass) {
-      userMessage += `\n\n이 주제에서 본인이 직접 맡아 수행할 작업이 없다면 [PASS]로만 응답하세요.`;
+      userMessage += `\n\n다음 중 하나라도 해당하면 [PASS]로만 응답하세요:
+- 이 주제에서 본인이 직접 맡아 수행할 작업이 없는 경우
+- 이전 논의에서 이미 충분히 다뤄져 새로 추가할 의견이 없는 경우
+- 본인의 이전 발언과 실질적으로 같은 내용을 반복하게 되는 경우
+억지로 내용을 만들지 마세요. 새로운 관점이나 구체적 제안이 있을 때만 발언하세요.`;
     }
 
     const response = await this.adapter.chat(
