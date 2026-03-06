@@ -122,7 +122,6 @@ export class PipelineOrchestrator {
     console.log(chalk.bold("\uD83E\uDD16 모델 배정 현황:"));
     console.log(chalk.gray("\u2500".repeat(50)));
 
-    // 상시 투입 에이전트
     for (const agent of this.team.getActiveAgents()) {
       const imageTag = agent.imageModelKey
         ? chalk.gray(` + image:${agent.imageModelKey}`)
@@ -130,15 +129,6 @@ export class PipelineOrchestrator {
       console.log(
         `  ${agent.name} (${agent.role}): ${modelColorFn(agent.modelKey)(agent.modelKey)}${imageTag}`
       );
-    }
-
-    // 온디맨드 대기 에이전트 (소집 전이므로 onDemand 전원 표시)
-    const onDemandAgents = this.team.getAllAgents().filter(a => a.onDemand);
-    if (onDemandAgents.length > 0) {
-      console.log(chalk.gray("  \u2500\u2500 \uC628\uB514\uB9E8\uB4DC (\uD544\uC694 \uC2DC \uC18C\uC9D1) \u2500\u2500"));
-      for (const agent of onDemandAgents) {
-        console.log(chalk.gray(`  ${agent.name} (${agent.role}): ${agent.modelKey} [\uB300\uAE30]`));
-      }
     }
 
     console.log(chalk.gray("\u2500".repeat(50)) + "\n");
@@ -409,25 +399,6 @@ ${requirement}
     for (let i = 0; i < tasks.length; i++) {
       tasks[i].id = `task-${i + 1}`;
       tasks[i].suitable_role = this.team.normalizeRole(tasks[i].suitable_role);
-    }
-
-    // 온디맨드 페르소나 소집: suitable_role 분석
-    const requiredRoles = [...new Set(tasks.map(t => t.suitable_role))];
-    const toMobilize = requiredRoles.filter(role => {
-      const agent = this.team.getAgent(role);
-      return agent && agent.onDemand;
-    });
-
-    if (toMobilize.length > 0) {
-      this.team.mobilize(toMobilize);
-
-      this.state.mobilizedAgents = toMobilize;
-
-      const names = toMobilize.map(id => {
-        const a = this.team.getAgent(id);
-        return `${a.name}(${a.role})`;
-      }).join(", ");
-      console.log(chalk.cyan(`\n\uD83D\uDCE2 \uC628\uB514\uB9E8\uB4DC \uC18C\uC9D1: ${names}`));
     }
 
     this.state.tasks = tasks;
@@ -1140,14 +1111,8 @@ ${this.team
 
   /**
    * 재개 시 태스크의 assignedAgentId → assignedAgent 참조 복원
-   * 온디맨드 에이전트도 재소집
    */
   _relinkAgents() {
-    // 온디맨드 에이전트 재소집
-    if (this.state.mobilizedAgents.length > 0) {
-      this.team.mobilize(this.state.mobilizedAgents);
-    }
-
     // 태스크별 에이전트 참조 재연결
     for (const task of this.state.tasks) {
       if (task.assignedAgentId && typeof task.assignedAgent?.writeCode !== "function") {

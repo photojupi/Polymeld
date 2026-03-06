@@ -26,9 +26,6 @@ export class PipelineState {
     // --- 코드베이스 분석 (수정 모드) ---
     this.codebaseAnalysis = null;
 
-    // --- 팀 상태 ---
-    this.mobilizedAgents = [];
-
     // --- GitHub 메타 ---
     this.github = { kickoffIssue: null, designIssue: null };
 
@@ -153,7 +150,6 @@ export class PipelineState {
       completedTasks: this.completedTasks.map(({ assignedAgent, ...rest }) => rest),
       messages: this.messages,
       nextMsgId: this._nextMsgId,
-      mobilizedAgents: this.mobilizedAgents,
       github: this.github,
       completedPhases: this.completedPhases,
     };
@@ -172,7 +168,6 @@ export class PipelineState {
       state.completedTasks = data.completedTasks || [];
       state.messages = data.messages || [];
       state._nextMsgId = data.nextMsgId || 1;
-      state.mobilizedAgents = data.mobilizedAgents || [];
       state.github = data.github || { kickoffIssue: null, designIssue: null };
       state.completedPhases = data.completedPhases || [];
     } else {
@@ -196,7 +191,6 @@ export class PipelineState {
     this.kickoffSummary = getVal("meeting.kickoff.summary") || "";
     this.designDecisions = getVal("design.decisions") || "";
     this.techStack = getVal("design.techStack") || "";
-    this.mobilizedAgents = getVal("team.mobilizedAgents") || [];
 
     // tasks 마이그레이션: planning.tasks + 개별 code/review/qa 슬롯 병합
     const rawTasks = getVal("planning.tasks");

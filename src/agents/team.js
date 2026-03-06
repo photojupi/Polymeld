@@ -18,7 +18,6 @@ export class Team {
     this.state = state;
     this.assembler = assembler;
     this.agents = {};
-    this._mobilizedOnDemand = new Set();
     this._initAgents();
   }
 
@@ -58,41 +57,13 @@ export class Team {
     return Object.values(this.agents).filter(a => a.canGenerateImages);
   }
 
-  /**
-   * 온디맨드 에이전트 소집
-   * @param {string[]} agentIds - 소집할 에이전트 ID 배열
-   */
-  mobilize(agentIds) {
-    for (const id of agentIds) {
-      const agent = this.agents[id];
-      if (agent && agent.onDemand) {
-        this._mobilizedOnDemand.add(id);
-      }
-    }
-  }
-
-  /**
-   * 현재 활성 에이전트 목록 (상시 + 소집된 온디맨드)
-   */
   getActiveAgents() {
-    return Object.entries(this.agents)
-      .filter(([id, agent]) => !agent.onDemand || this._mobilizedOnDemand.has(id))
-      .map(([, agent]) => agent);
-  }
-
-  /**
-   * 소집된 온디맨드 에이전트 목록
-   */
-  getMobilizedAgents() {
-    return [...this._mobilizedOnDemand].map(id => this.agents[id]).filter(Boolean);
+    return Object.values(this.agents);
   }
 
   getDevelopers() {
     return Object.entries(this.agents)
-      .filter(([id, agent]) =>
-        !["tech_lead", "qa"].includes(id) &&
-        (!agent.onDemand || this._mobilizedOnDemand.has(id))
-      )
+      .filter(([id]) => !["tech_lead", "qa"].includes(id))
       .map(([, agent]) => agent);
   }
 
@@ -280,13 +251,9 @@ export class Team {
   assignTask(task) {
     const roleId = this.normalizeRole(task.suitable_role);
     const agent = this.agents[roleId];
+    if (agent) return agent;
 
-    // 에이전트가 존재하고 활성(상시 또는 소집됨)인 경우 배정
-    if (agent && (!agent.onDemand || this._mobilizedOnDemand.has(roleId))) {
-      return agent;
-    }
-
-    // fallback: 활성 개발자 중 첫 번째, 없으면 팀장이 직접 처리
+    // fallback: 개발자 중 첫 번째, 없으면 팀장이 직접 처리
     const allDevs = this.getDevelopers();
     return allDevs[0] || this.lead;
   }
