@@ -130,10 +130,8 @@ export class ReplShell {
 
     // 팀 구성 간략 출력
     const personas = this.config.personas;
-    const alwaysOn = Object.entries(personas).filter(([, p]) => !p.on_demand);
-    const onDemand = Object.entries(personas).filter(([, p]) => p.on_demand);
-    console.log(chalk.gray(`  상시 투입: ${alwaysOn.map(([, p]) => p.name).join(", ")}`));
-    console.log(chalk.gray(`  온디맨드: ${onDemand.map(([, p]) => p.name).join(", ")}\n`));
+    const names = Object.values(personas).map(p => p.name).join(", ");
+    console.log(chalk.gray(`  팀원: ${names}\n`));
   }
 
   _handleExit() {

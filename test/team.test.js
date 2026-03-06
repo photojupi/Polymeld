@@ -8,13 +8,13 @@ import { Team } from "../src/agents/team.js";
 function createMockTeam() {
   const team = Object.create(Team.prototype);
   team.agents = {
-    tech_lead: { role: "Tech Lead (팀장)", onDemand: false },
-    ace_programmer: { role: "Ace Programmer", onDemand: false },
-    creative_programmer: { role: "Creative Programmer", onDemand: false },
-    qa: { role: "QA Engineer", onDemand: false },
-    backend_dev: { role: "Backend Developer", onDemand: true },
-    frontend_dev: { role: "Frontend Developer", onDemand: true },
-    devops: { role: "DevOps Engineer", onDemand: true },
+    tech_lead: { role: "Tech Lead (팀장)" },
+    ace_programmer: { role: "Ace Programmer" },
+    creative_programmer: { role: "Creative Programmer" },
+    qa: { role: "QA Engineer" },
+    backend_dev: { role: "Backend Developer" },
+    frontend_dev: { role: "Frontend Developer" },
+    devops: { role: "DevOps Engineer" },
   };
   return team;
 }

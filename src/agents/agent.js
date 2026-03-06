@@ -10,7 +10,6 @@ export class Agent {
     this.role = personaConfig.role; // e.g., "Tech Lead"
     this.modelKey = personaConfig.model; // e.g., "claude"
     this.imageModelKey = personaConfig.image_model || null; // e.g., "gemini_image"
-    this.onDemand = personaConfig.on_demand || false;
     this.thinkingBudget = personaConfig.thinking_budget; // 0-100 or undefined
     this.description = personaConfig.description;
     this.expertise = personaConfig.expertise || [];

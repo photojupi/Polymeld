@@ -12,7 +12,6 @@ export function contextCommand(session) {
     ["tasks", `${state.tasks.length}개`],
     ["completedTasks", `${state.completedTasks.length}개`],
     ["messages", `${state.messages.length}개`],
-    ["mobilizedAgents", state.mobilizedAgents.join(", ") || "(없음)"],
   ];
 
   const hasData = fields.some(([, v]) => v && v !== "0개" && v !== "(없음)");
