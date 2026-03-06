@@ -348,11 +348,15 @@ export class PipelineOrchestrator {
     const requirement = this.state.project.requirement;
     const projectTitle = this.state.project.title;
 
+    const kickoff = this.state.kickoffSummary
+      ? `\n## 킥오프 미팅 결론\n${this.state.kickoffSummary.substring(0, 500)}\n`
+      : "";
+
     const topic = `프로젝트 "${projectTitle}"의 기술 설계를 논의합니다.
 
 ## 요구사항
 ${requirement}
-
+${kickoff}
 ## 논의 사항
 1. 기술 스택 선정 (언어, 프레임워크, DB 등)
 2. 시스템 아키텍처 (모놀리식 vs 마이크로서비스 등)

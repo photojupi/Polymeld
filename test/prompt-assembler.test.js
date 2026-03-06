@@ -110,6 +110,43 @@ describe("PromptAssembler.forQA", () => {
   });
 });
 
+// ─── kickoffSummary 통합 ─────────────────────────────
+
+describe("kickoffSummary 통합", () => {
+  it("forCoding: kickoffSummary가 systemContext에 포함", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    state.kickoffSummary = "프로젝트 목표: 생산성 도구 개발";
+    const result = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
+    assert.ok(result.systemContext.includes("킥오프 요약"));
+    assert.ok(result.systemContext.includes("생산성 도구"));
+  });
+
+  it("forCoding: kickoffSummary가 빈 문자열이면 섹션 미생성", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    state.kickoffSummary = "";
+    const result = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
+    assert.ok(!result.systemContext.includes("킥오프 요약"));
+  });
+
+  it("forReview: kickoffSummary가 systemContext에 포함", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    state.kickoffSummary = "핵심 우려: 보안";
+    const result = assembler.forReview(state, { taskId: "task-1" });
+    assert.ok(result.systemContext.includes("핵심 우려: 보안"));
+  });
+
+  it("forFix: kickoffSummary가 systemContext에 포함", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    state.kickoffSummary = "MVP 범위 확정";
+    const result = assembler.forFix(state, { agentId: "dev1", taskId: "task-1", feedbackSource: "review" });
+    assert.ok(result.systemContext.includes("MVP 범위 확정"));
+  });
+});
+
 // ─── _truncate ────────────────────────────────────────
 
 describe("PromptAssembler._truncate", () => {
