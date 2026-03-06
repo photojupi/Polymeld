@@ -91,6 +91,8 @@ export class Team {
       const roundLog = { round: round + 1, speeches: [] };
       const isLastRound = round === rounds - 1;
 
+      onSpeak({ phase: "round_start", round: round + 1, totalRounds: rounds });
+
       // 첫 라운드: 팀장 -> 나머지 -> 팀장 정리
       // 이후 라운드: 자유 토론 -> 팀장 결론 확인 또는 정리
       const speakOrder =

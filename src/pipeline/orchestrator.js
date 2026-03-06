@@ -203,8 +203,14 @@ export class PipelineOrchestrator {
     };
 
     return {
-      onSpeak: ({ phase, agent, content }) => {
-        if (phase === "speaking") {
+      onSpeak: ({ phase, agent, content, round, totalRounds }) => {
+        if (phase === "round_start") {
+          spinner.stopAndPersist({
+            symbol: chalk.cyan("●"),
+            text: chalk.cyan(`라운드 ${round}/${totalRounds}`),
+          });
+          spinner.start();
+        } else if (phase === "speaking") {
           streamBuf = "";
           spinner.text = `${agent} 발언 중...`;
         } else if (phase === "spoke" && content) {
