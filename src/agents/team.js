@@ -1,6 +1,6 @@
 // src/agents/team.js
 // 팀 관리자 - 모든 에이전트를 오케스트레이션
-// SharedContext + Mailbox + ContextBuilder 기반 대화 루프
+// PipelineState + PromptAssembler 기반 대화 루프
 
 import { Agent } from "./agent.js";
 
@@ -8,22 +8,18 @@ export class Team {
   /**
    * @param {Object} config - 설정 객체
    * @param {Object} modelAdapter - ModelAdapter 인스턴스
-   * @param {Object} contextDeps - 컨텍스트 의존성
-   * @param {import('../context/shared-context.js').SharedContext} contextDeps.sharedContext
-   * @param {import('../context/mailbox.js').Mailbox} contextDeps.mailbox
-   * @param {import('../context/context-builder.js').ContextBuilder} contextDeps.contextBuilder
+   * @param {Object} deps - 의존성
+   * @param {import('../state/pipeline-state.js').PipelineState} deps.state
+   * @param {import('../state/prompt-assembler.js').PromptAssembler} deps.assembler
    */
-  constructor(config, modelAdapter, { sharedContext, mailbox, contextBuilder }) {
+  constructor(config, modelAdapter, { state, assembler }) {
     this.config = config;
     this.adapter = modelAdapter;
-    this.shared = sharedContext;
-    this.mailbox = mailbox;
-    this.contextBuilder = contextBuilder;
+    this.state = state;
+    this.assembler = assembler;
     this.agents = {};
     this._mobilizedOnDemand = new Set();
     this._initAgents();
-    // Mailbox에 에이전트 등록 (on_demand 포함 - 소집 후 메시지 수신 필요)
-    this.mailbox.registerAgents(Object.keys(this.agents));
   }
 
   _initAgents() {
@@ -96,7 +92,7 @@ export class Team {
 
   /**
    * 회의 진행 - 모든 에이전트가 순서대로 발언
-   * ContextBuilder가 토큰 예산 내 맥락을 조립하고, Mailbox에 발언을 기록
+   * PromptAssembler가 토큰 예산 내 맥락을 조립하고, PipelineState에 발언을 기록
    *
    * @param {string} topic - 회의 주제
    * @param {string} context - 추가 컨텍스트 (하위 호환용, 사용하지 않음)
@@ -126,15 +122,13 @@ export class Team {
       for (const agent of speakOrder) {
         onSpeak({ phase: "speaking", agent: agent.name, round: round + 1 });
 
-        // ContextBuilder가 토큰 예산 내 맥락 조립
-        const contextBundle = this.contextBuilder.buildForMeeting(agent.id, topic);
+        const contextBundle = this.assembler.forMeeting(this.state, { agentId: agent.id, topic });
         const speech = await agent.speak(topic, contextBundle);
 
-        // Mailbox에 발언 기록 (broadcast)
-        this.mailbox.broadcast({
+        this.state.broadcastMessage({
           from: agent.id,
           type: "meeting_speech",
-          payload: { content: speech.content, round: round + 1 },
+          content: speech.content,
         });
 
         roundLog.speeches.push(speech);
@@ -146,9 +140,10 @@ export class Team {
       if (round === rounds - 1) {
         onSpeak({ phase: "speaking", agent: this.lead.name, round: round + 1 });
 
-        // 팀장이 전체 논의를 정리하기 위한 맥락 조립
-        const summaryBundle = this.contextBuilder.buildForMeeting(this.lead.id, topic, {
-          maxPreviousSpeeches: 20, // 정리 시 더 많은 발언 참조
+        const summaryBundle = this.assembler.forMeeting(this.state, {
+          agentId: this.lead.id,
+          topic,
+          maxPreviousSpeeches: 20,
         });
 
         const summary = await this.lead.speak(
@@ -156,11 +151,10 @@ export class Team {
           summaryBundle
         );
 
-        // 정리 발언도 Mailbox에 기록
-        this.mailbox.broadcast({
+        this.state.broadcastMessage({
           from: this.lead.id,
           type: "meeting_speech",
-          payload: { content: summary.content, round: round + 1, isSummary: true },
+          content: summary.content,
         });
 
         roundLog.speeches.push({ ...summary, isSummary: true });

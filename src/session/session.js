@@ -1,12 +1,11 @@
 // src/session/session.js
-// REPL 세션 관리 - SharedContext + Mailbox + 실행 이력을 묶어서 관리
+// REPL 세션 관리 - PipelineState + PromptAssembler + 실행 이력을 묶어서 관리
 
 import crypto from "crypto";
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { SharedContext } from "../context/shared-context.js";
-import { Mailbox } from "../context/mailbox.js";
-import { ContextBuilder } from "../context/context-builder.js";
+import { PipelineState } from "../state/pipeline-state.js";
+import { PromptAssembler } from "../state/prompt-assembler.js";
 import { ModelAdapter } from "../models/adapter.js";
 import { Team } from "../agents/team.js";
 import { GitHubClient } from "../github/client.js";
@@ -17,9 +16,8 @@ export class Session {
   constructor(config) {
     this.id = crypto.randomBytes(6).toString("hex");
     this.config = config;
-    this.sharedContext = new SharedContext();
-    this.mailbox = new Mailbox();
-    this.contextBuilder = new ContextBuilder(this.sharedContext, this.mailbox, {
+    this.state = new PipelineState();
+    this.assembler = new PromptAssembler({
       maxChars: config.pipeline?.max_context_chars || 6000,
     });
     this.adapter = new ModelAdapter(config);
@@ -43,12 +41,10 @@ export class Session {
 
   _ensureTeam() {
     if (!this.team) {
-      const contextDeps = {
-        sharedContext: this.sharedContext,
-        mailbox: this.mailbox,
-        contextBuilder: this.contextBuilder,
-      };
-      this.team = new Team(this.config, this.adapter, contextDeps);
+      this.team = new Team(this.config, this.adapter, {
+        state: this.state,
+        assembler: this.assembler,
+      });
     }
   }
 
@@ -63,16 +59,8 @@ export class Session {
     // 프로젝트 제목 결정
     const title = options.title || await this._askTitle(requirement, interactionMode);
 
-    // SharedContext에 프로젝트 정보 설정
-    this.sharedContext.set("project.requirement", requirement, {
-      author: "orchestrator",
-      phase: "init",
-      summary: requirement.substring(0, 200),
-    });
-    this.sharedContext.set("project.title", title, {
-      author: "orchestrator",
-      phase: "init",
-    });
+    this.state.project.requirement = requirement;
+    this.state.project.title = title;
 
     // GitHub 초기화
     if (this.github) {
@@ -82,18 +70,12 @@ export class Session {
       );
     }
 
-    const contextDeps = {
-      sharedContext: this.sharedContext,
-      mailbox: this.mailbox,
-      contextBuilder: this.contextBuilder,
-    };
-
     const orchestrator = new PipelineOrchestrator(
       this.team,
       this.github || new NoOpGitHub(),
       this.config,
       interactionMode,
-      contextDeps
+      { state: this.state, assembler: this.assembler }
     );
 
     const runEntry = {
@@ -137,8 +119,7 @@ export class Session {
       createdAt: this.createdAt,
       updatedAt: new Date().toISOString(),
       runs: this.runs,
-      sharedContext: this.sharedContext.toJSON(),
-      mailbox: this.mailbox.toJSON(),
+      state: this.state.toJSON(),
     };
   }
 
@@ -150,13 +131,10 @@ export class Session {
     session.id = data.id;
     session.createdAt = data.createdAt;
     session.runs = data.runs || [];
-    session.sharedContext = SharedContext.fromJSON(data.sharedContext || {});
-    session.mailbox = Mailbox.fromJSON(data.mailbox || {});
-    session.contextBuilder = new ContextBuilder(
-      session.sharedContext,
-      session.mailbox,
-      { maxChars: config.pipeline?.max_context_chars || 6000 }
-    );
+    // v1: state 필드 존재 → 직접 로드
+    // v0: sharedContext/mailbox 필드 → 마이그레이션
+    const stateData = data.state || { sharedContext: data.sharedContext, mailbox: data.mailbox };
+    session.state = PipelineState.fromJSON(stateData);
     return session;
   }
 
