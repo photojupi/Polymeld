@@ -3,3 +3,4 @@ node_modules/
 .agent-team/
 .claude/worktrees/
 *.log
+.DS_Store

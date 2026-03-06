@@ -67,7 +67,6 @@ export class ModelAdapter {
 
   /**
    * CLI 서브프로세스 실행 (stdin 방식)
-   * shell: true로 Windows .cmd/.ps1 호환
    * options.timeout: 타임아웃 밀리초 (기본 5분, 0이면 무제한)
    */
   _spawnCli(command, args, stdinData, options = {}) {
@@ -77,7 +76,6 @@ export class ModelAdapter {
     return new Promise((resolve, reject) => {
       const proc = spawn(command, args, {
         stdio: ["pipe", "pipe", "pipe"],
-        shell: true,
         env: { ...process.env },
       });
 
@@ -344,7 +342,7 @@ export class ModelAdapter {
   _isCliAvailable(command) {
     try {
       const cmd = os.platform() === "win32" ? "where" : "which";
-      execFileSync(cmd, [command], { stdio: "pipe", shell: true });
+      execFileSync(cmd, [command], { stdio: "pipe" });
       return true;
     } catch {
       return false;
