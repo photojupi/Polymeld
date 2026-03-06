@@ -71,7 +71,7 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     }
 
     if (contextBundle?.allowPass) {
-      userMessage += `\n\n이 주제가 본인의 전문 영역 밖이거나 의미 있는 의견이 없다면 [PASS]로만 응답하세요.`;
+      userMessage += `\n\n이 주제에서 본인이 직접 맡아 수행할 작업이 없다면 [PASS]로만 응답하세요.`;
     }
 
     const response = await this.adapter.chat(
