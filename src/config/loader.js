@@ -93,7 +93,7 @@ function probeCliAuth(cli) {
       resolve(result);
     };
 
-    const timer = setTimeout(() => done({ ok: false, reason: "응답 시간 초과" }), 10000);
+    const timer = setTimeout(() => done({ ok: false, reason: "응답 시간 초과" }), 30000);
 
     // stdout 또는 stderr 출력이 있으면 인증 성공 (CLI가 동작 중)
     proc.stdout.on("data", () => done({ ok: true }));

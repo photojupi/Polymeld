@@ -53,9 +53,12 @@ export class Session {
         const resolved = configPath.startsWith("~")
           ? configPath.replace("~", process.env.HOME || "")
           : configPath;
-        this.workspace = new LocalWorkspace(resolved);
-        console.log(chalk.green(`  📂 워크스페이스: ${this.workspace.repoPath}`));
-        return;
+        const ws = new LocalWorkspace(resolved);
+        if (this._validateWorkspaceRemote(ws)) {
+          this.workspace = ws;
+          console.log(chalk.green(`  📂 워크스페이스: ${ws.repoPath}`));
+          return;
+        }
       } catch (e) {
         console.log(chalk.yellow(`  ⚠️ 설정된 워크스페이스 경로 오류: ${e.message}`));
       }
@@ -75,15 +78,49 @@ export class Session {
         // package.json 없거나 파싱 실패 → 대상 프로젝트로 간주
       }
       try {
-        this.workspace = new LocalWorkspace(cwd);
-        console.log(chalk.green(`  📂 워크스페이스 (자동감지): ${cwd}`));
-        return;
+        const ws = new LocalWorkspace(cwd);
+        if (this._validateWorkspaceRemote(ws)) {
+          this.workspace = ws;
+          console.log(chalk.green(`  📂 워크스페이스 (자동감지): ${cwd}`));
+          return;
+        }
       } catch {
         // 감지 실패 시 무시
       }
     }
 
     this.workspace = new NoOpWorkspace();
+  }
+
+  /**
+   * 워크스페이스의 remote가 GITHUB_REPO와 일치하는지 검증
+   * GITHUB_REPO 미설정 시에는 무조건 통과 (GitHub 없이 로컬만 사용)
+   * @returns {boolean} 사용 가능 여부
+   */
+  _validateWorkspaceRemote(ws) {
+    const envRepo = process.env.GITHUB_REPO;
+    if (!envRepo) return true; // GitHub 미설정 → 로컬 전용 모드, 검증 불필요
+
+    const localRepo = ws.getRemoteRepo();
+    if (!localRepo) {
+      // remote가 없는 로컬 레포 → GitHub API와 분리됨을 경고
+      console.log(chalk.yellow(
+        `  ⚠️ 워크스페이스에 origin remote가 없습니다. GitHub(${envRepo})와 연동되지 않습니다.`
+      ));
+      return true; // 로컬 작업은 허용
+    }
+
+    if (localRepo.toLowerCase() !== envRepo.toLowerCase()) {
+      console.log(chalk.red(
+        `  ❌ 워크스페이스 remote 불일치!\n` +
+        `     로컬: ${localRepo}\n` +
+        `     .env:  ${envRepo}\n` +
+        `     → 워크스페이스를 건너뜁니다. config 또는 .env를 확인하세요.`
+      ));
+      return false;
+    }
+
+    return true;
   }
 
   _ensureTeam() {
