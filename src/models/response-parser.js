@@ -11,18 +11,37 @@ export class ResponseParser {
   static _extractJson(text) {
     if (!text) return null;
 
-    // 1차: ```json ... ``` 코드블록
-    const blockMatch = text.match(/```json\s*([\s\S]*?)```/);
+    // 1차: ```json ... ``` 코드블록 (대소문자 무시)
+    const blockMatch = text.match(/```json\s*([\s\S]*?)```/i);
     if (blockMatch) {
       try {
         return JSON.parse(blockMatch[1].trim());
       } catch { /* fall through */ }
     }
 
-    // 2차: 전체 텍스트를 JSON으로 파싱
+    // 2차: ``` ... ``` 언어 태그 없는 코드블록
+    const plainBlock = text.match(/```\s*\n([\s\S]*?)```/);
+    if (plainBlock) {
+      try {
+        return JSON.parse(plainBlock[1].trim());
+      } catch { /* fall through */ }
+    }
+
+    // 3차: 전체 텍스트를 JSON으로 파싱
     try {
       return JSON.parse(text.trim());
     } catch { /* fall through */ }
+
+    // 4차: 텍스트에서 { 또는 [ 시작 위치를 찾아 뒤에서부터 파싱 시도
+    for (const [open, close] of [['{', '}'], ['[', ']']]) {
+      const start = text.indexOf(open);
+      if (start === -1) continue;
+      for (let end = text.lastIndexOf(close); end > start; end = text.lastIndexOf(close, end - 1)) {
+        try {
+          return JSON.parse(text.slice(start, end + 1));
+        } catch { /* continue shrinking */ }
+      }
+    }
 
     return null;
   }

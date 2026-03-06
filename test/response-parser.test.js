@@ -41,6 +41,34 @@ describe("ResponseParser.parseTasks", () => {
     assert.equal(ResponseParser.parseTasks("").success, false);
     assert.equal(ResponseParser.parseTasks(null).success, false);
   });
+
+  it("```JSON (대문자) 코드블록 파싱", () => {
+    const raw = '설명입니다:\n```JSON\n{"tasks": [{"title": "API 설계"}]}\n```';
+    const result = ResponseParser.parseTasks(raw);
+    assert.equal(result.success, true);
+    assert.equal(result.tasks[0].title, "API 설계");
+  });
+
+  it("```Json (혼합 대소문자) 코드블록 파싱", () => {
+    const raw = '```Json\n{"tasks": [{"title": "UI 구현"}]}\n```';
+    const result = ResponseParser.parseTasks(raw);
+    assert.equal(result.success, true);
+    assert.equal(result.tasks[0].title, "UI 구현");
+  });
+
+  it("언어 태그 없는 코드블록 파싱", () => {
+    const raw = '결과:\n```\n{"tasks": [{"title": "DB 설계"}]}\n```';
+    const result = ResponseParser.parseTasks(raw);
+    assert.equal(result.success, true);
+    assert.equal(result.tasks[0].title, "DB 설계");
+  });
+
+  it("마크다운 혼합 응답에서 JSON 직접 추출", () => {
+    const raw = '## 태스크 분해\n다음과 같이 분해했습니다.\n\n{"tasks": [{"title": "캐싱 구현", "suitable_role": "backend_dev"}]}\n\n위 태스크를 확인하세요.';
+    const result = ResponseParser.parseTasks(raw);
+    assert.equal(result.success, true);
+    assert.equal(result.tasks[0].title, "캐싱 구현");
+  });
 });
 
 // ─── parseReviewVerdict ───────────────────────────────
