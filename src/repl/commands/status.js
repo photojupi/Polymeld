@@ -13,8 +13,8 @@ export function statusCommand(session) {
   console.log(`  총 실행: ${runs.length}회`);
   console.log(`  마지막: ${chalk.bold(last.title)} (${last.status})`);
 
-  const slotCount = session.sharedContext.slots.size;
-  const msgCount = session.mailbox.allMessages.length;
-  console.log(`  SharedContext: ${slotCount}개 슬롯`);
-  console.log(`  Mailbox: ${msgCount}개 메시지\n`);
+  const taskCount = session.state.tasks.length;
+  const msgCount = session.state.messages.length;
+  console.log(`  태스크: ${taskCount}개`);
+  console.log(`  메시지: ${msgCount}개\n`);
 }

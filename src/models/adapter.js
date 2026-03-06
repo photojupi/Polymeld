@@ -258,7 +258,7 @@ export class ModelAdapter {
    * 코드 리뷰 특화 호출
    */
   async reviewCode(modelKey, systemPrompt, code, criteria, options = {}) {
-    const reviewPrompt = `다음 코드를 리뷰해주세요.\n\n## 코드\n\`\`\`\n${code}\n\`\`\`\n\n## 수용 기준\n${criteria}\n\n## 리뷰 형식\n- 전체 평가: Approved / Changes Requested\n- 좋은 점\n- 개선 필요 사항 (구체적 라인/로직 지적)\n- 보안 이슈\n- 성능 이슈`;
+    const reviewPrompt = `다음 코드를 리뷰해주세요.\n\n## 코드\n\`\`\`\n${code}\n\`\`\`\n\n## 수용 기준\n${criteria}\n\n## 리뷰 형식\n- 좋은 점\n- 개선 필요 사항 (구체적 라인/로직 지적)\n- 보안 이슈\n- 성능 이슈\n\n마지막에 다음 JSON 블록을 반드시 추가해주세요:\n\`\`\`json\n{ "verdict": "APPROVED 또는 CHANGES_REQUESTED", "summary": "한줄 요약" }\n\`\`\``;
     return this.chat(modelKey, systemPrompt, reviewPrompt, options);
   }
 

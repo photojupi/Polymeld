@@ -1,7 +1,7 @@
 // src/agents/agent.js
 // 개별 에이전트 (페르소나) 클래스
 // 각 에이전트는 특정 AI 모델에 의해 구동됩니다
-// contextBundle 패턴: 모든 메서드가 ContextBuilder가 조립한 구조화된 맥락을 받음
+// contextBundle 패턴: 모든 메서드가 PromptAssembler가 조립한 구조화된 맥락을 받음
 
 export class Agent {
   constructor(personaConfig, modelAdapter) {
@@ -51,7 +51,8 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
    * @param {string} contextBundle.context - 조립된 맥락
    * @param {string} [contextBundle.previousDiscussion] - 이전 논의 (호환성)
    */
-  async speak(topic, contextBundle) {
+  async speak(topic, contextBundle, { modelOverride } = {}) {
+    const modelKey = modelOverride || this.modelKey;
     // contextBundle이 문자열인 경우 하위 호환 처리 (직접 context 문자열 전달)
     const context = typeof contextBundle === "string"
       ? contextBundle
@@ -71,16 +72,15 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     }
 
     const response = await this.adapter.chat(
-      this.modelKey,
+      modelKey,
       systemPrompt,
       userMessage
     );
 
-    // conversationHistory 제거 - Mailbox에서 관리
     return {
       agent: this.name,
       role: this.role,
-      model: this.modelKey,
+      model: modelKey,
       content: response,
     };
   }
@@ -93,7 +93,8 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
    * @param {string} contextBundle.acceptanceCriteria - 수용 기준
    * @param {string} [contextBundle.currentCode] - 현재 코드 (수정 시)
    */
-  async writeCode(contextBundle) {
+  async writeCode(contextBundle, { modelOverride } = {}) {
+    const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(contextBundle.systemContext);
 
     let prompt = `## 개발 태스크\n${contextBundle.taskDescription}\n\n## 수용 기준\n${contextBundle.acceptanceCriteria}`;
@@ -107,7 +108,7 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     }
 
     const response = await this.adapter.generateCode(
-      this.modelKey,
+      modelKey,
       systemPrompt,
       prompt
     );
@@ -115,7 +116,7 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     return {
       agent: this.name,
       role: this.role,
-      model: this.modelKey,
+      model: modelKey,
       code: response,
     };
   }
@@ -128,13 +129,14 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
    * @param {string} contextBundle.criteria - 수용 기준
    * @param {string} authorAgent - 코드 작성자 이름
    */
-  async reviewCode(contextBundle, authorAgent) {
+  async reviewCode(contextBundle, authorAgent, { modelOverride } = {}) {
+    const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(
       `${authorAgent}가 작성한 코드를 리뷰합니다.\n\n${contextBundle.systemContext}`
     );
 
     const response = await this.adapter.reviewCode(
-      this.modelKey,
+      modelKey,
       systemPrompt,
       contextBundle.code,
       contextBundle.criteria
@@ -143,7 +145,7 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     return {
       agent: this.name,
       role: this.role,
-      model: this.modelKey,
+      model: modelKey,
       review: response,
     };
   }
@@ -156,7 +158,8 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
    * @param {string} contextBundle.criteria - 수용 기준
    * @param {string} contextBundle.taskDescription - 태스크 설명
    */
-  async runQA(contextBundle) {
+  async runQA(contextBundle, { modelOverride } = {}) {
+    const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(
       `QA 엔지니어로서 코드의 품질과 수용 기준 충족 여부를 검증합니다.\n\n${contextBundle.systemContext}`
     );
@@ -178,10 +181,15 @@ ${contextBundle.criteria}
 1. 수용 기준별 검증 결과 (표 형식)
 2. 엣지 케이스 테스트 결과
 3. 발견된 버그/이슈
-4. 종합 판정: PASS / FAIL`;
+4. 종합 판정: PASS / FAIL
+
+마지막에 다음 JSON 블록을 반드시 추가해주세요:
+\`\`\`json
+{ "verdict": "PASS 또는 FAIL", "summary": "한줄 요약" }
+\`\`\``;
 
     const response = await this.adapter.chat(
-      this.modelKey,
+      modelKey,
       systemPrompt,
       prompt
     );
@@ -189,7 +197,7 @@ ${contextBundle.criteria}
     return {
       agent: this.name,
       role: this.role,
-      model: this.modelKey,
+      model: modelKey,
       qaResult: response,
     };
   }
@@ -200,7 +208,8 @@ ${contextBundle.criteria}
    * @param {string} contextBundle.designDecisions - 설계 결정사항
    * @param {string} contextBundle.requirement - 프로젝트 요구사항
    */
-  async breakdownTasks(contextBundle) {
+  async breakdownTasks(contextBundle, { modelOverride } = {}) {
+    const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(
       "프로젝트의 기술 설계가 완료되었습니다. 이를 실행 가능한 태스크로 분해합니다."
     );
@@ -238,7 +247,7 @@ ${contextBundle.designDecisions}
 \`\`\``;
 
     const response = await this.adapter.chat(
-      this.modelKey,
+      modelKey,
       systemPrompt,
       prompt
     );
@@ -246,7 +255,7 @@ ${contextBundle.designDecisions}
     return {
       agent: this.name,
       role: this.role,
-      model: this.modelKey,
+      model: modelKey,
       tasks: response,
     };
   }
