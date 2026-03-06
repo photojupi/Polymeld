@@ -9,6 +9,7 @@ import { loadCommand } from "./commands/load.js";
 import { teamCommand } from "./commands/team.js";
 import { contextCommand } from "./commands/context.js";
 import { helpCommand } from "./commands/help.js";
+import { resumeCommand } from "./commands/resume.js";
 
 export class CommandRouter {
   constructor(replShell) {
@@ -56,6 +57,9 @@ export class CommandRouter {
         break;
       case "/context":
         contextCommand(this.session);
+        break;
+      case "/resume":
+        await resumeCommand(this.session);
         break;
       case "/help":
         helpCommand();

@@ -23,11 +23,18 @@ export class PipelineState {
     this.messages = [];
     this._nextMsgId = 1;
 
+    // --- 코드베이스 분석 (수정 모드) ---
+    this.codebaseAnalysis = null;
+
     // --- 팀 상태 ---
     this.mobilizedAgents = [];
 
     // --- GitHub 메타 ---
     this.github = { kickoffIssue: null, designIssue: null };
+
+    // --- Phase 체크포인트 ---
+    /** @type {string[]} 완료된 Phase ID 목록 (e.g., ["kickoff", "design"]) */
+    this.completedPhases = [];
   }
 
   /**
@@ -113,6 +120,25 @@ export class PipelineState {
     });
   }
 
+  // --- Phase 체크포인트 ---
+
+  markPhaseComplete(phaseId) {
+    if (!this.completedPhases.includes(phaseId)) {
+      this.completedPhases.push(phaseId);
+    }
+  }
+
+  isPhaseComplete(phaseId) {
+    return this.completedPhases.includes(phaseId);
+  }
+
+  /**
+   * completedPhases를 리셋 (새 파이프라인 실행 시)
+   */
+  resetPhases() {
+    this.completedPhases = [];
+  }
+
   // --- 직렬화 ---
 
   toJSON() {
@@ -122,12 +148,14 @@ export class PipelineState {
       kickoffSummary: this.kickoffSummary,
       designDecisions: this.designDecisions,
       techStack: this.techStack,
+      codebaseAnalysis: this.codebaseAnalysis,
       tasks: this.tasks,
       completedTasks: this.completedTasks,
       messages: this.messages,
       nextMsgId: this._nextMsgId,
       mobilizedAgents: this.mobilizedAgents,
       github: this.github,
+      completedPhases: this.completedPhases,
     };
   }
 
@@ -139,12 +167,14 @@ export class PipelineState {
       state.kickoffSummary = data.kickoffSummary || "";
       state.designDecisions = data.designDecisions || "";
       state.techStack = data.techStack || "";
+      state.codebaseAnalysis = data.codebaseAnalysis || null;
       state.tasks = data.tasks || [];
       state.completedTasks = data.completedTasks || [];
       state.messages = data.messages || [];
       state._nextMsgId = data.nextMsgId || 1;
       state.mobilizedAgents = data.mobilizedAgents || [];
       state.github = data.github || { kickoffIssue: null, designIssue: null };
+      state.completedPhases = data.completedPhases || [];
     } else {
       // v0: 기존 SharedContext + Mailbox 포맷 마이그레이션
       state._migrateFromV0(data);

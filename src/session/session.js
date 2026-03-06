@@ -141,10 +141,16 @@ export class Session {
     const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "semi-auto";
 
     // 프로젝트 제목 결정
-    const title = options.title || await this._askTitle(requirement, interactionMode);
+    const titleResult = options.title
+      ? { title: options.title, isModification: false }
+      : await this._askTitle(requirement, interactionMode);
+    const { title, isModification } = titleResult;
 
     this.state.project.requirement = requirement;
     this.state.project.title = title;
+
+    // runPipeline()은 항상 Phase 리셋 (재개는 /resume → resumePipeline()만 사용)
+    this.state.resetPhases();
 
     // GitHub 초기화
     if (this.github) {
@@ -157,7 +163,71 @@ export class Session {
       this.github || new NoOpGitHub(),
       this.config,
       interactionMode,
-      { state: this.state, assembler: this.assembler, workspace: this.workspace }
+      {
+        state: this.state,
+        assembler: this.assembler,
+        workspace: this.workspace,
+        onPhaseSave: () => this.save(),
+      }
+    );
+
+    const runEntry = {
+      requirement,
+      title,
+      isModification,
+      startedAt: new Date().toISOString(),
+      status: "running",
+    };
+    this.runs.push(runEntry);
+
+    try {
+      await orchestrator.run(requirement, title, { isModification });
+      runEntry.status = "completed";
+      runEntry.completedAt = new Date().toISOString();
+    } catch (error) {
+      runEntry.status = "failed";
+      runEntry.error = error.message;
+      throw error;
+    }
+  }
+
+  /**
+   * 중단된 파이프라인 재개
+   * completedPhases를 기반으로 이미 완료된 Phase를 건너뛰고 재실행
+   */
+  async resumePipeline(options = {}) {
+    const { requirement, title } = this.state.project;
+    if (!requirement) {
+      throw new Error("재개할 파이프라인이 없습니다. 먼저 프로젝트를 실행해주세요.");
+    }
+
+    this._ensureTeam();
+
+    const completed = this.state.completedPhases;
+    console.log(chalk.cyan(`\n\u23EF\uFE0F  파이프라인 재개: "${title}"`));
+    if (completed.length > 0) {
+      console.log(chalk.gray(`  완료된 Phase: ${completed.join(", ")}`));
+    }
+
+    const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "semi-auto";
+
+    // GitHub 초기화
+    if (this.github) {
+      await this.github.ensureLabels(this.config.github?.labels || {});
+      await this.github.findOrCreateProject(`${this.github.repo}_autollm`);
+    }
+
+    const orchestrator = new PipelineOrchestrator(
+      this.team,
+      this.github || new NoOpGitHub(),
+      this.config,
+      interactionMode,
+      {
+        state: this.state,
+        assembler: this.assembler,
+        workspace: this.workspace,
+        onPhaseSave: () => this.save(),
+      }
     );
 
     const runEntry = {
@@ -165,11 +235,16 @@ export class Session {
       title,
       startedAt: new Date().toISOString(),
       status: "running",
+      resumed: true,
+      resumedFrom: completed[completed.length - 1] || null,
     };
     this.runs.push(runEntry);
 
     try {
-      await orchestrator.run(requirement, title);
+      // 이전 run에서 isModification 복원, 없으면 codebaseAnalysis 존재 여부로 판단
+      const lastRun = this.runs.slice(0, -1).reverse().find(r => r.isModification != null);
+      const isModification = lastRun?.isModification ?? (this.state.codebaseAnalysis != null);
+      await orchestrator.run(requirement, title, { isModification });
       runEntry.status = "completed";
       runEntry.completedAt = new Date().toISOString();
     } catch (error) {
@@ -180,8 +255,28 @@ export class Session {
   }
 
   async _askTitle(requirement, interactionMode) {
+    const lastTitle = this.lastRunTitle;
+
+    // 이전 실행이 있는 경우: 기존 프로젝트 계속 vs 새 프로젝트
+    if (lastTitle) {
+      if (interactionMode === "full-auto") {
+        return { title: lastTitle, isModification: true };
+      }
+      const { choice } = await inquirer.prompt([{
+        type: "list",
+        name: "choice",
+        message: `기존 프로젝트 "${lastTitle}"에 대한 수정인가요?`,
+        choices: [
+          { name: `예 — "${lastTitle}" 계속`, value: "continue" },
+          { name: "아니요 — 새 프로젝트 시작", value: "new" },
+        ],
+      }]);
+      if (choice === "continue") return { title: lastTitle, isModification: true };
+    }
+
+    // 새 프로젝트: 제목 입력
     if (interactionMode === "full-auto") {
-      return requirement.substring(0, 30);
+      return { title: requirement.substring(0, 30), isModification: false };
     }
     const { title } = await inquirer.prompt([{
       type: "input",
@@ -189,7 +284,7 @@ export class Session {
       message: "프로젝트 제목:",
       default: requirement.substring(0, 30),
     }]);
-    return title;
+    return { title, isModification: false };
   }
 
   /**
