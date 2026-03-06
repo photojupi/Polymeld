@@ -23,8 +23,8 @@ Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 │  PipelineState              PromptAssembler                 │
 │  (단일 상태 저장소)          (토큰 예산 맥락 조립)            │
 │                                                             │
-│  ModelSelector              ResponseParser                  │
-│  (작업별 최적 모델 선택)     (LLM 응답 구조화 파싱)           │
+│  ResponseParser                                             │
+│  (LLM 응답 구조화 파싱)                                      │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
@@ -346,7 +346,6 @@ Phase 3: 태스크 분해 + on_demand 소집
   → 팀장이 1-4시간 단위로 태스크 분해
   → 각 태스크가 GitHub Issue로 생성 (backlog 라벨)
   → 태스크의 suitable_role 분석 → 필요한 온디맨드 페르소나 자동 소집
-  → ModelSelector가 분석에 최적인 모델(claude) 자동 선택
 
 Phase 4: 작업 분배
   → 팀장이 각 태스크를 적합한 페르소나에게 배정 (상시 + 소집된 온디맨드)
@@ -354,8 +353,7 @@ Phase 4: 작업 분배
   → 배정 이유가 Issue Comment로 기록
 
 Phase 5: 개발
-  → 각 페르소나가 자신의 AI 모델로 코드 작성
-  → ModelSelector가 코드 생성에 최적인 모델(codex) 자동 선택
+  → 각 페르소나가 자신의 지정 모델로 코드 작성
   → 이미지 태스크: image_model로 이미지 생성 (output/images/ 저장)
   → feature 브랜치에 커밋
   → 진행 상황이 Issue Comment로 업데이트
@@ -384,7 +382,6 @@ Phase 8: PR 생성
 |---------|------|------|
 | **PipelineState** | 단일 상태 저장소 | 프로젝트/태스크/메시지/소집 기록을 명시적 필드로 관리 |
 | **PromptAssembler** | 토큰 예산 맥락 조립 | 작업 유형별 필요 정보만 추출하여 LLM 프롬프트 구성 (코드베이스 맥락 포함) |
-| **ModelSelector** | 작업별 최적 모델 선택 | 사용자 오버라이드 → 친화도 매트릭스 → 기본값 폴백 |
 | **ResponseParser** | LLM 응답 구조화 파싱 | JSON 추출 + 키워드 폴백으로 판정(verdict) 추출 |
 | **LocalWorkspace** | 로컬 Git 레포 연동 | 파일 탐색/읽기/쓰기 + git 브랜치/커밋/푸시 자동화 |
 | **validateConnections** | 시작 시 연결 검증 | CLI 설치 → 인증 프로브 → GitHub 토큰/권한 확인을 실시간 표시 |
@@ -405,16 +402,6 @@ github.kickoffIssue     - GitHub 킥오프 Issue 번호
 github.designIssue      - GitHub 설계 Issue 번호
 ```
 
-### ModelSelector — 작업-모델 친화도
-
-| 작업 | 선호 모델 | 이유 |
-|------|----------|------|
-| breakdownTasks | claude | 분석/추론에 강점 |
-| reviewCode | claude | 분석적 리뷰 |
-| writeCode | codex | 코드 생성에 강점 |
-| runQA | codex | 체계적 테스트 |
-| generateImage | gemini_image | 멀티모달 |
-
 ### ResponseParser — LLM 응답 파싱
 
 | 메서드 | 용도 | 반환 |
@@ -433,7 +420,6 @@ src/
 │   └── interaction.js        # 인터랙션 모드 관리
 ├── models/
 │   ├── adapter.js            # CLI 추상화 (claude/gemini/codex)
-│   ├── model-selector.js     # 작업별 최적 모델 동적 선택
 │   └── response-parser.js    # LLM 응답 구조화 파싱
 ├── agents/
 │   ├── agent.js              # 개별 에이전트 (페르소나 + on_demand)
