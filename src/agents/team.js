@@ -137,9 +137,16 @@ export class Team {
           onData: onStream ? (chunk) => onStream({ agent: agent.name, chunk }) : undefined,
         });
 
-        // [PASS] 응답이면 메시지에 기록하지 않고 스킵
-        if (speech.content.trim() === "[PASS]") {
+        // [PASS] 응답이면 broadcastMessage 스킵, 회의록에만 기록
+        if (/^\[PASS\]/i.test(speech.content.trim())) {
           onSpeak({ phase: "passed", agent: agent.name });
+          roundLog.speeches.push({
+            agent: agent.name,
+            role: agent.role,
+            model: speech.model,
+            content: "[PASS]",
+            isPassed: true,
+          });
           continue;
         }
 
@@ -208,6 +215,10 @@ export class Team {
       lines.push(`### 라운드 ${round.round}\n`);
 
       for (const speech of round.speeches) {
+        if (speech.isPassed) {
+          lines.push(`#### ${speech.agent} (${speech.role}) — 패스\n`);
+          continue;
+        }
         const modelTag = `\`[${speech.model}]\``;
         if (speech.isSummary) {
           lines.push(`#### \uD83D\uDCA1 ${speech.agent} (${speech.role}) - 종합 정리 ${modelTag}\n`);
