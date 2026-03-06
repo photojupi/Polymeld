@@ -5,7 +5,6 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import chalk from "chalk";
-import inquirer from "inquirer";
 import { PipelineState } from "../state/pipeline-state.js";
 import { PromptAssembler } from "../state/prompt-assembler.js";
 import { ModelAdapter } from "../models/adapter.js";
@@ -140,14 +139,11 @@ export class Session {
 
     const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "semi-auto";
 
-    // 프로젝트 제목 결정
-    const titleResult = options.title
-      ? { title: options.title, isModification: false }
-      : await this._askTitle(requirement, interactionMode);
-    const { title, isModification } = titleResult;
-
+    // 프로젝트 정보 설정 (title은 워크스페이스 정보에서 자동 파생)
     this.state.project.requirement = requirement;
-    this.state.project.title = title;
+    this.state.project.title = this._deriveTitle(requirement);
+    const title = this.state.project.title;
+    const isModification = this.runs.length > 0;
 
     // runPipeline()은 항상 Phase 리셋 (재개는 /resume → resumePipeline()만 사용)
     this.state.resetPhases();
@@ -181,7 +177,7 @@ export class Session {
     this.runs.push(runEntry);
 
     try {
-      await orchestrator.run(requirement, title, { isModification });
+      await orchestrator.run(requirement, { isModification });
       runEntry.status = "completed";
       runEntry.completedAt = new Date().toISOString();
     } catch (error) {
@@ -244,7 +240,7 @@ export class Session {
       // 이전 run에서 isModification 복원, 없으면 codebaseAnalysis 존재 여부로 판단
       const lastRun = this.runs.slice(0, -1).reverse().find(r => r.isModification != null);
       const isModification = lastRun?.isModification ?? (this.state.codebaseAnalysis != null);
-      await orchestrator.run(requirement, title, { isModification });
+      await orchestrator.run(requirement, { isModification });
       runEntry.status = "completed";
       runEntry.completedAt = new Date().toISOString();
     } catch (error) {
@@ -254,37 +250,24 @@ export class Session {
     }
   }
 
-  async _askTitle(requirement, interactionMode) {
-    const lastTitle = this.lastRunTitle;
-
-    // 이전 실행이 있는 경우: 기존 프로젝트 계속 vs 새 프로젝트
-    if (lastTitle) {
-      if (interactionMode === "full-auto") {
-        return { title: lastTitle, isModification: true };
-      }
-      const { choice } = await inquirer.prompt([{
-        type: "list",
-        name: "choice",
-        message: `기존 프로젝트 "${lastTitle}"에 대한 수정인가요?`,
-        choices: [
-          { name: `예 — "${lastTitle}" 계속`, value: "continue" },
-          { name: "아니요 — 새 프로젝트 시작", value: "new" },
-        ],
-      }]);
-      if (choice === "continue") return { title: lastTitle, isModification: true };
+  /**
+   * 워크스페이스 정보에서 프로젝트 제목 자동 파생
+   * 우선순위: package.json name → 디렉토리명 → requirement 앞 30자
+   */
+  _deriveTitle(requirement) {
+    if (this.workspace?.isLocal) {
+      try {
+        const pkgPath = path.join(this.workspace.repoPath, "package.json");
+        if (fs.existsSync(pkgPath)) {
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+          if (pkg.name && pkg.name !== "agent-team-cli" && pkg.name !== "agent-team") {
+            return pkg.name;
+          }
+        }
+      } catch { /* 무시 */ }
+      return path.basename(this.workspace.repoPath);
     }
-
-    // 새 프로젝트: 제목 입력
-    if (interactionMode === "full-auto") {
-      return { title: requirement.substring(0, 30), isModification: false };
-    }
-    const { title } = await inquirer.prompt([{
-      type: "input",
-      name: "title",
-      message: "프로젝트 제목:",
-      default: requirement.substring(0, 30),
-    }]);
-    return { title, isModification: false };
+    return requirement.substring(0, 30);
   }
 
   /**

@@ -33,14 +33,12 @@ export class PipelineOrchestrator {
     });
   }
 
-  async run(requirement, projectTitle, { isModification = false } = {}) {
-    // 프로젝트 정보가 없으면 설정 (index.js에서 이미 초기화되었을 수 있음)
+  async run(requirement, { isModification = false } = {}) {
+    // 프로젝트 정보가 없으면 설정 (Session에서 이미 초기화되었을 수 있음)
     if (!this.state.project.requirement) {
       this.state.project.requirement = requirement;
     }
-    if (!this.state.project.title) {
-      this.state.project.title = projectTitle;
-    }
+    const projectTitle = this.state.project.title;
 
     // 재개 시 에이전트 참조 재연결
     this._relinkAgents();
