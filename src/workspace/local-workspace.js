@@ -177,6 +177,33 @@ export class LocalWorkspace {
       });
   }
 
+  /**
+   * 파일 내용 기반 검색 (grep)
+   * @param {string} pattern - 검색 패턴
+   * @param {Object} [opts]
+   * @param {number} [opts.maxResults=10]
+   * @param {number} [opts.contextLines=2]
+   * @returns {Array<{path: string, matches: string[]}>}
+   */
+  grepFiles(pattern, { maxResults = 10, contextLines = 2 } = {}) {
+    try {
+      const matchedFiles = this._git(["grep", "-l", pattern]).split("\n").filter(Boolean);
+
+      const results = [];
+      for (const filePath of matchedFiles.slice(0, maxResults)) {
+        try {
+          const output = this._git(["grep", `-C${contextLines}`, "-n", pattern, "--", filePath]);
+          results.push({ path: filePath, matches: output.split("\n") });
+        } catch {
+          // 개별 파일 grep 실패 무시
+        }
+      }
+      return results;
+    } catch {
+      return [];
+    }
+  }
+
   writeFile(relativePath, content) {
     const fullPath = path.join(this.repoPath, relativePath);
     const dir = path.dirname(fullPath);

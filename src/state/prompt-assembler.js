@@ -44,7 +44,18 @@ export class PromptAssembler {
       }
     }
 
-    // 3. 설계 결정 요약
+    // 3. 코드베이스 분석 (수정 모드에서 Phase 0 결과)
+    if (state.codebaseAnalysis && budget - used > 200) {
+      const maxCodebase = Math.floor((budget - used) * 0.4);
+      const truncated = this._truncate(state.codebaseAnalysis, maxCodebase);
+      if (truncated) {
+        const section = `## 기존 코드베이스 분석\n${truncated}`;
+        sections.push(section);
+        used += section.length;
+      }
+    }
+
+    // 4. 설계 결정 요약
     if (used < budget - 500 && state.designDecisions) {
       const summary = this._truncate(state.designDecisions, budget - used - 100);
       if (summary) {
