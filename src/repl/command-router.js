@@ -2,7 +2,7 @@
 // 슬래시 커맨드 vs 자연어 분기 처리
 
 import chalk from "chalk";
-import inquirer from "inquirer";
+import { search } from "@inquirer/prompts";
 import { statusCommand } from "./commands/status.js";
 import { historyCommand } from "./commands/history.js";
 import { saveCommand } from "./commands/save.js";
@@ -49,14 +49,18 @@ export class CommandRouter {
   }
 
   async handleSlash(input) {
-    // "/" 만 입력 → 커맨드 메뉴 표시
+    // "/" 만 입력 → 검색 가능한 커맨드 메뉴 표시
     if (input === "/") {
-      const { cmd } = await inquirer.prompt([{
-        type: "list",
-        name: "cmd",
-        message: "커맨드 선택:",
-        choices: [...COMMAND_MENU, { name: chalk.gray("취소"), value: null }],
-      }]);
+      const cmd = await search({
+        message: "/",
+        source: (term) => {
+          if (!term) return COMMAND_MENU;
+          const lower = term.toLowerCase();
+          return COMMAND_MENU.filter(c =>
+            c.value.includes(lower) || c.name.toLowerCase().includes(lower)
+          );
+        },
+      });
       if (!cmd) return "continue";
       input = cmd;
     }
