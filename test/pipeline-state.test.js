@@ -120,44 +120,4 @@ describe("PipelineState 직렬화", () => {
     assert.equal(restored.tasks[0].assignedAgentId, "backend_dev");
   });
 
-  it("v0 마이그레이션: SharedContext + Mailbox → PipelineState", () => {
-    const v0Data = {
-      sharedContext: {
-        slots: {
-          "project.requirement": { value: "v0 요구사항" },
-          "project.title": { value: "v0 앱" },
-          "meeting.kickoff.summary": { value: "킥오프 요약" },
-          "design.decisions": { value: "Express 사용" },
-          "planning.tasks": {
-            value: [
-              { id: "task-1", title: "설정" },
-            ],
-          },
-        },
-      },
-      mailbox: {
-        allMessages: [
-          {
-            id: 1,
-            from: "a",
-            to: "b",
-            type: "task",
-            payload: { content: "작업 시작", taskId: "task-1" },
-            timestamp: "2024-01-01T00:00:00Z",
-          },
-        ],
-        nextId: 2,
-      },
-    };
-
-    const state = PipelineState.fromJSON(v0Data);
-    assert.equal(state.project.requirement, "v0 요구사항");
-    assert.equal(state.project.title, "v0 앱");
-    assert.equal(state.kickoffSummary, "킥오프 요약");
-    assert.equal(state.designDecisions, "Express 사용");
-    assert.equal(state.tasks.length, 1);
-    assert.equal(state.messages.length, 1);
-    assert.equal(state.messages[0].content, "작업 시작");
-    assert.equal(state._nextMsgId, 2);
-  });
 });

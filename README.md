@@ -399,7 +399,7 @@ designDecisions         - 설계 결정 사항
 techStack               - 기술 스택
 tasks[]                 - 분해된 태스크 목록 (코드/리뷰/QA 결과 포함)
 completedTasks[]        - 완료된 태스크
-messages[]              - 에이전트 간 전체 메시지 (Mailbox 통합)
+messages[]              - 에이전트 간 전체 메시지
 mobilizedAgents[]       - on_demand 소집된 에이전트 ID
 github.kickoffIssue     - GitHub 킥오프 Issue 번호
 github.designIssue      - GitHub 설계 Issue 번호
