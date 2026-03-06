@@ -33,7 +33,6 @@ program
   .command("run")
   .description("전체 파이프라인 실행 (요구사항 → 미팅 → 개발 → PR)")
   .argument("<requirement>", "프로젝트 요구사항")
-  .option("-t, --title <title>", "프로젝트 제목")
   .option("-c, --config <path>", "설정 파일 경로")
   .option(
     "-m, --mode <mode>",
@@ -88,7 +87,6 @@ program
     const session = new Session(config);
     try {
       await session.runPipeline(requirement, {
-        title: options.title,
         mode: interactionMode,
       });
     } catch (error) {
