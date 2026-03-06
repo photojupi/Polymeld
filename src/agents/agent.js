@@ -10,6 +10,7 @@ export class Agent {
     this.role = personaConfig.role; // e.g., "Tech Lead"
     this.modelKey = personaConfig.model; // e.g., "claude"
     this.imageModelKey = personaConfig.image_model || null; // e.g., "gemini_image"
+    this.onDemand = personaConfig.on_demand || false;
     this.description = personaConfig.description;
     this.expertise = personaConfig.expertise || [];
     this.style = personaConfig.style || "";
@@ -215,7 +216,7 @@ ${contextBundle.designDecisions}
 ## 규칙
 - 각 태스크는 1-4시간 분량
 - 의존성을 명시 (어떤 태스크가 먼저 완료되어야 하는지)
-- 각 태스크에 적합한 역할(backend_dev, frontend_dev, devops, qa) 명시
+- 각 태스크에 적합한 역할(${contextBundle.availableRoles || 'backend_dev, frontend_dev, devops, qa'}) 명시
 - 수용 기준을 구체적으로 작성
 
 ## 응답 형식 (JSON)

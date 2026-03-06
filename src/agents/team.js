@@ -20,8 +20,9 @@ export class Team {
     this.mailbox = mailbox;
     this.contextBuilder = contextBuilder;
     this.agents = {};
+    this._mobilizedOnDemand = new Set();
     this._initAgents();
-    // Mailbox에 에이전트 등록
+    // Mailbox에 에이전트 등록 (on_demand 포함 - 소집 후 메시지 수신 필요)
     this.mailbox.registerAgents(Object.keys(this.agents));
   }
 
@@ -55,13 +56,41 @@ export class Team {
     return Object.values(this.agents).filter(a => a.canGenerateImages);
   }
 
-  getAllAgents() {
-    return Object.values(this.agents);
+  /**
+   * 온디맨드 에이전트 소집
+   * @param {string[]} agentIds - 소집할 에이전트 ID 배열
+   */
+  mobilize(agentIds) {
+    for (const id of agentIds) {
+      const agent = this.agents[id];
+      if (agent && agent.onDemand) {
+        this._mobilizedOnDemand.add(id);
+      }
+    }
+  }
+
+  /**
+   * 현재 활성 에이전트 목록 (상시 + 소집된 온디맨드)
+   */
+  getActiveAgents() {
+    return Object.entries(this.agents)
+      .filter(([id, agent]) => !agent.onDemand || this._mobilizedOnDemand.has(id))
+      .map(([, agent]) => agent);
+  }
+
+  /**
+   * 소집된 온디맨드 에이전트 목록
+   */
+  getMobilizedAgents() {
+    return [...this._mobilizedOnDemand].map(id => this.agents[id]).filter(Boolean);
   }
 
   getDevelopers() {
     return Object.entries(this.agents)
-      .filter(([id]) => !["tech_lead", "qa"].includes(id))
+      .filter(([id, agent]) =>
+        !["tech_lead", "qa"].includes(id) &&
+        (!agent.onDemand || this._mobilizedOnDemand.has(id))
+      )
       .map(([, agent]) => agent);
   }
 
@@ -80,7 +109,7 @@ export class Team {
     const meetingLog = {
       topic,
       timestamp: new Date().toISOString(),
-      participants: this.getAllAgents().map((a) => `${a.name}(${a.role})`),
+      participants: this.getActiveAgents().map((a) => `${a.name}(${a.role})`),
       rounds: [],
     };
 
@@ -182,7 +211,7 @@ export class Team {
     lines.push(`### \uD83E\uDD16 모델 배정 현황\n`);
     lines.push(`| 페르소나 | 역할 | AI 모델 |`);
     lines.push(`|---------|------|---------|`);
-    for (const agent of this.getAllAgents()) {
+    for (const agent of this.getActiveAgents()) {
       lines.push(`| ${agent.name} | ${agent.role} | ${agent.modelKey} |`);
     }
 
@@ -196,12 +225,13 @@ export class Team {
     const suitableRole = task.suitable_role;
     const agent = this.agents[suitableRole];
 
-    if (!agent) {
-      // fallback: 전문성이 가장 가까운 에이전트
-      const allDevs = this.getDevelopers();
-      return allDevs[0];
+    // 에이전트가 존재하고 활성(상시 또는 소집됨)인 경우 배정
+    if (agent && (!agent.onDemand || this._mobilizedOnDemand.has(suitableRole))) {
+      return agent;
     }
 
-    return agent;
+    // fallback: 활성 개발자 중 첫 번째, 없으면 팀장이 직접 처리
+    const allDevs = this.getDevelopers();
+    return allDevs[0] || this.lead;
   }
 }

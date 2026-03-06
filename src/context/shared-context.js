@@ -28,6 +28,7 @@
  *   qa.<taskId>          - QA 결과
  *   qa.<taskId>.verdict  - "pass" or "fail"
  *   image.<taskId>       - 이미지 생성 결과 (paths, text)
+ *   team.mobilizedAgents - 소집된 온디맨드 페르소나 ID 목록
  */
 export class SharedContext {
   constructor() {
