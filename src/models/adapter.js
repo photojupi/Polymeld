@@ -171,23 +171,24 @@ export class ModelAdapter {
 
     switch (cli) {
       case "claude": {
-        // Claude: --thinking-budget-tokens (0-100 → 0-10240 토큰)
-        const tokens = Math.round((budget / 100) * 10240);
-        return ["--thinking-budget-tokens", String(tokens)];
+        // Claude: --effort (low/medium/high)
+        let effort = "medium";
+        if (budget <= 33) effort = "low";
+        else if (budget <= 75) effort = "medium";
+        else effort = "high";
+        return ["--effort", effort];
       }
-      case "gemini": {
-        // Gemini: --thinking-budget (0-100 → 0-24576 토큰)
-        const tokens = Math.round((budget / 100) * 24576);
-        return ["--thinking-budget", String(tokens)];
-      }
+      case "gemini":
+        // Gemini CLI: thinking 제어 플래그 미지원 (모델 자체 설정에 의존)
+        return [];
       case "codex": {
-        // Codex: --reasoning-effort (low/medium/high/xhigh)
+        // Codex: -c model_reasoning_effort (low/medium/high/xhigh)
         let effort = "medium";
         if (budget <= 25) effort = "low";
         else if (budget <= 60) effort = "medium";
         else if (budget <= 85) effort = "high";
         else effort = "xhigh";
-        return ["--reasoning-effort", effort];
+        return ["-c", `model_reasoning_effort="${effort}"`];
       }
       default:
         return [];

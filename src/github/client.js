@@ -116,26 +116,20 @@ export class GitHubClient {
   // ─── Projects (GraphQL) ───────────────────────────────
 
   async findOrCreateProject(projectName) {
-    // 기존 프로젝트 찾기
-    const { user } = await this.octokit.graphql(`
-      query($login: String!) {
-        user(login: $login) {
-          projectsV2(first: 20) {
-            nodes { id title number }
-          }
-        }
-      }
-    `, { login: this.owner }).catch(() => ({ user: null }));
+    // owner 정보 조회 (user 또는 org)
+    const ownerInfo = await this._resolveOwner();
+    if (!ownerInfo) {
+      console.warn("⚠️ GitHub owner를 찾을 수 없습니다. 프로젝트 보드를 건너뜁니다.");
+      return null;
+    }
 
-    if (user) {
-      const existing = user.projectsV2.nodes.find(
-        (p) => p.title === projectName
-      );
-      if (existing) {
-        this.projectNumber = existing.number;
-        this.projectId = existing.id;
-        return existing;
-      }
+    // 기존 프로젝트 찾기
+    const existing = ownerInfo.projects.find((p) => p.title === projectName);
+    if (existing) {
+      this.projectNumber = existing.number;
+      this.projectId = existing.id;
+      await this._linkProjectToRepo(existing.id);
+      return existing;
     }
 
     // 새 프로젝트 생성
@@ -147,16 +141,50 @@ export class GitHubClient {
           }
         }
       `, {
-        ownerId: await this._getOwnerId(),
+        ownerId: ownerInfo.id,
         title: projectName,
       });
       this.projectNumber = createProjectV2.projectV2.number;
       this.projectId = createProjectV2.projectV2.id;
+      await this._linkProjectToRepo(createProjectV2.projectV2.id);
       return createProjectV2.projectV2;
     } catch (e) {
-      console.warn("프로젝트 생성 실패 (권한 부족 가능):", e.message);
+      console.warn(
+        "⚠️ 프로젝트 생성 실패:", e.message,
+        "\n   → 토큰에 'project' scope가 있는지 확인하세요."
+      );
       return null;
     }
+  }
+
+  /**
+   * 프로젝트를 레포에 연결 (레포 Projects 탭에 표시되도록)
+   */
+  async _linkProjectToRepo(projectId) {
+    try {
+      const repoId = await this._getRepoId();
+      await this.octokit.graphql(`
+        mutation($projectId: ID!, $repositoryId: ID!) {
+          linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repositoryId }) {
+            repository { id }
+          }
+        }
+      `, { projectId, repositoryId: repoId });
+    } catch (e) {
+      // 이미 연결된 경우 또는 권한 부족 → 무시
+      if (!e.message?.includes("already linked")) {
+        console.warn("⚠️ 프로젝트-레포 연결 실패:", e.message);
+      }
+    }
+  }
+
+  async _getRepoId() {
+    const { repository } = await this.octokit.graphql(`
+      query($owner: String!, $name: String!) {
+        repository(owner: $owner, name: $name) { id }
+      }
+    `, { owner: this.owner, name: this.repo });
+    return repository.id;
   }
 
   async addIssueToProject(issueNodeId) {
@@ -180,13 +208,50 @@ export class GitHubClient {
     }
   }
 
-  async _getOwnerId() {
-    const { user } = await this.octokit.graphql(`
-      query($login: String!) {
-        user(login: $login) { id }
+  /**
+   * owner가 user인지 organization인지 자동 판별하여 ID + 프로젝트 목록 반환
+   * @returns {Promise<{id: string, type: string, projects: Array}>|null}
+   */
+  async _resolveOwner() {
+    // 1차: user로 시도
+    try {
+      const { user } = await this.octokit.graphql(`
+        query($login: String!) {
+          user(login: $login) {
+            id
+            projectsV2(first: 20) {
+              nodes { id title number }
+            }
+          }
+        }
+      `, { login: this.owner });
+      if (user) {
+        return { id: user.id, type: "user", projects: user.projectsV2.nodes };
       }
-    `, { login: this.owner });
-    return user.id;
+    } catch {
+      // user가 아닐 수 있음 → org로 시도
+    }
+
+    // 2차: organization으로 시도
+    try {
+      const { organization } = await this.octokit.graphql(`
+        query($login: String!) {
+          organization(login: $login) {
+            id
+            projectsV2(first: 20) {
+              nodes { id title number }
+            }
+          }
+        }
+      `, { login: this.owner });
+      if (organization) {
+        return { id: organization.id, type: "organization", projects: organization.projectsV2.nodes };
+      }
+    } catch {
+      // org도 아님
+    }
+
+    return null;
   }
 
   // ─── Branches ─────────────────────────────────────────

@@ -31,6 +31,16 @@ models:
     model: gemini-3.1-flash-image
     # Nano Banana 2 - 이미지 생성/편집 특화 모델
 
+# CLI 실행 설정
+cli:
+  timeout: 600000          # 기본 타임아웃 10분 (밀리초)
+  timeouts:
+    claude: 900000         # Claude 15분 (thinking 100% 대응)
+    gemini: 600000         # Gemini 10분
+    codex: 900000          # Codex 15분 (xhigh 대응)
+  max_turns:
+    claude: 10             # Claude 에이전틱 루프 최대 턴 수
+
 # 페르소나별 모델 배정
 # on_demand가 없거나 false인 페르소나는 상시 투입
 # on_demand: true인 페르소나는 팀장 판단에 따라 소집
@@ -222,8 +232,11 @@ pipeline:
   auto_branch: true
   # 회의 시 최대 라운드 수 (페르소나 간 토론)
   max_discussion_rounds: 3
-  # AI 사고 깊이 (0-100). 100이면 최대 깊이, 0이면 사고 비활성.
-  # 페르소나별 thinking_budget 오버라이드 가능.
+  # AI 사고 깊이 (0-100). 페르소나별 오버라이드 가능.
+  # CLI별 매핑:
+  #   Claude  → --effort (low/medium/high)
+  #   Codex   → -c model_reasoning_effort (low/medium/high/xhigh)
+  #   Gemini  → CLI 플래그 미지원 (settings.json thinkingConfig으로만 제어)
   thinking_budget: 70
 
   # ─── 수정 루프 설정 ───────────────────────────────
