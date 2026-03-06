@@ -60,15 +60,19 @@ npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 3. 환경 변수 설정 (GitHub 연동용)
+# 3. 환경 변수 설정 (GitHub 연동용, 선택 사항)
 export GITHUB_TOKEN=ghp_xxxxx
 export GITHUB_REPO=owner/repo
+# 미설정 시 NoOpGitHub으로 GitHub 없이 파이프라인만 실행
 
 # 4. 설정 확인
 node src/index.js test-models
 
 # 5. 실행!
 node src/index.js run "사용자 인증 기능 구현 (이메일/비밀번호 + OAuth)"
+
+# 6. 테스트
+npm test
 ```
 
 ## 설정
@@ -78,6 +82,8 @@ node src/index.js run "사용자 인증 기능 구현 (이메일/비밀번호 + 
 GITHUB_TOKEN=ghp_xxxxx            # GitHub 연동용
 GITHUB_REPO=owner/repo            # 대상 리포지터리
 ```
+
+> **GitHub 미설정 시**: `GITHUB_TOKEN`/`GITHUB_REPO`가 없으면 `NoOpGitHub`이 자동 적용되어, GitHub 연동 없이 파이프라인만 실행됩니다. Issue/PR 생성이 건너뛰어질 뿐, 회의/개발/리뷰/QA는 정상 동작합니다.
 
 > 참고: API 키는 각 CLI 도구가 자체적으로 관리합니다 (각 CLI의 인증 방식을 따르세요).
 
@@ -357,7 +363,11 @@ src/
 │   ├── session.js            # 세션 (PipelineState + 실행 이력)
 │   └── session-store.js      # 세션 디스크 저장/복원 (v0 자동 마이그레이션)
 └── github/
-    └── client.js             # GitHub API (Issues, PRs, Projects)
+    └── client.js             # GitHub API (Issues, PRs, Projects) + NoOpGitHub
+test/
+├── response-parser.test.js   # ResponseParser 단위 테스트
+├── pipeline-state.test.js    # PipelineState 단위 테스트
+└── prompt-assembler.test.js  # PromptAssembler 단위 테스트
 ```
 
 ## GitHub에 기록되는 항목

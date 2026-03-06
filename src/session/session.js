@@ -8,7 +8,7 @@ import { PipelineState } from "../state/pipeline-state.js";
 import { PromptAssembler } from "../state/prompt-assembler.js";
 import { ModelAdapter } from "../models/adapter.js";
 import { Team } from "../agents/team.js";
-import { GitHubClient } from "../github/client.js";
+import { GitHubClient, NoOpGitHub } from "../github/client.js";
 import { PipelineOrchestrator } from "../pipeline/orchestrator.js";
 import { SessionStore } from "./session-store.js";
 
@@ -65,9 +65,7 @@ export class Session {
     // GitHub 초기화
     if (this.github) {
       await this.github.ensureLabels(this.config.github?.labels || {});
-      await this.github.findOrCreateProject(
-        this.config.github?.project_name || "Agent Team Board"
-      );
+      await this.github.findOrCreateProject(`${this.github.repo}_autollm`);
     }
 
     const orchestrator = new PipelineOrchestrator(
@@ -153,21 +151,4 @@ export class Session {
     if (this.runs.length === 0) return null;
     return this.runs[this.runs.length - 1].title;
   }
-}
-
-/**
- * GitHub 미설정 시 사용하는 No-op 클라이언트
- * PipelineOrchestrator가 github 메서드를 호출해도 에러 나지 않음
- */
-class NoOpGitHub {
-  async ensureLabels() {}
-  async findOrCreateProject() {}
-  async createIssue() { return { number: 0, node_id: "" }; }
-  async addComment() {}
-  async updateLabels() {}
-  async closeIssue() {}
-  async addIssueToProject() {}
-  async createBranch() {}
-  async commitFile() {}
-  async createPR() { return { number: 0 }; }
 }

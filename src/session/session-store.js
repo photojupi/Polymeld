@@ -47,7 +47,11 @@ export class SessionStore {
     const filePath = path.join(this.dir, `${id}.json`);
     if (!fs.existsSync(filePath)) return null;
     const raw = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(raw);
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
 
   /**
