@@ -16,6 +16,7 @@ import { PipelineOrchestrator } from "./pipeline/orchestrator.js";
 import { PipelineState } from "./state/pipeline-state.js";
 import { PromptAssembler } from "./state/prompt-assembler.js";
 import { ReplShell } from "./repl/repl-shell.js";
+import { Session } from "./session/session.js";
 
 const program = new Command();
 
@@ -83,50 +84,13 @@ program
       );
     }
 
-    const title =
-      options.title ||
-      (interactionMode === "full-auto"
-        ? requirement.substring(0, 30)
-        : await inquirer
-          .prompt([
-            {
-              type: "input",
-              name: "title",
-              message: "프로젝트 제목:",
-              default: requirement.substring(0, 30),
-            },
-          ])
-          .then((a) => a.title));
-
-    const adapter = new ModelAdapter(config);
-    const state = new PipelineState();
-    state.project.requirement = requirement;
-    state.project.title = title;
-    const assembler = new PromptAssembler({
-      maxChars: config.pipeline?.max_context_chars || 6000,
-    });
-
-    const deps = { state, assembler };
-    const team = new Team(config, adapter, deps);
-    const github = (process.env.GITHUB_TOKEN && process.env.GITHUB_REPO)
-      ? new GitHubClient(process.env.GITHUB_TOKEN, process.env.GITHUB_REPO)
-      : new NoOpGitHub();
-
-    // GitHub 초기화
-    if (process.env.GITHUB_TOKEN && process.env.GITHUB_REPO) {
-      await github.ensureLabels(config.github?.labels || {});
-      await github.findOrCreateProject(`${github.repo}_autollm`);
-    }
-
-    const orchestrator = new PipelineOrchestrator(
-      team,
-      github,
-      config,
-      interactionMode,
-      deps
-    );
+    // Session 경유로 실행 (workspace 자동 초기화 포함)
+    const session = new Session(config);
     try {
-      await orchestrator.run(requirement, title);
+      await session.runPipeline(requirement, {
+        title: options.title,
+        mode: interactionMode,
+      });
     } catch (error) {
       console.error(chalk.red(`\n${error.message}`));
       process.exit(1);

@@ -121,22 +121,38 @@ async function checkGitHub() {
   if (!token) return { ok: false, reason: "GITHUB_TOKEN 미설정" };
   if (!repo) return { ok: false, reason: "GITHUB_REPO 미설정" };
 
+  const headers = { Authorization: `Bearer ${token}`, "User-Agent": "agent-team-cli" };
+
   try {
-    const res = await fetch("https://api.github.com/user", {
-      headers: { Authorization: `Bearer ${token}`, "User-Agent": "agent-team-cli" },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return { ok: true, user: data.login, repo };
+    // 1) 토큰 인증 확인
+    const userRes = await fetch("https://api.github.com/user", { headers });
+    if (!userRes.ok) return { ok: false, reason: "토큰 인증 실패" };
+    const userData = await userRes.json();
+
+    // 2) 리포지토리 쓰기 권한 확인
+    const repoRes = await fetch(`https://api.github.com/repos/${repo}`, { headers });
+    if (!repoRes.ok) return { ok: false, reason: `리포지토리 접근 불가 (${repo})` };
+
+    const repoData = await repoRes.json();
+    if (!repoData.permissions?.push) {
+      return { ok: false, reason: `리포지토리 쓰기 권한 없음 (${repo})` };
     }
-    return { ok: false, reason: "토큰 인증 실패" };
+
+    return { ok: true, user: userData.login, repo };
   } catch {
     return { ok: false, reason: "네트워크 연결 실패" };
   }
 }
 
 /**
- * CLI 설치 + 인증 + GitHub 연동 상태를 확인하고 출력
+ * 한 줄을 지우고 다시 쓰기 (터미널 인라인 업데이트)
+ */
+function rewriteLine(text) {
+  process.stdout.write(`\r\x1b[K${text}`);
+}
+
+/**
+ * CLI 설치 + 인증 + GitHub 연동 상태를 실시간으로 확인·출력
  */
 export async function validateConnections(config) {
   const installCommands = {
@@ -146,51 +162,61 @@ export async function validateConnections(config) {
   };
 
   // 사용 중인 CLI 수집
-  const allClis = new Set();
-  for (const modelConfig of Object.values(config.models)) {
-    allClis.add(modelConfig.cli);
-  }
+  const allClis = [...new Set(
+    Object.values(config.models).map((m) => m.cli)
+  )];
 
-  // 설치 확인(sync) + 인증 프로브(async) 병렬 시작
-  const results = {};
-  const promises = [];
-
-  for (const cli of allClis) {
-    const installed = isCliInstalled(cli);
-    results[cli] = { installed, auth: null };
-    if (installed) {
-      promises.push(probeCliAuth(cli).then((auth) => { results[cli].auth = auth; }));
-    }
-  }
-
-  let github = null;
-  promises.push(checkGitHub().then((gh) => { github = gh; }));
-
-  await Promise.allSettled(promises);
-
-  // 결과 출력
+  // 각 CLI: 설치 확인 → 인증 확인 → 결과 (순차 출력, 인증은 병렬)
   const pad = 8;
+  const authPromises = [];
+  const missingClis = [];
+
   for (const cli of allClis) {
-    const r = results[cli];
     const label = cli.padEnd(pad);
-    if (!r.installed) {
+    const installed = isCliInstalled(cli);
+
+    if (!installed) {
       console.log(chalk.red(`  ❌ ${label} 미설치 → ${installCommands[cli] || ""}`));
-    } else if (r.auth?.ok) {
-      console.log(chalk.green(`  ✅ ${label} 연결됨`));
-    } else {
-      console.log(chalk.yellow(`  ⚠️  ${label} 설치됨 · ${r.auth?.reason || "인증 실패"}`));
+      missingClis.push(cli);
+      continue;
     }
+
+    // "확인 중" 표시 후, 인증 프로브 시작
+    rewriteLine(chalk.gray(`  ⏳ ${label} 인증 확인 중...`));
+    authPromises.push(
+      probeCliAuth(cli).then((auth) => {
+        // 프로브 완료 시점에 즉시 결과 출력 (줄바꿈)
+        if (auth.ok) {
+          rewriteLine(chalk.green(`  ✅ ${label} 연결됨\n`));
+        } else {
+          rewriteLine(chalk.yellow(`  ⚠️  ${label} 설치됨 · ${auth.reason || "인증 실패"}\n`));
+        }
+        return auth;
+      })
+    );
+    // 다음 CLI 확인 중 표시 전에 현재 줄 줄바꿈 대기
+    // (병렬 프로브지만, "확인 중" 텍스트는 순서대로 보여주기 위해 await)
+    await authPromises[authPromises.length - 1];
   }
 
-  if (github?.ok) {
-    console.log(chalk.green(`  ✅ ${"GitHub".padEnd(pad)} 연동됨 (${github.repo})`));
+  // GitHub 확인 (CLI 완료 후 시작)
+  const ghLabel = "GitHub".padEnd(pad);
+  rewriteLine(chalk.gray(`  ⏳ ${ghLabel} 연동 확인 중...`));
+  const github = await checkGitHub();
+  if (github.ok) {
+    rewriteLine(chalk.green(`  ✅ ${ghLabel} 연동됨 (${github.repo})\n`));
   } else {
-    console.log(chalk.yellow(`  ⚠️  ${"GitHub".padEnd(pad)} ${github?.reason || "미연동"}`));
+    rewriteLine(chalk.red(`  ❌ ${ghLabel} ${github.reason || "미연동"}\n`));
+    console.log();
+    console.error(chalk.red("GitHub 연동이 필요합니다. 아래 사항을 확인해주세요:"));
+    console.error(chalk.gray("  1. .env 파일에 GITHUB_TOKEN, GITHUB_REPO가 올바르게 설정되어 있는지"));
+    console.error(chalk.gray("  2. 토큰에 Issues, Contents, Pull requests 쓰기 권한이 있는지"));
+    console.error(chalk.gray("  3. 토큰이 해당 리포지토리에 접근 가능한지\n"));
+    process.exit(1);
   }
   console.log();
 
   // 필수 CLI 미설치 시 종료
-  const missingClis = [...allClis].filter((cli) => !results[cli].installed);
   if (missingClis.length > 0) {
     const blocked = [];
     for (const [, persona] of Object.entries(config.personas)) {

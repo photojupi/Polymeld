@@ -47,8 +47,11 @@ export class PromptAssembler {
     // 3. 설계 결정 요약
     if (used < budget - 500 && state.designDecisions) {
       const summary = this._truncate(state.designDecisions, budget - used - 100);
-      const section = `## 설계 결정 참고\n${summary}`;
-      sections.push(section);
+      if (summary) {
+        const section = `## 설계 결정 참고\n${summary}`;
+        sections.push(section);
+        used += section.length;
+      }
     }
 
     return {
@@ -63,10 +66,11 @@ export class PromptAssembler {
    * @param {Object} opts
    * @param {string} opts.agentId
    * @param {string} opts.taskId
+   * @param {string} [opts.codebaseContext] - 기존 코드베이스 맥락 (워크스페이스에서 조립)
    * @param {number} [opts.maxChars]
    * @returns {{ systemContext: string, taskDescription: string, acceptanceCriteria: string }}
    */
-  forCoding(state, { agentId, taskId, maxChars } = {}) {
+  forCoding(state, { agentId, taskId, codebaseContext, maxChars } = {}) {
     const budget = maxChars || this.maxChars;
     const sections = [];
     let used = 0;
@@ -81,7 +85,20 @@ export class PromptAssembler {
     const taskDesc = task?.description || "";
     const criteria = task?.acceptance_criteria?.join("\n") || "";
 
-    // 3. 기술 스택
+    // 3. 기존 코드베이스 맥락 (높은 우선순위)
+    if (codebaseContext && budget - used > 100) {
+      const maxCodebase = Math.min(codebaseContext.length, Math.floor((budget - used) * 0.4));
+      if (maxCodebase > 50) {
+        const truncated = this._truncate(codebaseContext, maxCodebase);
+        if (truncated) {
+          const section = `## 기존 코드베이스 참고\n${truncated}`;
+          sections.push(section);
+          used += section.length;
+        }
+      }
+    }
+
+    // 4. 기술 스택
     if (state.techStack) {
       const valueStr = typeof state.techStack === "string"
         ? state.techStack : JSON.stringify(state.techStack, null, 2);
@@ -92,15 +109,18 @@ export class PromptAssembler {
       }
     }
 
-    // 4. 설계 결정
+    // 5. 설계 결정 (코드베이스 맥락이 있으면 예산 축소)
     if (state.designDecisions) {
-      const summary = this._truncate(state.designDecisions, Math.min(2000, budget - used - 500));
-      const section = `## 설계 결정사항\n${summary}`;
-      sections.push(section);
-      used += section.length;
+      const designBudget = codebaseContext ? 1000 : 2000;
+      const summary = this._truncate(state.designDecisions, Math.min(designBudget, budget - used - 500));
+      if (summary) {
+        const section = `## 설계 결정사항\n${summary}`;
+        sections.push(section);
+        used += section.length;
+      }
     }
 
-    // 5. 수정 지시 메시지
+    // 6. 수정 지시 메시지
     const fixMessages = state.getMessagesFor(agentId, { type: "fix_guidance", taskId });
     if (fixMessages.length > 0) {
       const latest = fixMessages[fixMessages.length - 1];
@@ -111,7 +131,7 @@ export class PromptAssembler {
       }
     }
 
-    // 6. 이전 리뷰/QA 결과
+    // 7. 이전 리뷰/QA 결과
     if (task?.review) {
       const section = `## 이전 리뷰 결과\n${task.review}`;
       if (used + section.length < budget) {
@@ -140,10 +160,11 @@ export class PromptAssembler {
    * @param {import('./pipeline-state.js').PipelineState} state
    * @param {Object} opts
    * @param {string} opts.taskId
+   * @param {string} [opts.codebaseContext] - 기존 코드베이스 맥락
    * @param {number} [opts.maxChars]
    * @returns {{ systemContext: string, code: string, criteria: string }}
    */
-  forReview(state, { taskId, maxChars } = {}) {
+  forReview(state, { taskId, codebaseContext, maxChars } = {}) {
     const budget = maxChars || this.maxChars;
     const sections = [];
     let used = 0;
@@ -159,12 +180,27 @@ export class PromptAssembler {
       used += section.length;
     }
 
+    // 기존 코드베이스 맥락
+    if (codebaseContext && budget - used > 100) {
+      const maxCodebase = Math.min(codebaseContext.length, Math.floor((budget - used) * 0.3));
+      if (maxCodebase > 50) {
+        const truncated = this._truncate(codebaseContext, maxCodebase);
+        if (truncated) {
+          const section = `## 기존 코드베이스 참고\n${truncated}`;
+          sections.push(section);
+          used += section.length;
+        }
+      }
+    }
+
     // 설계 결정 요약
     if (state.designDecisions) {
       const summary = this._truncate(state.designDecisions, budget - used - 200);
-      const section = `## 설계 결정 참고\n${summary}`;
-      sections.push(section);
-      used += section.length;
+      if (summary) {
+        const section = `## 설계 결정 참고\n${summary}`;
+        sections.push(section);
+        used += section.length;
+      }
     }
 
     // 이전 리뷰 이력 (재리뷰 시)
@@ -172,6 +208,7 @@ export class PromptAssembler {
       const section = `## 이전 리뷰\n${task.review}`;
       if (used + section.length < budget) {
         sections.push(section);
+        used += section.length;
       }
     }
 
@@ -267,8 +304,11 @@ export class PromptAssembler {
     // 3. 설계 결정 (축약)
     if (state.designDecisions) {
       const summary = this._truncate(state.designDecisions, Math.min(1000, budget - used - 200));
-      const section = `## 설계 참고\n${summary}`;
-      sections.push(section);
+      if (summary) {
+        const section = `## 설계 참고\n${summary}`;
+        sections.push(section);
+        used += section.length;
+      }
     }
 
     return {

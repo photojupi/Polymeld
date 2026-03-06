@@ -7,6 +7,12 @@
 #   gemini → npm install -g @google/gemini-cli
 #   codex  → npm install -g @openai/codex
 
+# 프로젝트 설정 (선택사항)
+# 로컬 Git 레포 경로를 지정하면 에이전트가 기존 코드를 참고하여 개발합니다.
+# 미설정 시 현재 디렉토리의 .git을 자동 감지합니다.
+# project:
+#   local_path: ~/projects/my-app
+
 models:
   claude:
     cli: claude

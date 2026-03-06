@@ -220,8 +220,8 @@ export class ModelAdapter {
 
   /**
    * Codex CLI: codex exec + stdin 파이핑
-   * -q (quiet): TUI 비활성화
-   * --ask-for-approval never: 비대화형에서 승인 프롬프트 방지
+   * exec 자체가 비대화형 모드이므로 별도 quiet 플래그 불필요
+   * --full-auto: 승인 프롬프트 없이 샌드박스 내 자동 실행
    * --skip-git-repo-check: 임의 디렉토리에서 실행 가능
    * --sandbox read-only: 파일 수정 방지
    */
@@ -234,8 +234,7 @@ export class ModelAdapter {
       "exec",
       "--sandbox", "read-only",
       "--skip-git-repo-check",
-      "-q",
-      "--ask-for-approval", "never",
+      "--full-auto",
     ];
 
     const raw = await this._spawnCli("codex", args, prompt, {

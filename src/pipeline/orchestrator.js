@@ -17,13 +17,15 @@ export class PipelineOrchestrator {
    * @param {Object} deps - 의존성
    * @param {import('../state/pipeline-state.js').PipelineState} deps.state
    * @param {import('../state/prompt-assembler.js').PromptAssembler} deps.assembler
+   * @param {import('../workspace/local-workspace.js').LocalWorkspace|import('../workspace/noop-workspace.js').NoOpWorkspace} [deps.workspace]
    */
-  constructor(team, github, config, interactionMode = "semi-auto", { state, assembler }) {
+  constructor(team, github, config, interactionMode = "semi-auto", { state, assembler, workspace }) {
     this.team = team;
     this.github = github;
     this.config = config;
     this.state = state;
     this.assembler = assembler;
+    this.workspace = workspace;
     this.interaction = new InteractionManager(interactionMode, {
       timeout: config.pipeline?.auto_timeout || 0,
       defaultYes: true,
@@ -409,6 +411,11 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
   // ─── Phase 5: 개발 ───────────────────────────────────
 
   async phaseDevelopment() {
+    // 워크스페이스 트리 캐싱 (Phase 진입 시 1회)
+    const treeCache = this.workspace?.isLocal ? this.workspace.getTree() : null;
+    // 원본 브랜치 기록 (태스크별 feature 브랜치의 base)
+    const baseBranch = this.workspace?.isLocal ? this.workspace.getCurrentBranch() : null;
+
     for (const task of this.state.tasks) {
       const agent = task.assignedAgent;
       if (!agent) continue;
@@ -432,8 +439,15 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       const branchName = `feature/${task.issueNumber}-${task.title
         .replace(/[^a-zA-Z0-9가-힣]/g, "-")
         .substring(0, 30)}`;
+      task.branchName = branchName;
 
-      if (this.config.pipeline?.auto_branch) {
+      if (this.workspace?.isLocal) {
+        try {
+          this.workspace.gitCheckoutNewBranch(branchName, baseBranch);
+        } catch (e) {
+          console.log(chalk.yellow(`  \u26A0\uFE0F 로컬 브랜치 생성 건너뜀: ${e.message}`));
+        }
+      } else if (this.config.pipeline?.auto_branch) {
         try {
           await this.github.createBranch(branchName);
         } catch (e) {
@@ -441,9 +455,27 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         }
       }
 
+      // 코드베이스 맥락 조립 (워크스페이스 연동 시)
+      let codebaseContext = null;
+      if (this.workspace?.isLocal) {
+        const relevantFiles = this.workspace.findRelevantFiles(
+          [task.title, task.category].filter(Boolean),
+        );
+        if (treeCache || relevantFiles.length > 0) {
+          const parts = [];
+          if (treeCache) parts.push(`### 디렉토리 구조\n\`\`\`\n${treeCache}\n\`\`\``);
+          if (relevantFiles.length > 0) {
+            parts.push("### 관련 파일\n" + relevantFiles.map(
+              (f) => `=== ${f.path} ===\n${f.content}`
+            ).join("\n\n"));
+          }
+          codebaseContext = parts.join("\n\n");
+        }
+      }
+
       // PromptAssembler로 코딩 맥락 조립
       const spinner = ora(`  ${agent.name} 코드 작성 중...`).start();
-      const contextBundle = this.assembler.forCoding(this.state, { agentId: agent.id, taskId: task.id });
+      const contextBundle = this.assembler.forCoding(this.state, { agentId: agent.id, taskId: task.id, codebaseContext });
       const codeModelOverride = this.modelSelector.selectModel({
         operation: "writeCode",
         agentDefault: agent.modelKey,
@@ -454,26 +486,41 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       // 코드를 태스크에 저장
       task.code = result.code;
 
+      // 파일 경로 생성 및 저장
+      const filePath = `src/${task.category || "feature"}/${task.title
+        .replace(/[^a-zA-Z0-9]/g, "_")
+        .toLowerCase()}.js`;
+      task.filePath = filePath;
 
-      // 코드를 커밋 (가능한 경우)
-      try {
-        const filePath = `src/${task.category || "feature"}/${task.title
-          .replace(/[^a-zA-Z0-9]/g, "_")
-          .toLowerCase()}.js`;
+      // 코드블록에서 실제 코드 추출
+      const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
+      const cleanCode = codeMatch ? codeMatch[1] : result.code;
 
-        // 코드블록에서 실제 코드 추출
-        const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
-        const cleanCode = codeMatch ? codeMatch[1] : result.code;
-
-        await this.github.commitFile(
-          branchName,
-          filePath,
-          cleanCode,
-          `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
-        );
-        console.log(chalk.gray(`  \uD83D\uDCC1 커밋: ${filePath}`));
-      } catch (e) {
-        console.log(chalk.yellow(`  \u26A0\uFE0F 커밋 건너뜀: ${e.message}`));
+      // 코드 저장: 로컬 워크스페이스 우선, 없으면 GitHub API
+      if (this.workspace?.isLocal) {
+        try {
+          this.workspace.writeFile(filePath, cleanCode);
+          this.workspace.invalidateCache();
+          this.workspace.gitAdd([filePath]);
+          this.workspace.gitCommit(
+            `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
+          );
+          console.log(chalk.gray(`  \uD83D\uDCC1 로컬 커밋: ${filePath}`));
+        } catch (e) {
+          console.log(chalk.yellow(`  \u26A0\uFE0F 로컬 커밋 실패: ${e.message}`));
+        }
+      } else {
+        try {
+          await this.github.commitFile(
+            branchName,
+            filePath,
+            cleanCode,
+            `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
+          );
+          console.log(chalk.gray(`  \uD83D\uDCC1 커밋: ${filePath}`));
+        } catch (e) {
+          console.log(chalk.yellow(`  \u26A0\uFE0F 커밋 건너뜀: ${e.message}`));
+        }
       }
 
       this.state.addMessage({
@@ -656,6 +703,8 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         if (fixResult) {
           task.code = fixResult.code;
 
+          // 수정된 코드를 워크스페이스에 재커밋
+          this._recommitCode(task, fixResult.code, `fix: review feedback for ${task.title} (#${task.issueNumber})`);
 
           await this.github.addComment(
             task.issueNumber,
@@ -830,6 +879,8 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         if (fixResult) {
           task.code = fixResult.code;
 
+          // 수정된 코드를 워크스페이스에 재커밋
+          this._recommitCode(task, fixResult.code, `fix: QA feedback for ${task.title} (#${task.issueNumber})`);
 
           await this.github.addComment(
             task.issueNumber,
@@ -877,7 +928,18 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     }
 
     for (const [category, tasks] of Object.entries(groups)) {
-      const branchName = `feature/${tasks[0].issueNumber}-${category}`;
+      // 태스크에 저장된 branchName 사용, 없으면 기존 방식 폴백
+      const branchName = tasks[0].branchName || `feature/${tasks[0].issueNumber}-${category}`;
+
+      // 로컬 워크스페이스: PR 생성 전 push
+      if (this.workspace?.isLocal) {
+        try {
+          this.workspace.gitPush(branchName);
+          console.log(chalk.gray(`  📤 push: ${branchName}`));
+        } catch (e) {
+          console.log(chalk.yellow(`  ⚠️ push 건너뜀: ${e.message}`));
+        }
+      }
 
       const closesIssues = tasks
         .map((t) => `Closes #${t.issueNumber}`)
@@ -943,6 +1005,25 @@ ${this.team
           chalk.yellow(`  \u26A0\uFE0F PR 생성 건너뜀 (${category}): ${e.message}`)
         );
       }
+    }
+  }
+
+  // ─── 헬퍼 ─────────────────────────────────────────────
+
+  /**
+   * 수정된 코드를 워크스페이스에 재기록 + 재커밋
+   * Phase 6(리뷰)/Phase 7(QA) 수정 루프에서 공통 사용
+   */
+  _recommitCode(task, rawCode, commitMessage) {
+    if (!this.workspace?.isLocal || !task.filePath) return;
+    try {
+      const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);
+      const cleanCode = codeMatch ? codeMatch[1] : rawCode;
+      this.workspace.writeFile(task.filePath, cleanCode);
+      this.workspace.gitAdd([task.filePath]);
+      this.workspace.gitCommit(commitMessage);
+    } catch (e) {
+      console.log(chalk.yellow(`  ⚠️ 재커밋 실패: ${e.message}`));
     }
   }
 }

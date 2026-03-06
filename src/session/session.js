@@ -2,6 +2,8 @@
 // REPL 세션 관리 - PipelineState + PromptAssembler + 실행 이력을 묶어서 관리
 
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import chalk from "chalk";
 import inquirer from "inquirer";
 import { PipelineState } from "../state/pipeline-state.js";
@@ -11,6 +13,8 @@ import { Team } from "../agents/team.js";
 import { GitHubClient, NoOpGitHub } from "../github/client.js";
 import { PipelineOrchestrator } from "../pipeline/orchestrator.js";
 import { SessionStore } from "./session-store.js";
+import { LocalWorkspace } from "../workspace/local-workspace.js";
+import { NoOpWorkspace } from "../workspace/noop-workspace.js";
 
 export class Session {
   constructor(config) {
@@ -23,11 +27,13 @@ export class Session {
     this.adapter = new ModelAdapter(config);
     this.team = null;
     this.github = null;
+    this.workspace = null;
     this.runs = [];
     this.createdAt = new Date().toISOString();
     this.store = new SessionStore();
 
     this._initGitHub();
+    this._initWorkspace();
   }
 
   _initGitHub() {
@@ -37,6 +43,47 @@ export class Session {
         process.env.GITHUB_REPO
       );
     }
+  }
+
+  _initWorkspace() {
+    // 1순위: config에 명시된 경로
+    const configPath = this.config.project?.local_path;
+    if (configPath) {
+      try {
+        const resolved = configPath.startsWith("~")
+          ? configPath.replace("~", process.env.HOME || "")
+          : configPath;
+        this.workspace = new LocalWorkspace(resolved);
+        console.log(chalk.green(`  📂 워크스페이스: ${this.workspace.repoPath}`));
+        return;
+      } catch (e) {
+        console.log(chalk.yellow(`  ⚠️ 설정된 워크스페이스 경로 오류: ${e.message}`));
+      }
+    }
+
+    // 2순위: cwd 자동감지 (.git 존재 + 자기 자신이 아닌 경우)
+    const cwd = process.cwd();
+    if (fs.existsSync(path.join(cwd, ".git"))) {
+      // agent-team 자체 레포에서 실행하는 경우 자동감지 건너뜀
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
+        if (pkg.name === "agent-team-cli" || pkg.name === "agent-team") {
+          this.workspace = new NoOpWorkspace();
+          return;
+        }
+      } catch {
+        // package.json 없거나 파싱 실패 → 대상 프로젝트로 간주
+      }
+      try {
+        this.workspace = new LocalWorkspace(cwd);
+        console.log(chalk.green(`  📂 워크스페이스 (자동감지): ${cwd}`));
+        return;
+      } catch {
+        // 감지 실패 시 무시
+      }
+    }
+
+    this.workspace = new NoOpWorkspace();
   }
 
   _ensureTeam() {
@@ -73,7 +120,7 @@ export class Session {
       this.github || new NoOpGitHub(),
       this.config,
       interactionMode,
-      { state: this.state, assembler: this.assembler }
+      { state: this.state, assembler: this.assembler, workspace: this.workspace }
     );
 
     const runEntry = {
