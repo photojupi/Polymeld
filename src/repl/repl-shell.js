@@ -91,9 +91,15 @@ export class ReplShell {
       const input = await this._prompt();
       if (input === null) break; // EOF / readline closed
 
-      // readline을 pause하여 inquirer와의 충돌 방지
-      // (파이프라인 실행 중 InteractionManager가 inquirer를 사용함)
+      // readline을 pause하고, PasteDetectStream pipe를 끊어서
+      // inquirer 사용 시 stdin 데이터가 readline 버퍼에 쌓이지 않도록 함
       this.rl.pause();
+      if (this.pasteStream) {
+        process.stdin.unpipe(this.pasteStream);
+        // unpipe()는 남은 pipe 대상이 없으면 stdin.pause()를 호출함.
+        // SlashMenu 등이 stdin을 직접 읽을 수 있도록 resume 필요.
+        process.stdin.resume();
+      }
       try {
         const result = await this.router.route(input);
         if (result === "exit") {
@@ -103,6 +109,13 @@ export class ReplShell {
         console.log(chalk.red(`  ${t("repl.error", { message: error.message })}`));
       } finally {
         if (this._running) {
+          if (this.pasteStream) {
+            process.stdin.pipe(this.pasteStream);
+          }
+          // inquirer 등 외부 라이브러리가 raw mode를 끈 경우 복원
+          if (process.stdin.isTTY) {
+            process.stdin.setRawMode(true);
+          }
           this.rl.resume();
         }
       }
@@ -123,9 +136,10 @@ export class ReplShell {
     const keypressSource = this.pasteStream || process.stdin;
 
     return new Promise((resolve) => {
-      let timer = null;
       let pastedContent = null;
+      let timer = null;
 
+      // "/" 단독 입력 감지 → 자동 제출하여 명령 메뉴 표시
       const onKeypress = () => {
         if (this.rl.line === "/") {
           clearTimeout(timer);
@@ -134,7 +148,7 @@ export class ReplShell {
               keypressSource.removeListener("keypress", onKeypress);
               this.rl.write("\n");
             }
-          }, 80);
+          }, 300);
         }
       };
       keypressSource.on("keypress", onKeypress);

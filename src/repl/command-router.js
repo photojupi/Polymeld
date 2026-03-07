@@ -2,7 +2,7 @@
 // 슬래시 커맨드 vs 자연어 분기 처리
 
 import chalk from "chalk";
-import { search } from "@inquirer/prompts";
+import { SlashMenu } from "./slash-menu.js";
 import { statusCommand } from "./commands/status.js";
 import { historyCommand } from "./commands/history.js";
 import { saveCommand } from "./commands/save.js";
@@ -48,17 +48,11 @@ export class CommandRouter {
 
   async handleSlash(input) {
     if (input === "/") {
-      const menu = getCommandMenu();
-      const cmd = await search({
-        message: "/",
-        source: (term) => {
-          if (!term) return menu;
-          const lower = term.toLowerCase();
-          return menu.filter(c =>
-            c.value.includes(lower) || c.name.toLowerCase().includes(lower)
-          );
-        },
-      });
+      // readline이 "/"를 제출하면서 남긴 빈 줄을 지우고
+      // 메뉴가 같은 위치에 표시되도록 커서를 한 줄 위로 이동
+      process.stdout.write("\x1b[A\x1b[2K\r");
+
+      const cmd = await new SlashMenu(getCommandMenu()).show();
       if (!cmd) return "continue";
       input = cmd;
     }
