@@ -700,27 +700,15 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         );
 
         // 5) 개발자가 수정
-        const devSpinner = ora(
-          `  ${t("pipeline.fixSpinner", { agent: task.assignedAgent?.name, model: task.assignedAgent?.modelKey })}`
-        ).start();
-
-        const fixBundle = this.assembler.forFix(this.state, { agentId: task.assignedAgentId, taskId: task.id, feedbackSource: "review" });
-        const fixResult = await task.assignedAgent?.writeCode(fixBundle);
-
-        if (fixResult) {
-          task.code = fixResult.code;
-
-          // 수정된 코드를 워크스페이스에 재커밋
-          await this._recommitCode(task, fixResult.code, `fix: review feedback for ${task.title} (#${task.issueNumber})`);
-
-          await this.github.addComment(
-            task.issueNumber,
-            t("pipeline.fixReviewComment", { agent: task.assignedAgent?.name, model: task.assignedAgent?.modelKey, attempt })
-          );
-        }
-        devSpinner.succeed(
-          `  ${t("pipeline.fixComplete", { agent: task.assignedAgent?.name })}`
-        );
+        await this._applyDevFix(task, {
+          feedbackSource: "review",
+          attempt,
+          labels: {
+            spinnerStart: "pipeline.fixSpinner",
+            commentKey: "pipeline.fixReviewComment",
+            spinnerDone: "pipeline.fixComplete",
+          },
+        });
       }
 
       task.reviewApproved = approved;
@@ -874,27 +862,15 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         );
 
         // 5) 개발자가 수정
-        const fixSpinner = ora(
-          `  ${t("pipeline.qaFixSpinner", { agent: task.assignedAgent?.name, model: task.assignedAgent?.modelKey })}`
-        ).start();
-
-        const fixBundle = this.assembler.forFix(this.state, { agentId: task.assignedAgentId, taskId: task.id, feedbackSource: "qa" });
-        const fixResult = await task.assignedAgent?.writeCode(fixBundle);
-
-        if (fixResult) {
-          task.code = fixResult.code;
-
-          // 수정된 코드를 워크스페이스에 재커밋
-          await this._recommitCode(task, fixResult.code, `fix: QA feedback for ${task.title} (#${task.issueNumber})`);
-
-          await this.github.addComment(
-            task.issueNumber,
-            t("pipeline.qaFixComment", { agent: task.assignedAgent?.name, model: task.assignedAgent?.modelKey, attempt })
-          );
-        }
-        fixSpinner.succeed(
-          `  ${t("pipeline.qaFixComplete", { agent: task.assignedAgent?.name })}`
-        );
+        await this._applyDevFix(task, {
+          feedbackSource: "qa",
+          attempt,
+          labels: {
+            spinnerStart: "pipeline.qaFixSpinner",
+            commentKey: "pipeline.qaFixComment",
+            spinnerDone: "pipeline.qaFixComplete",
+          },
+        });
       }
 
       // Done 처리
@@ -1044,6 +1020,39 @@ ${this.team
   }
 
   // ─── 헬퍼 ─────────────────────────────────────────────
+
+  /**
+   * 개발자에게 수정을 요청하고 결과를 재커밋
+   * phaseCodeReview와 phaseQA의 공통 수정 루프에서 사용
+   */
+  async _applyDevFix(task, { feedbackSource, attempt, labels }) {
+    const agent = task.assignedAgent;
+    const fixSpinner = ora(
+      `  ${t(labels.spinnerStart, { agent: agent?.name, model: agent?.modelKey })}`
+    ).start();
+
+    const fixBundle = this.assembler.forFix(this.state, {
+      agentId: task.assignedAgentId,
+      taskId: task.id,
+      feedbackSource,
+    });
+    const fixResult = await agent?.writeCode(fixBundle);
+
+    if (fixResult) {
+      task.code = fixResult.code;
+      await this._recommitCode(
+        task,
+        fixResult.code,
+        `fix: ${feedbackSource} feedback for ${task.title} (#${task.issueNumber})`
+      );
+      await this.github.addComment(
+        task.issueNumber,
+        t(labels.commentKey, { agent: agent?.name, model: agent?.modelKey, attempt })
+      );
+    }
+
+    fixSpinner.succeed(`  ${t(labels.spinnerDone, { agent: agent?.name })}`);
+  }
 
   /**
    * 수정된 코드를 워크스페이스에 재기록 + 재커밋
