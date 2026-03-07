@@ -232,6 +232,12 @@
     "githubStep3": "3. 确认令牌可以访问该仓库",
     "githubStep4": "4. Classic PAT: 'repo' + 'project' 范围 / Fine-grained PAT: Issues、Contents、Pull requests、Projects 写入权限",
     "missingCli": "❌ 活跃角色所需的CLI工具未安装:",
+    "notInstalledApiMode": "⚠️  {{label}} CLI未安装 · 使用API密钥替代",
+    "apiKeySet": "API密钥已设置",
+    "apiModeLabel": "API密钥模式",
+    "apiModeNotice": "ℹ️  以下角色将因CLI未安装而使用API密钥:",
+    "missingBackend": "❌ 以下角色既没有CLI也没有设置API密钥:",
+    "installOrApiKey": "请安装CLI或设置API密钥后重试。\n  安装CLI: npm install -g <包名>\n  API密钥: polymeld auth 或 ~/.polymeld/credentials.yaml",
     "installFirst": "请先安装上述CLI工具，然后重试。",
     "executionFailed": "执行失败",
     "timeout": "响应超时",
@@ -465,7 +471,10 @@
     "reviewInstruction": "请审查以下代码。\n\n## 代码\n```\n{{code}}\n```\n\n## 验收标准\n{{criteria}}\n\n## 审查格式\n- 优点\n- 需要改进的地方（指出具体行/逻辑）\n- 安全问题\n- 性能问题\n\n请在最后添加以下JSON块:\n```json\n{ \"verdict\": \"APPROVED 或 CHANGES_REQUESTED\", \"summary\": \"一句话总结\" }\n```",
     "imageOnlyGemini": "图片生成目前仅支持 gemini CLI。（{{cli}}）",
     "notGitRepo": "不是Git仓库: {{path}}",
-    "installRequired": "需要安装 {{cli}}"
+    "installRequired": "需要安装 {{cli}}",
+    "noBackend": "无法使用模型 {{key}}: {{cli}} CLI未安装 + API密钥未设置",
+    "cliRateLimitApiSwitch": "⚠️ {{key}} CLI使用量超限 → 切换至API密钥",
+    "sdkNotInstalled": "请安装SDK以使用API: npm install {{sdk}}"
   },
   "promptAssembler": {
     "project": "## 项目: {{title}}",

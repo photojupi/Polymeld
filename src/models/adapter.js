@@ -1,6 +1,7 @@
 // src/models/adapter.js
-// CLI 기반 멀티 AI 모델 통합 어댑터
-// Claude Code, Gemini CLI, Codex CLI를 서브프로세스로 호출
+// CLI + API 기반 멀티 AI 모델 통합 어댑터
+// 우선순위: CLI → API → fallback 모델
+// CLI 사용량 초과 시 자동으로 API key로 전환
 
 import crossSpawn from "cross-spawn";
 import fs from "fs";
@@ -78,8 +79,81 @@ export class ModelAdapter {
   constructor(config) {
     this.config = config;
     this._availableCache = null;
+    this._apiClients = {};
     this.cwd = null;
   }
+
+  // ─── API key 확인 ──────────────────────────────────────
+
+  /**
+   * 해당 CLI 프로바이더에 대응하는 API key가 설정되어 있는지 확인
+   */
+  _hasApiKey(cli) {
+    switch (cli) {
+      case "claude": return !!process.env.ANTHROPIC_API_KEY;
+      case "gemini": return !!process.env.GOOGLE_API_KEY;
+      case "codex": return !!process.env.OPENAI_API_KEY;
+      default: return false;
+    }
+  }
+
+  // ─── API 클라이언트 지연 로딩 ──────────────────────────
+
+  /**
+   * SDK를 동적 import하여 API 클라이언트를 생성한다.
+   * 최초 1회만 생성하고 캐시한다.
+   */
+  async _getApiClient(provider) {
+    if (this._apiClients[provider]) return this._apiClients[provider];
+
+    try {
+      switch (provider) {
+        case "claude": {
+          const { default: Anthropic } = await import("@anthropic-ai/sdk");
+          this._apiClients[provider] = new Anthropic();
+          break;
+        }
+        case "gemini": {
+          const { GoogleGenAI } = await import("@google/genai");
+          this._apiClients[provider] = new GoogleGenAI({
+            apiKey: process.env.GOOGLE_API_KEY,
+          });
+          break;
+        }
+        case "codex": {
+          const { default: OpenAI } = await import("openai");
+          this._apiClients[provider] = new OpenAI();
+          break;
+        }
+        default:
+          throw new Error(t("adapter.unsupportedCli", { cli: provider }));
+      }
+    } catch (err) {
+      if (err.code === "ERR_MODULE_NOT_FOUND") {
+        const sdkNames = { claude: "@anthropic-ai/sdk", gemini: "@google/genai", codex: "openai" };
+        throw new Error(t("adapter.sdkNotInstalled", { sdk: sdkNames[provider] || provider }));
+      }
+      throw err;
+    }
+
+    return this._apiClients[provider];
+  }
+
+  // ─── API rate limit 감지 ──────────────────────────────
+
+  /**
+   * API SDK 에러에서 rate limit 여부를 판별한다.
+   */
+  _isApiRateLimit(error) {
+    if (error?.status === 429) return true;
+    if (error?.error?.type === "rate_limit_error") return true;
+    if (error?.code === "rate_limit_exceeded") return true;
+    const msg = error?.message || "";
+    if (/resource.?exhausted|rate.?limit|quota.?exceeded|too many requests/i.test(msg)) return true;
+    return false;
+  }
+
+  // ─── CLI 서브프로세스 실행 ─────────────────────────────
 
   /**
    * CLI 서브프로세스 실행 (stdin 방식)
@@ -241,9 +315,15 @@ export class ModelAdapter {
     }
   }
 
+  // ─── 통합 chat 메서드 (CLI → API → fallback) ─────────
+
   /**
    * 지정된 모델로 메시지를 보내고 응답을 받음
-   * rate limit 발생 시 config.models[key].fallback으로 1회 자동 전환
+   *
+   * 우선순위:
+   * 1. CLI (설치되어 있으면)
+   * 2. API key (CLI rate limit 시 또는 CLI 미설치 시)
+   * 3. fallback 모델 (1, 2 모두 rate limit 시)
    */
   async chat(modelKey, systemPrompt, userMessage, options = {}) {
     const modelConfig = this.config.models[modelKey];
@@ -254,32 +334,88 @@ export class ModelAdapter {
     const thinkingBudget = options.thinkingBudget;
     const onData = options.onData;
 
-    try {
-      switch (modelConfig.cli) {
-        case "claude":
-          return await this._chatClaude(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
-        case "gemini":
-          return await this._chatGemini(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
-        case "codex":
-          return await this._chatCodex(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
-        default:
-          throw new Error(t("adapter.unsupportedCli", { cli: modelConfig.cli }));
-      }
-    } catch (error) {
-      if (error instanceof CliError
-          && error.category === "rate_limit"
-          && modelConfig.fallback
-          && !options._isFallback) {
-        const fbKey = modelConfig.fallback;
-        if (this.config.models[fbKey]) {
-          console.log(t("adapter.rateLimitFallback", { from: modelKey, to: fbKey }));
-          return this.chat(fbKey, systemPrompt, userMessage, { ...options, _isFallback: true });
+    const hasCli = isCliInstalled(modelConfig.cli);
+    const hasApiKey = this._hasApiKey(modelConfig.cli);
+
+    if (!hasCli && !hasApiKey) {
+      throw new Error(t("adapter.noBackend", { key: modelKey, cli: modelConfig.cli }));
+    }
+
+    let lastError;
+
+    // 1. CLI 시도 (설치되어 있으면)
+    if (hasCli) {
+      try {
+        switch (modelConfig.cli) {
+          case "claude":
+            return await this._chatClaude(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
+          case "gemini":
+            return await this._chatGemini(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
+          case "codex":
+            return await this._chatCodex(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
+          default:
+            throw new Error(t("adapter.unsupportedCli", { cli: modelConfig.cli }));
         }
-        console.warn(t("adapter.rateLimitNoFallback", { from: modelKey, fallback: fbKey }));
+      } catch (error) {
+        if (error instanceof CliError && error.category === "rate_limit") {
+          lastError = error;
+          if (hasApiKey) {
+            console.log(t("adapter.cliRateLimitApiSwitch", { key: modelKey }));
+          }
+          // API 시도로 넘어감
+        } else {
+          throw error;
+        }
       }
-      throw error;
+    }
+
+    // 2. API 시도 (API key가 있으면)
+    if (hasApiKey) {
+      try {
+        const apiModel = modelConfig.api_model || modelConfig.model;
+        return await this._chatViaApi(modelConfig.cli, apiModel, systemPrompt, userMessage, thinkingBudget);
+      } catch (error) {
+        if (this._isApiRateLimit(error)) {
+          lastError = error;
+          // fallback 모델로 넘어감
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // 3. fallback 모델 시도 (rate limit이었을 때만)
+    if (lastError && modelConfig.fallback && !options._isFallback) {
+      const fbKey = modelConfig.fallback;
+      if (this.config.models[fbKey]) {
+        console.log(t("adapter.rateLimitFallback", { from: modelKey, to: fbKey }));
+        return this.chat(fbKey, systemPrompt, userMessage, { ...options, _isFallback: true });
+      }
+      console.warn(t("adapter.rateLimitNoFallback", { from: modelKey, fallback: fbKey }));
+    }
+
+    throw lastError || new Error(t("adapter.noBackend", { key: modelKey, cli: modelConfig.cli }));
+  }
+
+  // ─── API 기반 chat 디스패처 ───────────────────────────
+
+  /**
+   * CLI 프로바이더 이름에 따라 적절한 API chat 메서드를 호출
+   */
+  async _chatViaApi(cli, model, systemPrompt, userMessage, thinkingBudget) {
+    switch (cli) {
+      case "claude":
+        return await this._chatClaudeApi(model, systemPrompt, userMessage, thinkingBudget);
+      case "gemini":
+        return await this._chatGeminiApi(model, systemPrompt, userMessage, thinkingBudget);
+      case "codex":
+        return await this._chatOpenAiApi(model, systemPrompt, userMessage, thinkingBudget);
+      default:
+        throw new Error(t("adapter.unsupportedCli", { cli }));
     }
   }
+
+  // ─── CLI 기반 chat 메서드 ─────────────────────────────
 
   /**
    * Claude Code: --system-prompt 플래그 지원, stdin으로 메시지 전달
@@ -353,6 +489,108 @@ export class ModelAdapter {
     });
     return this._normalizeOutput(raw, "codex");
   }
+
+  // ─── API 기반 chat 메서드 ─────────────────────────────
+
+  /**
+   * Claude API: Anthropic SDK를 통한 메시지 전송
+   * thinking_budget 매핑:
+   *   0-33 → extended thinking 비활성
+   *   34-75 → budget_tokens 4096
+   *   76-100 → budget_tokens 16384
+   */
+  async _chatClaudeApi(model, systemPrompt, userMessage, thinkingBudget) {
+    const client = await this._getApiClient("claude");
+
+    const params = {
+      model,
+      max_tokens: 8192,
+      messages: [{ role: "user", content: userMessage }],
+    };
+    if (systemPrompt) params.system = systemPrompt;
+
+    // Extended thinking 매핑
+    if (thinkingBudget != null && thinkingBudget > 33) {
+      const budgetTokens = thinkingBudget > 75 ? 16384 : 4096;
+      params.thinking = { type: "enabled", budget_tokens: budgetTokens };
+      // thinking + output이 모델 상한(보통 32768)을 넘지 않도록 제한
+      params.max_tokens = Math.min(budgetTokens + 8192, 32000);
+    }
+
+    const response = await client.messages.create(params);
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    if (!text) throw new Error(t("adapter.noOutput"));
+    return text;
+  }
+
+  /**
+   * Gemini API: Google GenAI SDK를 통한 메시지 전송
+   * thinking_budget 매핑:
+   *   0-33 → budget_tokens 1024
+   *   34-75 → budget_tokens 8192
+   *   76-100 → budget_tokens 24576
+   */
+  async _chatGeminiApi(model, systemPrompt, userMessage, thinkingBudget) {
+    const client = await this._getApiClient("gemini");
+
+    const config = {};
+    if (systemPrompt) config.systemInstruction = systemPrompt;
+
+    // Thinking budget 매핑
+    if (thinkingBudget != null && thinkingBudget > 0) {
+      let budgetTokens = 1024;
+      if (thinkingBudget > 33) budgetTokens = 8192;
+      if (thinkingBudget > 75) budgetTokens = 24576;
+      config.thinkingConfig = { thinkingBudget: budgetTokens };
+    }
+
+    const response = await client.models.generateContent({
+      model,
+      contents: userMessage,
+      config,
+    });
+
+    const text = response.text;
+    if (text == null) throw new Error(t("adapter.noOutput"));
+    return text;
+  }
+
+  /**
+   * OpenAI API: OpenAI SDK를 통한 메시지 전송
+   * thinking_budget 매핑:
+   *   0-25 → reasoning_effort "low"
+   *   26-60 → reasoning_effort "medium"
+   *   61-85 → reasoning_effort "high"
+   *   86-100 → (high, OpenAI API에는 xhigh 없음)
+   */
+  async _chatOpenAiApi(model, systemPrompt, userMessage, thinkingBudget) {
+    const client = await this._getApiClient("codex");
+
+    const messages = [];
+    if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+    messages.push({ role: "user", content: userMessage });
+
+    const params = { model, messages };
+
+    // Reasoning effort 매핑
+    if (thinkingBudget != null) {
+      let effort = "medium";
+      if (thinkingBudget <= 25) effort = "low";
+      else if (thinkingBudget <= 60) effort = "medium";
+      else effort = "high";
+      params.reasoning_effort = effort;
+    }
+
+    const response = await client.chat.completions.create(params);
+    const content = response.choices?.[0]?.message?.content;
+    if (content == null) throw new Error(t("adapter.noOutput"));
+    return content;
+  }
+
+  // ─── 특화 호출 메서드 (기존 유지) ─────────────────────
 
   /**
    * 코드 생성 특화 호출
@@ -446,15 +684,17 @@ export class ModelAdapter {
     return { images, text };
   }
 
+  // ─── 모델 상태 조회 ───────────────────────────────────
+
   /**
-   * 사용 가능한 모델 목록 반환 (CLI 설치 여부 기반)
+   * 사용 가능한 모델 목록 반환 (CLI 설치 여부 + API key 기반)
    */
   getAvailableModels() {
     if (this._availableCache) return this._availableCache;
 
     const available = [];
     for (const [key, modelConfig] of Object.entries(this.config.models)) {
-      if (isCliInstalled(modelConfig.cli)) {
+      if (isCliInstalled(modelConfig.cli) || this._hasApiKey(modelConfig.cli)) {
         available.push(key);
       }
     }
@@ -463,7 +703,7 @@ export class ModelAdapter {
   }
 
   /**
-   * CLI 설치 정보 반환 (경고 메시지용)
+   * CLI 설치 및 API key 상태 정보 반환
    */
   getCliStatus() {
     const installCommands = {
@@ -478,6 +718,7 @@ export class ModelAdapter {
       status[key] = {
         cli,
         installed: isCliInstalled(cli),
+        hasApiKey: this._hasApiKey(cli),
         installCommand: installCommands[cli] || t("adapter.installRequired", { cli }),
       };
     }
