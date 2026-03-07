@@ -338,7 +338,7 @@ export class PipelineOrchestrator {
       ["meeting-notes", "kickoff", "polymeld"]
     );
     this.state.github.kickoffIssue = issue.number;
-    issueSpinner.succeed(t("pipeline.meetingRegistered", { number: issue.number }));
+    issueSpinner.succeed(t("pipeline.meetingRegistered", { number: issue.number, url: this.github.issueUrl(issue.number) }));
 
     // 프로젝트에 추가
     await this.github.addIssueToProject(issue.node_id);
@@ -384,7 +384,7 @@ export class PipelineOrchestrator {
       ["meeting-notes", "design", "polymeld"]
     );
     this.state.github.designIssue = issue.number;
-    issueSpinner.succeed(t("pipeline.designRegistered", { number: issue.number }));
+    issueSpinner.succeed(t("pipeline.designRegistered", { number: issue.number, url: this.github.issueUrl(issue.number) }));
     await this.github.addIssueToProject(issue.node_id);
   }
 
@@ -470,7 +470,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       task.nodeId = issue.node_id;
 
       await this.github.addIssueToProject(issue.node_id);
-      taskSpinner.succeed(t("pipeline.issueCreated", { number: issue.number, title: task.title }));
+      taskSpinner.succeed(t("pipeline.issueCreated", { number: issue.number, title: task.title, url: this.github.issueUrl(issue.number) }));
     }
   }
 
@@ -980,7 +980,7 @@ ${this.team
           body,
           branchName
         );
-        spinner.succeed(t("pipeline.prCreated", { number: pr.number }));
+        spinner.succeed(t("pipeline.prCreated", { number: pr.number, url: this.github.prUrl(pr.number) }));
       } catch (e) {
         console.log(
           chalk.yellow(`  ${t("pipeline.prSkipped", { category, message: e.message })}`)

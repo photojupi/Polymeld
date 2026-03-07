@@ -142,7 +142,7 @@ program
         markdown,
         ["meeting-notes", type, "polymeld"]
       );
-      console.log(chalk.green(`\n${t("cli.meeting.meetingRegistered", { number: issue.number })}`));
+      console.log(chalk.green(`\n${t("cli.meeting.meetingRegistered", { number: issue.number, url: github.issueUrl(issue.number) })}`));
     }
   });
 

@@ -20,6 +20,8 @@ export class NoOpGitHub {
   async createBranch() {}
   async commitFile() {}
   async createPR() { return { number: 0 }; }
+  issueUrl() { return ""; }
+  prUrl() { return ""; }
 }
 
 export class GitHubClient {
@@ -29,6 +31,14 @@ export class GitHubClient {
     this.owner = owner;
     this.repo = repoName;
     this.projectNumber = null;
+  }
+
+  issueUrl(number) {
+    return `https://github.com/${this.owner}/${this.repo}/issues/${number}`;
+  }
+
+  prUrl(number) {
+    return `https://github.com/${this.owner}/${this.repo}/pull/${number}`;
   }
 
   // ─── Labels ───────────────────────────────────────────
