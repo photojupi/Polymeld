@@ -249,6 +249,23 @@ async function checkGitHub() {
       return { ok: false, reason: t("config.pullsAccessDenied", { repo }) };
     }
 
+    // 6) Projects V2 접근 권한 확인 (GraphQL — 경고만)
+    try {
+      const gqlRes = await fetch("https://api.github.com/graphql", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "query { viewer { projectsV2(first: 1) { totalCount } } }",
+        }),
+      });
+      const gqlData = await gqlRes.json();
+      if (gqlData.errors?.length) {
+        warnings.push(t("config.projectsAccessDenied"));
+      }
+    } catch {
+      // 네트워크 오류 시 무시 (필수 체크가 아님)
+    }
+
     return { ok: true, user: userData.login, repo, warnings };
   } catch {
     return { ok: false, reason: t("config.networkFailed") };

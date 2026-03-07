@@ -249,6 +249,7 @@
     "issuesDisabled": "Issues機能が無効です（{{repo}}）— リポジトリの Settings → Features で Issues を有効にしてください",
     "pullsAccessDenied": "Pull Requests アクセス権限なし（{{repo}}）— トークンにPull requests権限を追加してください",
     "pullsDisabled": "Pull Requestsが利用できません（{{repo}}）— リポジトリの設定を確認してください",
+    "projectsAccessDenied": "GitHub Projectsアクセス不可 — カンバンボード機能が無効になります。Classic PAT: 'project' スコープ追加 / Fine-grained PAT: Projects読み書き権限追加",
     "networkFailed": "ネットワーク接続失敗",
     "installRequired": "{{cli}} のインストールが必要",
     "choice": {

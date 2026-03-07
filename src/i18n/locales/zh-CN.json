@@ -249,6 +249,7 @@
     "issuesDisabled": "Issues 功能已禁用（{{repo}}）— 请在仓库 Settings → Features 中启用 Issues",
     "pullsAccessDenied": "Pull Requests 访问被拒绝（{{repo}}）— 请为令牌添加 Pull requests 权限",
     "pullsDisabled": "Pull Requests 不可用（{{repo}}）— 请检查仓库设置",
+    "projectsAccessDenied": "GitHub Projects 访问被拒绝 — 看板功能将被禁用。Classic PAT: 添加 'project' 范围 / Fine-grained PAT: 添加 Projects 读写权限",
     "networkFailed": "网络连接失败",
     "installRequired": "需要安装 {{cli}}",
     "choice": {

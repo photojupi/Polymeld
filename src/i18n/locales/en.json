@@ -249,6 +249,7 @@
     "issuesDisabled": "Issues are disabled ({{repo}}) — enable Issues in repository Settings → Features",
     "pullsAccessDenied": "Pull Requests access denied ({{repo}}) — please add Pull requests permission to your token",
     "pullsDisabled": "Pull Requests are unavailable ({{repo}}) — please check repository settings",
+    "projectsAccessDenied": "GitHub Projects access denied — kanban board features will be disabled. Classic PAT: add 'project' scope / Fine-grained PAT: add Projects read/write permission",
     "networkFailed": "Network connection failed",
     "installRequired": "{{cli}} installation required",
     "choice": {
