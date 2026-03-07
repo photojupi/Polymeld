@@ -33,6 +33,9 @@ export class Session {
 
     this._initGitHub();
     this._initWorkspace();
+    if (this.workspace?.isLocal) {
+      this.adapter.cwd = this.workspace.repoPath;
+    }
   }
 
   _initGitHub() {
@@ -52,7 +55,7 @@ export class Session {
         const resolved = configPath.startsWith("~")
           ? configPath.replace("~", process.env.HOME || "")
           : configPath;
-        const ws = new LocalWorkspace(resolved);
+        const ws = new LocalWorkspace(resolved, { autoInit: true });
         if (this._validateWorkspaceRemote(ws)) {
           this.workspace = ws;
           console.log(chalk.green(`  📂 워크스페이스: ${ws.repoPath}`));

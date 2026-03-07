@@ -63,6 +63,7 @@ export class ModelAdapter {
   constructor(config) {
     this.config = config;
     this._availableCache = null;
+    this.cwd = null;
   }
 
   /**
@@ -77,6 +78,7 @@ export class ModelAdapter {
       const proc = spawn(command, args, {
         stdio: ["pipe", "pipe", "pipe"],
         env: { ...process.env },
+        ...(this.cwd && { cwd: this.cwd }),
       });
 
       let stdout = "";
