@@ -31,12 +31,26 @@
       "personaHeader": "👥 페르소나 모델 배정:"
     },
     "init": {
-      "description": "현재 디렉토리에 설정 파일 생성",
+      "description": "설정 파일 초기화",
+      "optGlobal": "글로벌 설정 초기화 (~/.polymeld/)",
       "selectModels": "사용할 AI 모델을 선택하세요:",
-      "created": "✅ 설정 파일 생성 완료",
-      "step1": "1. CLI 도구를 설치하세요 (claude, gemini, codex)",
-      "step2": "2. polymeld.config.yaml에서 페르소나별 모델을 지정하세요",
-      "step3": "3. polymeld run \"요구사항\" 으로 시작하세요"
+      "globalSetupTitle": "🔧 Polymeld 글로벌 설정",
+      "globalExists": "글로벌 설정이 이미 존재합니다: {{path}}",
+      "globalCreated": "✅ 글로벌 설정 생성: {{path}}",
+      "setupAuth": "자격 증명(API 키, GitHub 토큰)을 지금 설정하시겠습니까?",
+      "globalComplete": "✅ 글로벌 설정 완료!",
+      "nextStep": "프로젝트 디렉토리에서 polymeld init 으로 프로젝트 설정을 초기화하세요.",
+      "projectExists": "프로젝트 설정이 이미 존재합니다: {{path}}",
+      "projectCreated": "✅ 프로젝트 설정 생성: {{path}}",
+      "gitignoreHint": "💡 .gitignore에 추가하세요: .polymeld/config.local.yaml, .polymeld/sessions/",
+      "optional": "선택사항"
+    },
+    "auth": {
+      "description": "자격 증명 관리 (API 키, GitHub 토큰)",
+      "optShow": "현재 설정된 자격 증명 상태 표시",
+      "header": "🔑 자격 증명 상태",
+      "notSet": "미설정",
+      "saved": "✅ 자격 증명 저장: {{path}}"
     },
     "start": {
       "description": "인터랙티브 REPL 모드 시작 (세션 유지, 슬래시 명령어)",
@@ -204,6 +218,8 @@
   "config": {
     "configNotFound": "설정 파일을 찾을 수 없습니다: {{path}}",
     "configCreate": "polymeld.config.yaml 파일을 생성해주세요.",
+    "firstRunMessage": "⚡ Polymeld를 처음 사용하시나요?",
+    "firstRunHint": "polymeld init --global 로 글로벌 설정을 초기화하세요.",
     "notInstalled": "❌ {{label}} 미설치 → {{command}}",
     "authChecking": "⏳ {{label}} 인증 확인 중...",
     "connected": "✅ {{label}} 연결됨",

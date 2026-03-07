@@ -2,7 +2,8 @@
 // CLI 기반 멀티 AI 모델 통합 어댑터
 // Claude Code, Gemini CLI, Codex CLI를 서브프로세스로 호출
 
-import { spawn, execFileSync } from "child_process";
+import { execFileSync } from "child_process";
+import crossSpawn from "cross-spawn";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -76,7 +77,7 @@ export class ModelAdapter {
       options.timeout || this.config.cli?.timeout || 300000; // 기본 5분
 
     return new Promise((resolve, reject) => {
-      const proc = spawn(command, args, {
+      const proc = crossSpawn(command, args, {
         stdio: ["pipe", "pipe", "pipe"],
         env: { ...process.env },
         ...(this.cwd && { cwd: this.cwd }),

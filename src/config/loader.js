@@ -4,29 +4,73 @@
 import fs from "fs";
 import path from "path";
 import YAML from "yaml";
-import { execFileSync, spawn } from "child_process";
+import { execFileSync } from "child_process";
+import crossSpawn from "cross-spawn";
 import os from "os";
 import chalk from "chalk";
 import { t } from "../i18n/index.js";
+import { getGlobalConfigDir, getProjectConfigDir } from "./paths.js";
 
+/**
+ * 설정 로드 (계층적 병합)
+ * -c 플래그: 해당 파일만 사용 (하위 호환)
+ * 플래그 없음: 글로벌 → 프로젝트 공유 → 프로젝트 로컬 → 레거시 CWD 순서로 병합
+ */
 export function loadConfig(configPath) {
-  // 설정 파일 경로 결정
-  const resolvedPath =
-    configPath || findConfigFile() || getDefaultConfigPath();
+  // 명시적 경로 지정 시: 기존 동작 유지
+  if (configPath) {
+    const resolved = path.resolve(configPath);
+    if (!fs.existsSync(resolved)) {
+      console.error(t("config.configNotFound", { path: resolved }));
+      process.exit(1);
+    }
+    return parseYaml(resolved);
+  }
 
-  if (!fs.existsSync(resolvedPath)) {
-    console.error(t("config.configNotFound", { path: resolvedPath }));
-    console.error(t("config.configCreate"));
+  // 계층적 설정 로드
+  const layers = [];
+
+  // 1) 글로벌: ~/.polymeld/config.yaml
+  const globalConfig = path.join(getGlobalConfigDir(), "config.yaml");
+  if (fs.existsSync(globalConfig)) {
+    layers.push(parseYaml(globalConfig));
+  }
+
+  // 2) 프로젝트 공유: .polymeld/config.yaml
+  const projectConfig = path.join(getProjectConfigDir(), "config.yaml");
+  if (fs.existsSync(projectConfig)) {
+    layers.push(parseYaml(projectConfig));
+  }
+
+  // 3) 프로젝트 로컬: .polymeld/config.local.yaml
+  const localConfig = path.join(getProjectConfigDir(), "config.local.yaml");
+  if (fs.existsSync(localConfig)) {
+    layers.push(parseYaml(localConfig));
+  }
+
+  // 4) 레거시 CWD: polymeld.config.yaml 등 (하위 호환)
+  const legacyPath = findLegacyConfigFile();
+  if (legacyPath) {
+    layers.push(parseYaml(legacyPath));
+  }
+
+  if (layers.length === 0) {
+    // First-run 감지
+    console.log(chalk.yellow(`\n${t("config.firstRunMessage")}`));
+    console.log(chalk.gray(`  ${t("config.firstRunHint")}\n`));
     process.exit(1);
   }
 
-  const raw = fs.readFileSync(resolvedPath, "utf-8");
-  const config = YAML.parse(raw);
-
-  return config;
+  return mergeLayers(layers);
 }
 
-function findConfigFile() {
+function parseYaml(filePath) {
+  const raw = fs.readFileSync(filePath, "utf-8");
+  const parsed = YAML.parse(raw);
+  return parsed && typeof parsed === "object" ? parsed : {};
+}
+
+function findLegacyConfigFile() {
   const candidates = [
     "polymeld.config.yaml",
     "polymeld.config.yml",
@@ -41,8 +85,29 @@ function findConfigFile() {
   return null;
 }
 
-function getDefaultConfigPath() {
-  return path.resolve(process.cwd(), "polymeld.config.yaml");
+function isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v) &&
+    Object.getPrototypeOf(v) === Object.prototype;
+}
+
+function deepMerge(target, source) {
+  const output = { ...target };
+  for (const key of Object.keys(source)) {
+    if (isPlainObject(source[key]) && isPlainObject(target[key])) {
+      output[key] = deepMerge(target[key], source[key]);
+    } else {
+      output[key] = source[key];
+    }
+  }
+  return output;
+}
+
+function mergeLayers(layers) {
+  let result = {};
+  for (const layer of layers) {
+    result = deepMerge(result, layer);
+  }
+  return result;
 }
 
 /**
@@ -77,7 +142,7 @@ function probeCliAuth(cli) {
 
     let proc;
     try {
-      proc = spawn(cli, probe.args, {
+      proc = crossSpawn(cli, probe.args, {
         stdio: ["pipe", "pipe", "pipe"],
         env,
       });

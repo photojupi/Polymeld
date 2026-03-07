@@ -31,12 +31,26 @@
       "personaHeader": "👥 角色模型分配:"
     },
     "init": {
-      "description": "在当前目录创建配置文件",
+      "description": "初始化配置文件",
+      "optGlobal": "初始化全局配置 (~/.polymeld/)",
       "selectModels": "请选择要使用的AI模型:",
-      "created": "✅ 配置文件创建完成",
-      "step1": "1. 安装CLI工具（claude、gemini、codex）",
-      "step2": "2. 在 polymeld.config.yaml 中为每个角色指定模型",
-      "step3": "3. 使用 polymeld run \"需求\" 开始"
+      "globalSetupTitle": "🔧 Polymeld 全局设置",
+      "globalExists": "全局配置已存在: {{path}}",
+      "globalCreated": "✅ 全局配置已创建: {{path}}",
+      "setupAuth": "是否现在设置凭证（API密钥、GitHub令牌）？",
+      "globalComplete": "✅ 全局设置完成！",
+      "nextStep": "在项目目录中运行 polymeld init 来初始化项目配置。",
+      "projectExists": "项目配置已存在: {{path}}",
+      "projectCreated": "✅ 项目配置已创建: {{path}}",
+      "gitignoreHint": "💡 请添加到 .gitignore: .polymeld/config.local.yaml, .polymeld/sessions/",
+      "optional": "可选"
+    },
+    "auth": {
+      "description": "管理凭证（API密钥、GitHub令牌）",
+      "optShow": "显示当前凭证状态",
+      "header": "🔑 凭证状态",
+      "notSet": "未设置",
+      "saved": "✅ 凭证已保存: {{path}}"
     },
     "start": {
       "description": "启动交互式REPL模式（会话保持，斜杠命令）",
@@ -204,6 +218,8 @@
   "config": {
     "configNotFound": "找不到配置文件: {{path}}",
     "configCreate": "请创建 polymeld.config.yaml 文件。",
+    "firstRunMessage": "⚡ 第一次使用 Polymeld？",
+    "firstRunHint": "运行 polymeld init --global 来初始化全局配置。",
     "notInstalled": "❌ {{label}} 未安装 → {{command}}",
     "authChecking": "⏳ 正在检查 {{label}} 认证...",
     "connected": "✅ {{label}} 已连接",

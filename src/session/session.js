@@ -16,6 +16,7 @@ import { SessionStore } from "./session-store.js";
 import { LocalWorkspace } from "../workspace/local-workspace.js";
 import { NoOpWorkspace } from "../workspace/noop-workspace.js";
 import { t } from "../i18n/index.js";
+import { expandHome } from "../config/paths.js";
 
 export class Session {
   constructor(config) {
@@ -54,9 +55,7 @@ export class Session {
     const configPath = this.config.project?.local_path;
     if (configPath) {
       try {
-        const resolved = configPath.startsWith("~")
-          ? configPath.replace("~", process.env.HOME || "")
-          : configPath;
+        const resolved = expandHome(configPath);
         const ws = new LocalWorkspace(resolved, { autoInit: true });
         const envRepo = process.env.GITHUB_REPO;
         if (envRepo && !ws.getRemoteRepo()) {

@@ -31,12 +31,26 @@
       "personaHeader": "👥 ペルソナモデル割り当て:"
     },
     "init": {
-      "description": "現在のディレクトリに設定ファイルを作成",
+      "description": "設定ファイルの初期化",
+      "optGlobal": "グローバル設定の初期化 (~/.polymeld/)",
       "selectModels": "使用するAIモデルを選択してください:",
-      "created": "✅ 設定ファイル作成完了",
-      "step1": "1. CLIツールをインストールしてください（claude、gemini、codex）",
-      "step2": "2. polymeld.config.yamlでペルソナごとにモデルを指定してください",
-      "step3": "3. polymeld run \"要件\" で開始してください"
+      "globalSetupTitle": "🔧 Polymeld グローバル設定",
+      "globalExists": "グローバル設定は既に存在します: {{path}}",
+      "globalCreated": "✅ グローバル設定を作成しました: {{path}}",
+      "setupAuth": "認証情報（APIキー、GitHubトークン）を今設定しますか？",
+      "globalComplete": "✅ グローバル設定完了！",
+      "nextStep": "プロジェクトディレクトリで polymeld init を実行してプロジェクト設定を初期化してください。",
+      "projectExists": "プロジェクト設定は既に存在します: {{path}}",
+      "projectCreated": "✅ プロジェクト設定を作成しました: {{path}}",
+      "gitignoreHint": "💡 .gitignoreに追加してください: .polymeld/config.local.yaml, .polymeld/sessions/",
+      "optional": "任意"
+    },
+    "auth": {
+      "description": "認証情報の管理（APIキー、GitHubトークン）",
+      "optShow": "現在の認証情報ステータスを表示",
+      "header": "🔑 認証情報ステータス",
+      "notSet": "未設定",
+      "saved": "✅ 認証情報を保存しました: {{path}}"
     },
     "start": {
       "description": "インタラクティブREPLモード開始（セッション維持、スラッシュコマンド）",
@@ -204,6 +218,8 @@
   "config": {
     "configNotFound": "設定ファイルが見つかりません: {{path}}",
     "configCreate": "polymeld.config.yaml ファイルを作成してください。",
+    "firstRunMessage": "⚡ Polymeldを初めて使用しますか？",
+    "firstRunHint": "polymeld init --global でグローバル設定を初期化してください。",
     "notInstalled": "❌ {{label}} 未インストール → {{command}}",
     "authChecking": "⏳ {{label}} 認証確認中...",
     "connected": "✅ {{label}} 接続済み",

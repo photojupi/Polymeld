@@ -31,12 +31,26 @@
       "personaHeader": "👥 Persona Model Assignment:"
     },
     "init": {
-      "description": "Create config file in the current directory",
+      "description": "Initialize configuration",
+      "optGlobal": "Initialize global config (~/.polymeld/)",
       "selectModels": "Select AI models to use:",
-      "created": "✅ Config file created",
-      "step1": "1. Install CLI tools (claude, gemini, codex)",
-      "step2": "2. Assign models per persona in polymeld.config.yaml",
-      "step3": "3. Start with: polymeld run \"requirements\""
+      "globalSetupTitle": "🔧 Polymeld Global Setup",
+      "globalExists": "Global config already exists: {{path}}",
+      "globalCreated": "✅ Global config created: {{path}}",
+      "setupAuth": "Would you like to set up credentials (API keys, GitHub token) now?",
+      "globalComplete": "✅ Global setup complete!",
+      "nextStep": "Run polymeld init in your project directory to initialize project config.",
+      "projectExists": "Project config already exists: {{path}}",
+      "projectCreated": "✅ Project config created: {{path}}",
+      "gitignoreHint": "💡 Add to .gitignore: .polymeld/config.local.yaml, .polymeld/sessions/",
+      "optional": "optional"
+    },
+    "auth": {
+      "description": "Manage credentials (API keys, GitHub token)",
+      "optShow": "Show current credential status",
+      "header": "🔑 Credential Status",
+      "notSet": "not set",
+      "saved": "✅ Credentials saved: {{path}}"
     },
     "start": {
       "description": "Start interactive REPL mode (session-persistent, slash commands)",
@@ -204,6 +218,8 @@
   "config": {
     "configNotFound": "Config file not found: {{path}}",
     "configCreate": "Please create a polymeld.config.yaml file.",
+    "firstRunMessage": "⚡ First time using Polymeld?",
+    "firstRunHint": "Run polymeld init --global to set up global configuration.",
     "notInstalled": "❌ {{label}} not installed → {{command}}",
     "authChecking": "⏳ Checking {{label}} authentication...",
     "connected": "✅ {{label}} connected",
