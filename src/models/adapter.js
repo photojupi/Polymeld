@@ -21,13 +21,15 @@ export class CliError extends Error {
     this.exitCode = exitCode;
     this.stderr = stderr;
     this.stdout = stdout;
-    this.category = CliError._categorize(cli, exitCode);
+    this.category = CliError._categorize(cli, exitCode, stderr);
   }
 
   /**
-   * CLI 이름과 종료 코드를 기반으로 에러 카테고리를 분류한다.
+   * CLI 이름과 종료 코드, stderr 내용을 기반으로 에러 카테고리를 분류한다.
    */
-  static _categorize(cli, code) {
+  static _categorize(cli, code, stderr = "") {
+    // Rate limit 감지 (모든 CLI 공통, exit code보다 우선)
+    if (CliError._isRateLimit(stderr)) return "rate_limit";
     // Gemini 고유 종료 코드
     if (cli === "gemini") {
       if (code === 41) return "auth";
@@ -44,10 +46,22 @@ export class CliError extends Error {
   }
 
   /**
+   * stderr 내용에서 rate limit / 사용량 한도 초과를 감지한다.
+   * - Codex: "You've hit your usage limit", "Rate limit reached"
+   * - Claude: "Rate limit reached", "overloaded_error", "rate_limit_error"
+   * - Gemini: "Resource exhausted", "RESOURCE_EXHAUSTED", "rateLimitExceeded"
+   */
+  static _isRateLimit(stderr) {
+    if (!stderr) return false;
+    return /usage.?limit|rate.?limit|too many requests|resource.?exhausted|quota.?exceeded|overloaded_error|rateLimitExceeded/i.test(stderr)
+      || /\b429\b/.test(stderr);
+  }
+
+  /**
    * 사용자에게 표시할 에러 메시지를 생성한다.
    */
   static _buildMessage(cli, code, stderr, stdout) {
-    const output = (stderr || stdout || t("adapter.noOutput")).substring(0, 500);
+    const output = (stderr || stdout || t("adapter.noOutput")).substring(0, 1500);
     return t("adapter.cliError", { cli, code, output });
   }
 
@@ -229,6 +243,7 @@ export class ModelAdapter {
 
   /**
    * 지정된 모델로 메시지를 보내고 응답을 받음
+   * rate limit 발생 시 config.models[key].fallback으로 1회 자동 전환
    */
   async chat(modelKey, systemPrompt, userMessage, options = {}) {
     const modelConfig = this.config.models[modelKey];
@@ -239,15 +254,30 @@ export class ModelAdapter {
     const thinkingBudget = options.thinkingBudget;
     const onData = options.onData;
 
-    switch (modelConfig.cli) {
-      case "claude":
-        return this._chatClaude(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
-      case "gemini":
-        return this._chatGemini(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
-      case "codex":
-        return this._chatCodex(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
-      default:
-        throw new Error(t("adapter.unsupportedCli", { cli: modelConfig.cli }));
+    try {
+      switch (modelConfig.cli) {
+        case "claude":
+          return await this._chatClaude(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
+        case "gemini":
+          return await this._chatGemini(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
+        case "codex":
+          return await this._chatCodex(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
+        default:
+          throw new Error(t("adapter.unsupportedCli", { cli: modelConfig.cli }));
+      }
+    } catch (error) {
+      if (error instanceof CliError
+          && error.category === "rate_limit"
+          && modelConfig.fallback
+          && !options._isFallback) {
+        const fbKey = modelConfig.fallback;
+        if (this.config.models[fbKey]) {
+          console.log(t("adapter.rateLimitFallback", { from: modelKey, to: fbKey }));
+          return this.chat(fbKey, systemPrompt, userMessage, { ...options, _isFallback: true });
+        }
+        console.warn(t("adapter.rateLimitNoFallback", { from: modelKey, fallback: fbKey }));
+      }
+      throw error;
     }
   }
 
