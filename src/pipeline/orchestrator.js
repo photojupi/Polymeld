@@ -670,12 +670,11 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     }
   }
 
-  // ─── Phase 7: QA (수정 루프 포함) ─────────────────────
+  // ─── Phase 7: QA (실패 시 팀장 직접 수정) ─────────────────────
 
   async phaseQA() {
     const qaAgent = this.team.qa;
     const lead = this.team.lead;
-    const maxQARetries = this.config.pipeline?.max_qa_retries ?? 3;
 
     for (const task of this.state.tasks) {
       if (!task.code) continue;
@@ -700,137 +699,76 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         taskId: task.id,
       });
 
-      let attempt = 0;
-      let passed = false;
+      // 1) QA 실행
+      console.log(chalk.cyan(`\n${t("pipeline.qaLabel", { title: task.title })}`));
 
-      while (!passed && attempt < maxQARetries) {
-        attempt++;
-        const isRetry = attempt > 1;
-        const label = isRetry
-          ? t("pipeline.qaRetryLabel", { attempt, max: maxQARetries, title: task.title })
-          : t("pipeline.qaLabel", { title: task.title });
-        console.log(chalk.cyan(`\n${label}`));
+      const spinner = ora(
+        `  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: qaAgent.modelKey })}`
+      ).start();
+      const qaBundle = this.assembler.forQA(this.state, { taskId: task.id });
+      const result = await qaAgent.runQA(qaBundle);
+      spinner.succeed(`  ${t("pipeline.qaComplete")}`);
 
-        // 1) PromptAssembler로 QA 맥락 조립
-        const spinner = ora(
-          `  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: qaAgent.modelKey })}`
+      task.qa = result.qaResult;
+
+      await this.github.addComment(
+        task.issueNumber,
+        t("pipeline.qaComment", { agent: qaAgent.name, attempt: 1, max: 1, model: qaAgent.modelKey, result: result.qaResult })
+      );
+
+      // 2) 결과 판정
+      const hasFail = this._qaNeedsFix(result.qaResult);
+      task.qaVerdict = hasFail ? "fail" : "pass";
+
+      this.state.addMessage({
+        from: "qa",
+        to: task.assignedAgentId,
+        type: "qa_result",
+        content: result.qaResult,
+        taskId: task.id,
+      });
+
+      if (!hasFail) {
+        // 통과
+        task.qaPassed = true;
+        task.qaAttempts = 1;
+        console.log(chalk.green(`  ${t("pipeline.qaPassed")}`));
+      } else {
+        // 3) QA 실패 → 팀장이 직접 수정
+        console.log(chalk.yellow(`  ${t("pipeline.qaFailed", { attempt: 1, max: 1 })}`));
+
+        const fixSpinner = ora(
+          `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
         ).start();
-        const qaBundle = this.assembler.forQA(this.state, { taskId: task.id });
-        const result = await qaAgent.runQA(qaBundle);
-        spinner.succeed(`  ${t("pipeline.qaComplete")}`);
 
-        // QA 결과를 태스크에 저장
-        task.qa = result.qaResult;
+        const leadFixBundle = {
+          systemContext: `${qaBundle.systemContext}\n\n${t("promptAssembler.qaFeedback")}\n${result.qaResult}`,
+          taskDescription: task.description || "",
+          acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
+          currentCode: task.code,
+        };
+        const fixResult = await lead.writeCode(leadFixBundle);
+        fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
 
-        await this.github.addComment(
-          task.issueNumber,
-          t("pipeline.qaComment", { agent: qaAgent.name, attempt, max: maxQARetries, model: qaAgent.modelKey, result: result.qaResult })
-        );
-
-        // 2) 결과 판정
-        const hasFail = this._qaNeedsFix(result.qaResult);
-
-        task.qaVerdict = hasFail ? "fail" : "pass";
-
-        if (!hasFail) {
-          passed = true;
-          console.log(chalk.green(`  ${t("pipeline.qaPassed")}`));
-
-          this.state.addMessage({
-            from: "qa",
-            to: task.assignedAgentId,
-            type: "qa_result",
-            content: result.qaResult,
-            taskId: task.id,
-          });
-          break;
-        }
-
-        console.log(
-          chalk.yellow(
-            `  ${t("pipeline.qaFailed", { attempt, max: maxQARetries })}`
-          )
-        );
-
-        this.state.addMessage({
-          from: "qa",
-          to: task.assignedAgentId,
-          type: "qa_result",
-          content: result.qaResult,
-          taskId: task.id,
-        });
-
-        // 3) 마지막 시도면 루프 탈출
-        if (attempt >= maxQARetries) {
-          console.log(
-            chalk.red(
-              `  ${t("pipeline.qaMaxRetries", { max: maxQARetries })}`
-            )
+        if (fixResult) {
+          task.code = fixResult.code;
+          await this._recommitCode(
+            task,
+            fixResult.code,
+            `fix: lead direct fix for QA feedback on ${task.title} (#${task.issueNumber})`
           );
-
-          // 사용자에게 최종 결정 요청
-          const { action } = await this.interaction.confirmWarning(
-            t("pipeline.qaMaxRetriesConfirm", { title: task.title, max: maxQARetries }),
-            "error"
-          );
-
-          if (action === "skip") {
-            await this.github.addComment(
-              task.issueNumber,
-              t("pipeline.qaSkipComment", { max: maxQARetries })
-            );
-            break;
-          } else if (action === "abort") {
-            throw new Error("Pipeline aborted by user");
-          }
-          // "proceed" -> 실패 상태로 Done 처리
           await this.github.addComment(
             task.issueNumber,
-            t("pipeline.qaProceedComment", { max: maxQARetries })
+            t("pipeline.qaLeadFixComment", { agent: lead.name, model: lead.modelKey })
           );
-          break;
         }
 
-        // 4) 팀장이 QA 결과를 분석하고 수정 방향 제시
-        const analysisSpinner = ora(
-          `  ${t("pipeline.qaAnalysisSpinner", { lead: lead.name })}`
-        ).start();
-
-        const qaAnalysisBundle = this.assembler.forQA(this.state, { taskId: task.id });
-        const analysis = await lead.speak(
-          t("agent.qaFixInstruction", { dev: task.assignedAgent?.name, qaResult: result.qaResult }),
-          qaAnalysisBundle
-        );
-        analysisSpinner.succeed(`  ${t("pipeline.qaAnalysisComplete")}`);
-
-        this.state.addMessage({
-          from: "tech_lead",
-          to: task.assignedAgentId,
-          type: "fix_guidance",
-          content: analysis.content,
-          taskId: task.id,
-        });
-
-        await this.github.addComment(
-          task.issueNumber,
-          t("pipeline.qaAnalysisComment", { lead: lead.name, dev: task.assignedAgent?.name, content: analysis.content })
-        );
-
-        // 5) 개발자가 수정
-        await this._applyDevFix(task, {
-          feedbackSource: "qa",
-          attempt,
-          labels: {
-            spinnerStart: "pipeline.qaFixSpinner",
-            commentKey: "pipeline.qaFixComment",
-            spinnerDone: "pipeline.qaFixComplete",
-          },
-        });
+        task.qaPassed = true;
+        task.qaAttempts = 1;
+        console.log(chalk.green(`  ${t("pipeline.qaPassed")}`));
       }
 
       // Done 처리
-      task.qaPassed = passed;
-      task.qaAttempts = attempt;
       await this.github.updateLabels(task.issueNumber, ["done"], ["qa"]);
       await this.github.closeIssue(task.issueNumber);
       this.state.completedTasks.push(task);

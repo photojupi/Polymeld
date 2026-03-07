@@ -145,6 +145,7 @@
     "leadFixSpinner": "{{agent}} ({{model}}) 팀장 직접 수정 중...",
     "leadFixComplete": "{{agent}} 팀장 직접 수정 완료",
     "leadFixComment": "🔧 **{{agent}}** (`{{model}}`): 리뷰 피드백 기반 팀장 직접 수정 완료",
+    "qaLeadFixComment": "🔧 **{{agent}}** (`{{model}}`): QA 피드백 기반 팀장 직접 수정 완료",
     "fixGuidanceSpinner": "{{lead}} → {{dev}}: 수정 방향 전달 중...",
     "fixGuidanceComplete": "수정 지시 작성 완료",
     "fixSpinner": "{{agent}} ({{model}}) 수정 중...",
