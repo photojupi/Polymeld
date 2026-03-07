@@ -218,8 +218,6 @@ personas:
 
 # GitHub 설정
 github:
-  # 칸반보드 이름
-  project_name: "Agent Team Board"
   # 라벨 색상
   labels:
     meeting-notes: "0075ca"
@@ -250,6 +248,12 @@ pipeline:
   #   Codex   → -c model_reasoning_effort (low/medium/high/xhigh)
   #   Gemini  → CLI 플래그 미지원 (settings.json thinkingConfig으로만 제어)
   thinking_budget: 70
+
+  # ─── 병렬 실행 설정 ───────────────────────────────
+  # Phase 5(개발) 시 의존성 기반 병렬 실행 활성화
+  # true: 의존성이 없는 태스크들은 LLM 호출을 동시에 실행 (Git 작업은 직렬)
+  # false: 기존 순차 실행 방식 유지
+  parallel_development: true
 
   # ─── 수정 루프 설정 ───────────────────────────────
   # 코드 리뷰 최대 재시도 횟수
