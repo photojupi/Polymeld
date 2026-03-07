@@ -41,7 +41,6 @@ export class Agent {
    * @param {string} topic - 회의 주제
    * @param {Object} contextBundle - ContextBuilder.buildForMeeting()의 반환값
    * @param {string} contextBundle.context - 조립된 맥락
-   * @param {string} [contextBundle.previousDiscussion] - 이전 논의 (호환성)
    */
   async speak(topic, contextBundle, { modelOverride, onData } = {}) {
     const modelKey = modelOverride || this.modelKey;
@@ -49,19 +48,11 @@ export class Agent {
     const context = typeof contextBundle === "string"
       ? contextBundle
       : (contextBundle?.context || "");
-    const previousDiscussion = typeof contextBundle === "object"
-      ? contextBundle?.previousDiscussion
-      : undefined;
 
     const systemPrompt = this._buildSystemPrompt(context);
 
     let userMessage = `${t("agent.currentTopic")}\n${topic}`;
-    if (previousDiscussion) {
-      userMessage += `\n\n${t("agent.previousDiscussion")}\n${previousDiscussion}`;
-      userMessage += `\n\n${t("agent.speakWithPrev", { name: this.name, role: this.role })}`;
-    } else {
-      userMessage += `\n\n${t("agent.speakNoPrev", { name: this.name, role: this.role })}`;
-    }
+    userMessage += `\n\n${t("agent.speakInstruction", { name: this.name, role: this.role })}`;
 
     if (contextBundle?.allowPass) {
       userMessage += `\n\n${t("agent.passConditions")}`;
