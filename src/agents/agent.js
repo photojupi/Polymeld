@@ -204,7 +204,7 @@ ${t("agent.qaInstruction")}`;
     const prompt = t("agent.taskBreakdownPrompt", {
       requirement: contextBundle.requirement,
       designDecisions: contextBundle.designDecisions,
-      roles: contextBundle.availableRoles || "backend_dev, frontend_dev, devops, qa",
+      roles: contextBundle.availableRoles || "ace_programmer, creative_programmer, devops, qa",
     });
 
     const response = await this.adapter.chat(

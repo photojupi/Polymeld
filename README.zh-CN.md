@@ -227,10 +227,6 @@ personas:
     model: codex
     thinking_budget: 100
 
-  backend_dev:
-    name: 이서버
-    model: codex
-
   designer:
     name: 윤경험
     model: gemini             # 对话/设计时使用 Gemini 3.1 Pro

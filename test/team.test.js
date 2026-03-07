@@ -12,9 +12,9 @@ function createMockTeam() {
     ace_programmer: { role: "Ace Programmer" },
     creative_programmer: { role: "Creative Programmer" },
     qa: { role: "QA Engineer" },
-    backend_dev: { role: "Backend Developer" },
-    frontend_dev: { role: "Frontend Developer" },
-    devops: { role: "DevOps Engineer" },
+    designer: { role: "UX/Visual Designer" },
+    ace_planner: { role: "Ace Planner" },
+    security_expert: { role: "Security Expert" },
   };
   return team;
 }
@@ -25,24 +25,24 @@ describe("Team.normalizeRole", () => {
   const team = createMockTeam();
 
   it("1차: 정확한 ID 매칭", () => {
-    assert.equal(team.normalizeRole("backend_dev"), "backend_dev");
+    assert.equal(team.normalizeRole("ace_programmer"), "ace_programmer");
     assert.equal(team.normalizeRole("tech_lead"), "tech_lead");
   });
 
   it("2차: id(role) 형식에서 ID 추출", () => {
-    assert.equal(team.normalizeRole("backend_dev(Backend Developer)"), "backend_dev");
+    assert.equal(team.normalizeRole("ace_programmer(Ace Programmer)"), "ace_programmer");
     assert.equal(team.normalizeRole("tech_lead(Tech Lead)"), "tech_lead");
   });
 
   it("3차: role 이름으로 역방향 매칭", () => {
-    assert.equal(team.normalizeRole("Backend Developer"), "backend_dev");
+    assert.equal(team.normalizeRole("Ace Programmer"), "ace_programmer");
     assert.equal(team.normalizeRole("QA Engineer"), "qa");
     assert.equal(team.normalizeRole("Tech Lead (팀장)"), "tech_lead");
   });
 
   it("4차: 부분 문자열 매칭 (3자 이상)", () => {
-    assert.equal(team.normalizeRole("backend"), "backend_dev");
-    assert.equal(team.normalizeRole("frontend"), "frontend_dev");
+    assert.equal(team.normalizeRole("designer"), "designer");
+    assert.equal(team.normalizeRole("security"), "security_expert");
   });
 
   it("2자 이하 입력은 4차 매칭 건너뜀", () => {
@@ -62,6 +62,6 @@ describe("Team.normalizeRole", () => {
   });
 
   it("공백 포함 입력 trim 처리", () => {
-    assert.equal(team.normalizeRole("  backend_dev  "), "backend_dev");
+    assert.equal(team.normalizeRole("  ace_programmer  "), "ace_programmer");
   });
 });

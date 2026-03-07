@@ -184,7 +184,16 @@ export class Session {
     // runPipeline()은 항상 Phase 리셋 (재개는 /resume → resumePipeline()만 사용)
     this.state.resetPhases();
 
-    await this._ensureGitHubReady();
+    if (this.github) {
+      const ghSpinner = ora(t("repl.githubSpinner")).start();
+      try {
+        await this._ensureGitHubReady();
+        ghSpinner.succeed(t("repl.githubReady"));
+      } catch (err) {
+        ghSpinner.fail();
+        throw err;
+      }
+    }
     const orchestrator = this._createOrchestrator(interactionMode);
 
     const runEntry = {
@@ -227,7 +236,16 @@ export class Session {
 
     const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "semi-auto";
 
-    await this._ensureGitHubReady();
+    if (this.github) {
+      const ghSpinner = ora(t("repl.githubSpinner")).start();
+      try {
+        await this._ensureGitHubReady();
+        ghSpinner.succeed(t("repl.githubReady"));
+      } catch (err) {
+        ghSpinner.fail();
+        throw err;
+      }
+    }
     const orchestrator = this._createOrchestrator(interactionMode);
 
     const runEntry = {
