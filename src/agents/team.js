@@ -61,6 +61,27 @@ export class Team {
     return Object.values(this.agents);
   }
 
+  /**
+   * 팀장 AI가 프롬프트를 한 줄 제목으로 요약
+   * 한 번 생성되면 캐시하여 이후 미팅에서 재사용
+   * @param {string} topic - 사용자가 입력한 프롬프트/요구사항
+   * @returns {Promise<string>} 한 줄 요약 제목
+   */
+  async generateTitle(topic) {
+    if (this._cachedTitle) return this._cachedTitle;
+
+    const response = await this.adapter.chat(
+      this.lead.modelKey,
+      "당신은 프로젝트 제목을 짓는 역할입니다. 주어진 요구사항을 한국어 한 줄 제목(50자 이내)으로 요약하세요. 제목만 출력하세요.",
+      topic,
+      { thinkingBudget: 0 }
+    );
+
+    const cleaned = response.trim().split("\n")[0].trim().replace(/^["']|["']$/g, "");
+    this._cachedTitle = cleaned || topic.substring(0, 50);
+    return this._cachedTitle;
+  }
+
   getDevelopers() {
     return Object.entries(this.agents)
       .filter(([id]) => !["tech_lead", "qa"].includes(id))

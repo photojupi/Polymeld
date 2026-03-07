@@ -141,7 +141,7 @@ export class Session {
 
     // 프로젝트 정보 설정 (title은 워크스페이스 정보에서 자동 파생)
     this.state.project.requirement = requirement;
-    this.state.project.title = this._deriveTitle(requirement);
+    this.state.project.title = await this._deriveTitle(requirement);
     const title = this.state.project.title;
     const isModification = this.runs.length > 0;
 
@@ -252,9 +252,9 @@ export class Session {
 
   /**
    * 워크스페이스 정보에서 프로젝트 제목 자동 파생
-   * 우선순위: package.json name → 디렉토리명 → requirement 앞 30자
+   * 우선순위: package.json name → 디렉토리명 → 팀장 AI 요약 → requirement 앞 30자
    */
-  _deriveTitle(requirement) {
+  async _deriveTitle(requirement) {
     if (this.workspace?.isLocal) {
       try {
         const pkgPath = path.join(this.workspace.repoPath, "package.json");
@@ -267,7 +267,13 @@ export class Session {
       } catch { /* 무시 */ }
       return path.basename(this.workspace.repoPath);
     }
-    return requirement.substring(0, 30);
+    // 로컬 워크스페이스 없으면 팀장 AI가 한 줄 제목 생성
+    try {
+      this._ensureTeam();
+      return await this.team.generateTitle(requirement);
+    } catch {
+      return requirement.substring(0, 30);
+    }
   }
 
   /**

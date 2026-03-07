@@ -135,8 +135,9 @@ program
         process.env.GITHUB_REPO
       );
       const emoji = type === "kickoff" ? "📋" : "🏗️";
+      const title = await team.generateTitle(topic);
       const issue = await github.createIssue(
-        `${emoji} ${type} 미팅: ${topic.substring(0, 50)}`,
+        `${emoji} ${type} 미팅: ${title}`,
         markdown,
         ["meeting-notes", type, "agent-team"]
       );
