@@ -46,6 +46,10 @@ export class LocalWorkspace {
     if (!fs.existsSync(gitDir)) {
       execFileSync("git", ["init"], { cwd: this.repoPath, stdio: "pipe" });
     }
+    // git init 후 .git 존재 재확인
+    if (!fs.existsSync(gitDir)) {
+      throw new Error(t("workspace.gitInitFailed", { path: this.repoPath }));
+    }
   }
 
   // ─── 파일 탐색 ──────────────────────────────────────
@@ -229,11 +233,16 @@ export class LocalWorkspace {
   // ─── Git 명령 ──────────────────────────────────────
 
   _git(args) {
-    return execFileSync("git", args, {
-      cwd: this.repoPath,
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
+    try {
+      return execFileSync("git", args, {
+        cwd: this.repoPath,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim();
+    } catch (e) {
+      const stderr = e.stderr?.toString?.() || "";
+      throw new Error(`git ${args.join(" ")} failed (cwd: ${this.repoPath}): ${stderr || e.message}`);
+    }
   }
 
   getCurrentBranch() {

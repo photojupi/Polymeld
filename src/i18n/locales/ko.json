@@ -508,6 +508,7 @@
   },
   "workspace": {
     "notGitRepo": "Git 레포가 아닙니다: {{path}}",
+    "gitInitFailed": "git init 실패 — .git이 생성되지 않았습니다: {{path}}",
     "noWorkspace": "(워크스페이스 미설정)",
     "truncated": "...(절삭)"
   },

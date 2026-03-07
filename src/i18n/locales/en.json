@@ -508,6 +508,7 @@
   },
   "workspace": {
     "notGitRepo": "Not a git repository: {{path}}",
+    "gitInitFailed": "git init failed — .git was not created: {{path}}",
     "noWorkspace": "(No workspace configured)",
     "truncated": "...(truncated)"
   },
