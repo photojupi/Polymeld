@@ -132,6 +132,19 @@ export class Team {
           onData: onStream ? (chunk) => onStream({ agent: agent.name, chunk }) : undefined,
         });
 
+        // 빈 응답 → broadcastMessage 스킵, 회의록에만 기록
+        if (!speech.content.trim()) {
+          onSpeak({ phase: "empty_response", agent: agent.name });
+          roundLog.speeches.push({
+            agent: agent.name,
+            role: agent.role,
+            model: speech.model,
+            content: "(응답 없음)",
+            isEmpty: true,
+          });
+          continue;
+        }
+
         // [PASS] 응답이면 broadcastMessage 스킵, 회의록에만 기록
         if (/^\[PASS\]/i.test(speech.content.trim())) {
           onSpeak({ phase: "passed", agent: agent.name });
@@ -174,9 +187,18 @@ export class Team {
         );
 
         const content = checkResponse.content.trim();
-        const concluded = /^\[CONCLUDE\]/i.test(content);
 
-        if (concluded) {
+        if (!content) {
+          // 빈 응답 방어
+          onSpeak({ phase: "empty_response", agent: this.lead.name });
+          roundLog.speeches.push({
+            agent: this.lead.name,
+            role: this.lead.role,
+            model: checkResponse.model,
+            content: "(응답 없음)",
+            isEmpty: true,
+          });
+        } else if (/^\[CONCLUDE\]/i.test(content)) {
           const stripped = content.replace(/^\[CONCLUDE\]\s*/i, "");
           if (stripped.length > 0) {
             // 결론 도출 → 종합 정리로 기록, 조기 종료
@@ -185,7 +207,15 @@ export class Team {
             onSpeak({ phase: "summary", agent: this.lead.name, content: stripped });
             shouldBreak = true;
           } else {
-            // [CONCLUDE]만 있고 내용 없음 → broadcast 스킵, 다음 라운드 속행
+            // [CONCLUDE]만 있고 내용 없음
+            onSpeak({ phase: "empty_response", agent: this.lead.name });
+            roundLog.speeches.push({
+              agent: this.lead.name,
+              role: this.lead.role,
+              model: checkResponse.model,
+              content: "(응답 없음)",
+              isEmpty: true,
+            });
           }
         } else {
           // 결론 안 냄 → 방향 제시 발언으로 기록
@@ -211,18 +241,31 @@ export class Team {
           { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
         );
 
-        this.state.broadcastMessage({
-          from: this.lead.id,
-          type: "meeting_speech",
-          content: summary.content,
-        });
+        if (!summary.content.trim()) {
+          // 빈 응답 방어
+          onSpeak({ phase: "empty_response", agent: this.lead.name });
+          roundLog.speeches.push({
+            agent: this.lead.name,
+            role: this.lead.role,
+            model: summary.model,
+            content: "(응답 없음)",
+            isEmpty: true,
+            isSummary: true,
+          });
+        } else {
+          this.state.broadcastMessage({
+            from: this.lead.id,
+            type: "meeting_speech",
+            content: summary.content,
+          });
 
-        roundLog.speeches.push({ ...summary, isSummary: true });
-        onSpeak({
-          phase: "summary",
-          agent: this.lead.name,
-          content: summary.content,
-        });
+          roundLog.speeches.push({ ...summary, isSummary: true });
+          onSpeak({
+            phase: "summary",
+            agent: this.lead.name,
+            content: summary.content,
+          });
+        }
       }
 
       meetingLog.rounds.push(roundLog);
@@ -252,6 +295,10 @@ export class Team {
       for (const speech of round.speeches) {
         if (speech.isPassed) {
           lines.push(`#### ${speech.agent} (${speech.role}) — 패스\n`);
+          continue;
+        }
+        if (speech.isEmpty) {
+          lines.push(`#### ${speech.agent} (${speech.role}) — 응답 없음\n`);
           continue;
         }
         const modelTag = `\`[${speech.model}]\``;
