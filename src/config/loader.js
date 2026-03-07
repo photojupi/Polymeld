@@ -177,7 +177,8 @@ function probeCliAuth(cli) {
 }
 
 /**
- * GitHub 토큰 유효성 확인 (GET /user)
+ * GitHub 토큰 유효성 확인
+ * - 인증, 리포 접근, 쓰기 권한, Issues/PR 접근까지 점검
  */
 async function checkGitHub() {
   const token = process.env.GITHUB_TOKEN;
@@ -195,23 +196,57 @@ async function checkGitHub() {
     if (!userRes.ok) return { ok: false, reason: t("config.tokenAuthFailed") };
     const userData = await userRes.json();
 
-    // 2) 토큰 스코프 확인 (Classic PAT만 — Fine-grained PAT은 이 헤더 없음)
-    const warnings = [];
-    const scopeHeader = userRes.headers.get("x-oauth-scopes");
-    if (scopeHeader != null) {
-      const scopes = scopeHeader.split(",").map(s => s.trim()).filter(Boolean);
-      if (!scopes.includes("project")) {
-        warnings.push(t("config.scopeProjectMissing"));
-      }
-    }
-
-    // 3) 리포지토리 쓰기 권한 확인
+    // 2) 리포지토리 접근 + 쓰기 권한 확인
     const repoRes = await fetch(`https://api.github.com/repos/${repo}`, { headers });
     if (!repoRes.ok) return { ok: false, reason: t("config.repoAccessDenied", { repo }) };
 
     const repoData = await repoRes.json();
     if (!repoData.permissions?.push) {
       return { ok: false, reason: t("config.repoWriteDenied", { repo }) };
+    }
+
+    // 3) 토큰 스코프 확인 (Classic PAT만 — Fine-grained PAT은 이 헤더 없음)
+    const warnings = [];
+    const scopeHeader = userRes.headers.get("x-oauth-scopes");
+    if (scopeHeader != null) {
+      // Classic PAT — 스코프 부족 시 경고 (push 체크를 이미 통과했으므로 경고만)
+      const scopes = scopeHeader.split(",").map(s => s.trim()).filter(Boolean);
+      if (!scopes.includes("repo") && !scopes.includes("public_repo")) {
+        warnings.push(t("config.scopeRepoMissing"));
+      }
+      if (!scopes.includes("project")) {
+        warnings.push(t("config.scopeProjectMissing"));
+      }
+    }
+
+    // 4) Issues 접근 권한 확인 (Fine-grained PAT에서 Contents만 있고 Issues 없는 경우 감지)
+    const issuesRes = await fetch(
+      `https://api.github.com/repos/${repo}/issues?per_page=1&state=all`,
+      { headers }
+    );
+    if (issuesRes.status === 403) {
+      return { ok: false, reason: t("config.issuesAccessDenied", { repo }) };
+    }
+    if (issuesRes.status === 404) {
+      return { ok: false, reason: t("config.issuesDisabled", { repo }) };
+    }
+    if (!issuesRes.ok) {
+      return { ok: false, reason: t("config.issuesAccessDenied", { repo }) };
+    }
+
+    // 5) Pull Requests 접근 권한 확인
+    const pullsRes = await fetch(
+      `https://api.github.com/repos/${repo}/pulls?per_page=1&state=all`,
+      { headers }
+    );
+    if (pullsRes.status === 403) {
+      return { ok: false, reason: t("config.pullsAccessDenied", { repo }) };
+    }
+    if (pullsRes.status === 404) {
+      return { ok: false, reason: t("config.pullsDisabled", { repo }) };
+    }
+    if (!pullsRes.ok) {
+      return { ok: false, reason: t("config.pullsAccessDenied", { repo }) };
     }
 
     return { ok: true, user: userData.login, repo, warnings };
@@ -292,7 +327,8 @@ export async function validateConnections(config) {
     console.error(chalk.red(t("config.githubRequired")));
     console.error(chalk.gray(`  ${t("config.githubStep1")}`));
     console.error(chalk.gray(`  ${t("config.githubStep2")}`));
-    console.error(chalk.gray(`  ${t("config.githubStep3")}\n`));
+    console.error(chalk.gray(`  ${t("config.githubStep3")}`));
+    console.error(chalk.gray(`  ${t("config.githubStep4")}\n`));
     process.exit(1);
   }
   console.log();
