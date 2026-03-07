@@ -31,6 +31,7 @@ export class PipelineOrchestrator {
       timeout: config.pipeline?.auto_timeout || 0,
       defaultYes: true,
     });
+    this._gitQueue = Promise.resolve();
   }
 
   async run(requirement, { isModification = false } = {}) {
@@ -424,10 +425,17 @@ ${kickoff}
     }
     let tasks = parsed.tasks;
 
-    // 각 태스크에 ID 부여 + suitable_role 정규화
+    // 각 태스크에 ID 부여 + suitable_role 정규화 + 의존성 검증
     for (let i = 0; i < tasks.length; i++) {
       tasks[i].id = `task-${i + 1}`;
       tasks[i].suitable_role = this.team.normalizeRole(tasks[i].suitable_role);
+      // 의존성 유효성 검증: 유효 범위 외 또는 자기참조 제거
+      if (tasks[i].dependencies?.length) {
+        tasks[i].dependencies = tasks[i].dependencies.filter(dep => {
+          const n = typeof dep === 'number' ? dep : parseInt(dep, 10);
+          return !isNaN(n) && n >= 1 && n <= tasks.length && n !== i + 1;
+        });
+      }
     }
 
     this.state.tasks = tasks;
@@ -452,7 +460,7 @@ ${task.suitable_role}
 - **카테고리**: ${task.category}
 
 ### 의존성
-${task.dependencies?.length ? task.dependencies.map((d) => `- #${d}`).join("\n") : "없음"}
+${task.dependencies?.length ? task.dependencies.map((d) => `- 태스크 ${d}번`).join("\n") : "없음 (병렬 실행 가능)"}
 
 ### 수용 기준
 ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
@@ -512,170 +520,76 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
   // ─── Phase 5: 개발 ───────────────────────────────────
 
   async phaseDevelopment() {
+    const parallelEnabled = this.config.pipeline?.parallel_development !== false;
+
     // 워크스페이스 트리 캐싱 (Phase 진입 시 1회)
     const treeCache = this.workspace?.isLocal ? this.workspace.getTree() : null;
     // 원본 브랜치 기록 (태스크별 feature 브랜치의 base)
     const baseBranch = this.workspace?.isLocal ? this.workspace.getCurrentBranch() : null;
 
+    if (!parallelEnabled) {
+      // 순차 폴백: 기존 동작과 동일
+      for (const task of this.state.tasks) {
+        if (!task.assignedAgent || task.code) {
+          if (task.code) console.log(chalk.gray(`  ⏭️ ${task.title} (이미 개발 완료 — 건너뜀)`));
+          continue;
+        }
+        await this._developTask(task, { treeCache, baseBranch });
+      }
+      return;
+    }
+
+    // ── 의존성 기반 병렬 실행 ──
+    const completedIds = new Set();
+    const failedIds = new Set();
+
+    // 재개 시 이미 완료된 태스크 처리
     for (const task of this.state.tasks) {
-      const agent = task.assignedAgent;
-      if (!agent) continue;
-
-      // 재개 시 이미 코드가 있는 태스크 스킵
       if (task.code) {
-        console.log(chalk.gray(`  \u23ED\uFE0F ${task.title} (이미 개발 완료 — 건너뜀)`));
-        continue;
+        console.log(chalk.gray(`  ⏭️ ${task.title} (이미 개발 완료 — 건너뜀)`));
+        completedIds.add(task.id);
       }
+    }
 
-      console.log(
-        chalk.cyan(`\n\uD83D\uDD28 ${agent.name} (${agent.modelKey})이 개발 시작: ${task.title}`)
-      );
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const readyTasks = this._getReadyTasks(this.state.tasks, completedIds, failedIds);
 
-      // 상태 업데이트: In Progress
-      await this.github.updateLabels(
-        task.issueNumber,
-        ["in-progress"],
-        ["todo"]
-      );
-      await this.github.addComment(
-        task.issueNumber,
-        `\uD83D\uDE80 **${agent.name}** (\`${agent.modelKey}\`): 개발을 시작합니다.`
-      );
-
-      // 브랜치 생성
-      const branchName = `feature/${task.issueNumber}-${task.title
-        .replace(/[^a-zA-Z0-9가-힣]/g, "-")
-        .substring(0, 30)}`;
-      task.branchName = branchName;
-
-      if (this.workspace?.isLocal) {
-        try {
-          this.workspace.gitCheckoutNewBranch(branchName, baseBranch);
-        } catch (e) {
-          console.log(chalk.yellow(`  \u26A0\uFE0F 로컬 브랜치 생성 건너뜀: ${e.message}`));
-        }
-      } else if (this.config.pipeline?.auto_branch) {
-        try {
-          await this.github.createBranch(branchName);
-        } catch (e) {
-          console.log(chalk.yellow(`  \u26A0\uFE0F 브랜치 생성 건너뜀: ${e.message}`));
-        }
-      }
-
-      // 코드베이스 맥락 조립 (워크스페이스 연동 시)
-      let codebaseContext = null;
-      if (this.workspace?.isLocal) {
-        const relevantFiles = this.workspace.findRelevantFiles(
-          [task.title, task.category].filter(Boolean),
+      if (readyTasks.length === 0) {
+        const remaining = this.state.tasks.filter(t =>
+          !completedIds.has(t.id) && !failedIds.has(t.id) && t.assignedAgent && !t.code
         );
-        if (treeCache || relevantFiles.length > 0) {
-          const parts = [];
-          if (treeCache) parts.push(`### 디렉토리 구조\n\`\`\`\n${treeCache}\n\`\`\``);
-          if (relevantFiles.length > 0) {
-            parts.push("### 관련 파일\n" + relevantFiles.map(
-              (f) => `=== ${f.path} ===\n${f.content}`
-            ).join("\n\n"));
-          }
-          codebaseContext = parts.join("\n\n");
+        if (remaining.length === 0) break;
+        // 순환 의존성 또는 실패한 태스크의 후속 작업
+        console.log(chalk.yellow(`\n  ⚠️ ${remaining.length}개 태스크가 의존성 미충족으로 대기 중 — 순차 실행합니다`));
+        for (const task of remaining) {
+          await this._developTask(task, { treeCache, baseBranch });
+          completedIds.add(task.id);
         }
+        break;
       }
 
-      // PromptAssembler로 코딩 맥락 조립
-      const spinner = ora(`  ${agent.name} 코드 작성 중...`).start();
-      const contextBundle = this.assembler.forCoding(this.state, { agentId: agent.id, taskId: task.id, codebaseContext });
-      const result = await agent.writeCode(contextBundle);
-      spinner.succeed(`  ${agent.name} 코드 작성 완료`);
-
-      // 코드를 태스크에 저장
-      task.code = result.code;
-
-      // 파일 경로 생성 및 저장
-      const filePath = `src/${task.category || "feature"}/${task.title
-        .replace(/[^a-zA-Z0-9]/g, "_")
-        .toLowerCase()}.js`;
-      task.filePath = filePath;
-
-      // 코드블록에서 실제 코드 추출
-      const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
-      const cleanCode = codeMatch ? codeMatch[1] : result.code;
-
-      // 코드 저장: 로컬 워크스페이스 우선, 없으면 GitHub API
-      if (this.workspace?.isLocal) {
-        try {
-          this.workspace.writeFile(filePath, cleanCode);
-          this.workspace.invalidateCache();
-          this.workspace.gitAdd([filePath]);
-          this.workspace.gitCommit(
-            `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
-          );
-          console.log(chalk.gray(`  \uD83D\uDCC1 로컬 커밋: ${filePath}`));
-        } catch (e) {
-          console.log(chalk.yellow(`  \u26A0\uFE0F 로컬 커밋 실패: ${e.message}`));
-        }
-      } else {
-        try {
-          await this.github.commitFile(
-            branchName,
-            filePath,
-            cleanCode,
-            `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
-          );
-          console.log(chalk.gray(`  \uD83D\uDCC1 커밋: ${filePath}`));
-        } catch (e) {
-          console.log(chalk.yellow(`  \u26A0\uFE0F 커밋 건너뜀: ${e.message}`));
-        }
+      if (readyTasks.length > 1) {
+        console.log(chalk.cyan(
+          `\n⚡ ${readyTasks.length}개 태스크 병렬 실행: ${readyTasks.map(t => t.title).join(", ")}`
+        ));
       }
 
-      this.state.addMessage({
-        from: agent.id,
-        to: "tech_lead",
-        type: "review_request",
-        content: `${task.title} 개발 완료. 리뷰를 요청합니다.`,
-        taskId: task.id,
-      });
-
-      // 이미지 생성 (이미지 관련 태스크 && 이미지 모델 보유 에이전트)
-      if (agent.canGenerateImages && this._isImageTask(task)) {
-        const imageSpinner = ora(`  ${agent.name} 이미지 생성 중...`).start();
-        try {
-          const imageBundle = this.assembler.forImageGeneration(this.state, {
-            imagePrompt: task.description || task.title,
-            taskId: task.id,
-            outputDir: `./output/images/${task.id}`,
-          });
-          const imageResult = await agent.generateImage(imageBundle);
-          imageSpinner.succeed(
-            `  ${agent.name} 이미지 ${imageResult.images.length}개 생성 완료`
-          );
-
-          task.images = {
-            images: imageResult.images,
-            text: imageResult.textResponse,
-          };
-
-          if (imageResult.images.length > 0) {
-            const imageList = imageResult.images.map(img => `- \`${img.path}\``).join("\n");
-            await this.github.addComment(
-              task.issueNumber,
-              `🎨 **${agent.name}** (\`${agent.imageModelKey}\`): 이미지 생성 완료\n\n${imageList}\n\n${imageResult.textResponse || ""}`
-            );
-          }
-        } catch (e) {
-          imageSpinner.fail(`  이미지 생성 실패: ${e.message}`);
-        }
-      }
-
-      // 완료 코멘트
-      await this.github.addComment(
-        task.issueNumber,
-        `\u2705 **${agent.name}** (\`${agent.modelKey}\`): 개발 완료. 리뷰를 요청합니다.\n\n<details>\n<summary>생성된 코드 미리보기</summary>\n\n${result.code.substring(0, 1000)}${result.code.length > 1000 ? "\n...(truncated)" : ""}\n</details>`
+      // LLM 호출 병렬 + Git 작업 큐
+      const results = await Promise.allSettled(
+        readyTasks.map(task => this._developTask(task, { treeCache, baseBranch }))
       );
 
-      await this.github.updateLabels(
-        task.issueNumber,
-        ["in-review"],
-        ["in-progress"]
-      );
+      for (let i = 0; i < readyTasks.length; i++) {
+        const task = readyTasks[i];
+        const result = results[i];
+        if (result.status === "rejected") {
+          console.log(chalk.red(`  ❌ ${task.title} 실패: ${result.reason?.message || result.reason}`));
+          failedIds.add(task.id);
+        } else {
+          completedIds.add(task.id);
+        }
+      }
     }
   }
 
@@ -805,7 +719,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
           task.code = fixResult.code;
 
           // 수정된 코드를 워크스페이스에 재커밋
-          this._recommitCode(task, fixResult.code, `fix: review feedback for ${task.title} (#${task.issueNumber})`);
+          await this._recommitCode(task, fixResult.code, `fix: review feedback for ${task.title} (#${task.issueNumber})`);
 
           await this.github.addComment(
             task.issueNumber,
@@ -979,7 +893,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
           task.code = fixResult.code;
 
           // 수정된 코드를 워크스페이스에 재커밋
-          this._recommitCode(task, fixResult.code, `fix: QA feedback for ${task.title} (#${task.issueNumber})`);
+          await this._recommitCode(task, fixResult.code, `fix: QA feedback for ${task.title} (#${task.issueNumber})`);
 
           await this.github.addComment(
             task.issueNumber,
@@ -1143,16 +1057,187 @@ ${this.team
    * 수정된 코드를 워크스페이스에 재기록 + 재커밋
    * Phase 6(리뷰)/Phase 7(QA) 수정 루프에서 공통 사용
    */
-  _recommitCode(task, rawCode, commitMessage) {
+  async _recommitCode(task, rawCode, commitMessage) {
     if (!this.workspace?.isLocal || !task.filePath) return;
-    try {
-      const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);
-      const cleanCode = codeMatch ? codeMatch[1] : rawCode;
-      this.workspace.writeFile(task.filePath, cleanCode);
-      this.workspace.gitAdd([task.filePath]);
-      this.workspace.gitCommit(commitMessage);
-    } catch (e) {
-      console.log(chalk.yellow(`  ⚠️ 재커밋 실패: ${e.message}`));
+    return this._enqueueGit(() => {
+      try {
+        const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);
+        const cleanCode = codeMatch ? codeMatch[1] : rawCode;
+        this.workspace.writeFile(task.filePath, cleanCode);
+        this.workspace.gitAdd([task.filePath]);
+        this.workspace.gitCommit(commitMessage);
+      } catch (e) {
+        console.log(chalk.yellow(`  ⚠️ 재커밋 실패: ${e.message}`));
+      }
+    });
+  }
+
+  /**
+   * Git 작업을 직렬 큐에 추가하여 순차 실행을 보장
+   */
+  _enqueueGit(fn) {
+    const wrapped = this._gitQueue.then(() => fn());
+    this._gitQueue = wrapped.catch(() => {});
+    return wrapped;
+  }
+
+  /**
+   * 의존성이 모두 충족된 실행 가능 태스크 목록 반환
+   * 실패한 태스크에 의존하는 태스크는 실행 불가로 처리
+   */
+  _getReadyTasks(tasks, completedIds, failedIds) {
+    return tasks.filter(task => {
+      if (completedIds.has(task.id) || failedIds.has(task.id)) return false;
+      if (task.code) return false;
+      if (!task.assignedAgent) return false;
+      const deps = task.dependencies || [];
+      return deps.every(depIndex => {
+        const depId = typeof depIndex === 'number' ? `task-${depIndex}` : depIndex;
+        if (failedIds.has(depId)) return false;
+        return completedIds.has(depId);
+      });
+    });
+  }
+
+  /**
+   * 개별 태스크 개발 (LLM 호출 + Git 작업)
+   * phaseDevelopment에서 병렬/순차 모두에서 사용
+   */
+  async _developTask(task, { treeCache, baseBranch }) {
+    const agent = task.assignedAgent;
+    if (!agent) return;
+
+    console.log(
+      chalk.cyan(`\n🔨 ${agent.name} (${agent.modelKey})이 개발 시작: ${task.title}`)
+    );
+
+    // GitHub 상태 업데이트
+    await this.github.updateLabels(task.issueNumber, ["in-progress"], ["todo"]);
+    await this.github.addComment(
+      task.issueNumber,
+      `🚀 **${agent.name}** (\`${agent.modelKey}\`): 개발을 시작합니다.`
+    );
+
+    // 브랜치명 생성
+    const branchName = `feature/${task.issueNumber}-${task.title
+      .replace(/[^a-zA-Z0-9가-힣]/g, "-")
+      .substring(0, 30)}`;
+    task.branchName = branchName;
+
+    // 코드베이스 맥락 조립
+    let codebaseContext = null;
+    if (this.workspace?.isLocal) {
+      const relevantFiles = this.workspace.findRelevantFiles(
+        [task.title, task.category].filter(Boolean),
+      );
+      if (treeCache || relevantFiles.length > 0) {
+        const parts = [];
+        if (treeCache) parts.push(`### 디렉토리 구조\n\`\`\`\n${treeCache}\n\`\`\``);
+        if (relevantFiles.length > 0) {
+          parts.push("### 관련 파일\n" + relevantFiles.map(
+            (f) => `=== ${f.path} ===\n${f.content}`
+          ).join("\n\n"));
+        }
+        codebaseContext = parts.join("\n\n");
+      }
     }
+
+    // LLM 호출 (병렬 실행의 핵심 — 가장 오래 걸리는 구간)
+    const spinner = ora(`  ${agent.name} 코드 작성 중...`).start();
+    const contextBundle = this.assembler.forCoding(this.state, { agentId: agent.id, taskId: task.id, codebaseContext });
+    const result = await agent.writeCode(contextBundle);
+    spinner.succeed(`  ${agent.name} 코드 작성 완료`);
+
+    task.code = result.code;
+
+    const filePath = `src/${task.category || "feature"}/${task.title
+      .replace(/[^a-zA-Z0-9]/g, "_")
+      .toLowerCase()}.js`;
+    task.filePath = filePath;
+
+    const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
+    const cleanCode = codeMatch ? codeMatch[1] : result.code;
+
+    // Git 작업: 큐에 넣어 직렬화
+    if (this.workspace?.isLocal) {
+      await this._enqueueGit(() => {
+        try {
+          this.workspace.gitCheckoutNewBranch(branchName, baseBranch);
+          this.workspace.writeFile(filePath, cleanCode);
+          this.workspace.invalidateCache();
+          this.workspace.gitAdd([filePath]);
+          this.workspace.gitCommit(
+            `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
+          );
+          console.log(chalk.gray(`  📁 로컬 커밋: ${filePath}`));
+        } catch (e) {
+          console.log(chalk.yellow(`  ⚠️ 로컬 커밋 실패: ${e.message}`));
+        }
+      });
+    } else {
+      await this._enqueueGit(async () => {
+        try {
+          if (this.config.pipeline?.auto_branch) {
+            await this.github.createBranch(branchName);
+          }
+          await this.github.commitFile(
+            branchName,
+            filePath,
+            cleanCode,
+            `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
+          );
+          console.log(chalk.gray(`  📁 커밋: ${filePath}`));
+        } catch (e) {
+          console.log(chalk.yellow(`  ⚠️ 커밋 건너뜀: ${e.message}`));
+        }
+      });
+    }
+
+    this.state.addMessage({
+      from: agent.id,
+      to: "tech_lead",
+      type: "review_request",
+      content: `${task.title} 개발 완료. 리뷰를 요청합니다.`,
+      taskId: task.id,
+    });
+
+    // 이미지 생성
+    if (agent.canGenerateImages && this._isImageTask(task)) {
+      const imageSpinner = ora(`  ${agent.name} 이미지 생성 중...`).start();
+      try {
+        const imageBundle = this.assembler.forImageGeneration(this.state, {
+          imagePrompt: task.description || task.title,
+          taskId: task.id,
+          outputDir: `./output/images/${task.id}`,
+        });
+        const imageResult = await agent.generateImage(imageBundle);
+        imageSpinner.succeed(
+          `  ${agent.name} 이미지 ${imageResult.images.length}개 생성 완료`
+        );
+
+        task.images = {
+          images: imageResult.images,
+          text: imageResult.textResponse,
+        };
+
+        if (imageResult.images.length > 0) {
+          const imageList = imageResult.images.map(img => `- \`${img.path}\``).join("\n");
+          await this.github.addComment(
+            task.issueNumber,
+            `🎨 **${agent.name}** (\`${agent.imageModelKey}\`): 이미지 생성 완료\n\n${imageList}\n\n${imageResult.textResponse || ""}`
+          );
+        }
+      } catch (e) {
+        imageSpinner.fail(`  이미지 생성 실패: ${e.message}`);
+      }
+    }
+
+    // 완료 코멘트
+    await this.github.addComment(
+      task.issueNumber,
+      `✅ **${agent.name}** (\`${agent.modelKey}\`): 개발 완료. 리뷰를 요청합니다.\n\n<details>\n<summary>생성된 코드 미리보기</summary>\n\n${result.code.substring(0, 1000)}${result.code.length > 1000 ? "\n...(truncated)" : ""}\n</details>`
+    );
+
+    await this.github.updateLabels(task.issueNumber, ["in-review"], ["in-progress"]);
   }
 }

@@ -235,9 +235,13 @@ ${contextBundle.designDecisions}
 
 ## 규칙
 - 각 태스크는 1-4시간 분량
-- 의존성을 명시 (어떤 태스크가 먼저 완료되어야 하는지)
 - 각 태스크에 적합한 역할(${contextBundle.availableRoles || 'backend_dev, frontend_dev, devops, qa'}) 명시
 - 수용 기준을 구체적으로 작성
+- **의존성(dependencies)을 보수적으로 명시**:
+  - 선행 태스크의 번호(1-based)를 배열로 기재. 예: [1] = 1번 태스크 완료 후 시작 가능
+  - 파일/모듈 수준의 실제 의존이 있을 때만 추가 (같은 파일을 수정, API 인터페이스 참조 등)
+  - 독립적인 태스크는 dependencies: [] (병렬 실행 대상)
+  - **충돌 위험이 조금이라도 있으면 의존성을 추가하라** (보수적 판단 우선)
 
 ## 응답 형식 (JSON)
 \`\`\`json
@@ -255,7 +259,12 @@ ${contextBundle.designDecisions}
     }
   ]
 }
-\`\`\``;
+\`\`\`
+
+## 의존성 예시
+- DB 스키마(1번) → API 구현(2번): dependencies: [1] (스키마가 있어야 API 작성 가능)
+- 프론트 컴포넌트(3번)와 백엔드 API(2번)가 서로 다른 파일: dependencies: [] (독립적)
+- 1번 완료 후 2번, 3번이 병렬 가능: 2번 dependencies: [1], 3번 dependencies: [1]`;
 
     const response = await this.adapter.chat(
       modelKey,
