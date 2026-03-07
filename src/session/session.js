@@ -143,6 +143,7 @@ export class Session {
     await this.github.findOrCreateProject(
       this.config.github?.project_name || `${this.github.repo}_polymeld`
     );
+    await this.github.configureProjectStatuses();
   }
 
   _createOrchestrator(interactionMode) {

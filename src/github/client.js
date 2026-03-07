@@ -15,7 +15,9 @@ export class NoOpGitHub {
   async addComment() {}
   async updateLabels() {}
   async closeIssue() {}
-  async addIssueToProject() {}
+  async addIssueToProject() { return null; }
+  async configureProjectStatuses() {}
+  async setProjectItemStatus() {}
   async ensureInitialCommit() {}
   async createBranch() {}
   async commitFile() {}
@@ -199,7 +201,7 @@ export class GitHubClient {
     return repository.id;
   }
 
-  async addIssueToProject(issueNodeId) {
+  async addIssueToProject(issueNodeId, statusName) {
     if (!this.projectId) return null;
 
     try {
@@ -213,10 +215,122 @@ export class GitHubClient {
         projectId: this.projectId,
         contentId: issueNodeId,
       });
-      return addProjectV2ItemById.item;
+      const item = addProjectV2ItemById.item;
+      if (statusName && item) {
+        await this.setProjectItemStatus(item.id, statusName);
+      }
+      return item;
     } catch (e) {
       console.warn("프로젝트에 이슈 추가 실패:", e.message);
       return null;
+    }
+  }
+
+  /**
+   * 프로젝트 Status 필드에 파이프라인 단계 옵션을 구성
+   * Backlog → Todo → In Progress → In Review → QA → Done
+   */
+  async configureProjectStatuses() {
+    if (!this.projectId) return;
+
+    try {
+      const { node } = await this.octokit.graphql(`
+        query($projectId: ID!) {
+          node(id: $projectId) {
+            ... on ProjectV2 {
+              fields(first: 20) {
+                nodes {
+                  ... on ProjectV2SingleSelectField {
+                    id
+                    name
+                    options { id name }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `, { projectId: this.projectId });
+
+      const statusField = node.fields.nodes.find(f => f.name === "Status");
+      if (!statusField) return;
+
+      this.statusFieldId = statusField.id;
+      const desired = ["Backlog", "Todo", "In Progress", "In Review", "QA", "Done"];
+      const existingNames = statusField.options.map(o => o.name);
+
+      // 이미 모든 옵션이 존재하면 ID만 캐시
+      if (desired.every(d => existingNames.includes(d))) {
+        this.statusOptions = {};
+        for (const opt of statusField.options) {
+          if (desired.includes(opt.name)) this.statusOptions[opt.name] = opt.id;
+        }
+        return;
+      }
+
+      // 파이프라인에 맞게 Status 옵션 재구성
+      const { updateProjectV2Field } = await this.octokit.graphql(`
+        mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+          updateProjectV2Field(input: {
+            id: $fieldId
+            singleSelectOptions: $options
+          }) {
+            projectV2Field {
+              ... on ProjectV2SingleSelectField {
+                options { id name }
+              }
+            }
+          }
+        }
+      `, {
+        fieldId: this.statusFieldId,
+        options: [
+          { name: "Backlog", color: "YELLOW", description: "" },
+          { name: "Todo", color: "ORANGE", description: "" },
+          { name: "In Progress", color: "GREEN", description: "" },
+          { name: "In Review", color: "BLUE", description: "" },
+          { name: "QA", color: "RED", description: "" },
+          { name: "Done", color: "PURPLE", description: "" },
+        ],
+      });
+
+      this.statusOptions = {};
+      for (const opt of updateProjectV2Field.projectV2Field.options) {
+        this.statusOptions[opt.name] = opt.id;
+      }
+    } catch (e) {
+      console.warn("프로젝트 Status 필드 설정 실패:", e.message);
+    }
+  }
+
+  /**
+   * 프로젝트 아이템의 Status 필드 값을 변경
+   */
+  async setProjectItemStatus(itemId, statusName) {
+    if (!this.projectId || !this.statusFieldId || !this.statusOptions) return;
+    const optionId = this.statusOptions[statusName];
+    if (!optionId || !itemId) return;
+
+    try {
+      await this.octokit.graphql(`
+        mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+          updateProjectV2ItemFieldValue(input: {
+            projectId: $projectId
+            itemId: $itemId
+            fieldId: $fieldId
+            value: { singleSelectOptionId: $optionId }
+          }) {
+            projectV2Item { id }
+          }
+        }
+      `, {
+        projectId: this.projectId,
+        itemId,
+        fieldId: this.statusFieldId,
+        optionId,
+      });
+    } catch (e) {
+      console.warn("프로젝트 Status 업데이트 실패:", e.message);
     }
   }
 
