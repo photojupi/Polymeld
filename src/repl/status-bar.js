@@ -2,6 +2,7 @@
 // REPL 프롬프트 위에 현재 상태를 표시하는 상태 바
 
 import chalk from "chalk";
+import { t } from "../i18n/index.js";
 
 const MODE_COLORS = {
   "full-auto": chalk.green,
@@ -26,20 +27,20 @@ export class StatusBar {
     // Phase 진행 상태
     const completed = session.state.completedPhases.length;
     if (completed === 0) {
-      parts.push(chalk.gray("대기"));
+      parts.push(chalk.gray(t("repl.statusBar.waiting")));
     } else {
-      parts.push(chalk.cyan(`${completed}/9 Phase`));
+      parts.push(chalk.cyan(t("repl.statusBar.phase", { completed })));
     }
 
     // 팀 인원
     const teamCount = Object.keys(session.config.personas || {}).length;
     if (teamCount > 0) {
-      parts.push(chalk.gray(`팀 ${teamCount}명`));
+      parts.push(chalk.gray(t("repl.statusBar.team", { count: teamCount })));
     }
 
     // 실행 횟수 (1회 이상일 때만)
     if (session.runs.length > 0) {
-      parts.push(chalk.gray(`실행 ${session.runs.length}회`));
+      parts.push(chalk.gray(t("repl.statusBar.runs", { count: session.runs.length })));
     }
 
     return chalk.dim("  ") + parts.join(chalk.dim(" │ "));

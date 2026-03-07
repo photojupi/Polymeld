@@ -2,6 +2,7 @@
 // GitHub 연동 모듈 - Octokit 기반
 
 import { Octokit } from "octokit";
+import { t } from "../i18n/index.js";
 
 /**
  * GitHub 미설정 시 사용하는 No-op 클라이언트
@@ -120,7 +121,7 @@ export class GitHubClient {
     // owner 정보 조회 (user 또는 org)
     const ownerInfo = await this._resolveOwner();
     if (!ownerInfo) {
-      console.warn("⚠️ GitHub owner를 찾을 수 없습니다. 프로젝트 보드를 건너뜁니다.");
+      console.warn(t("github.ownerNotFound"));
       return null;
     }
 
@@ -151,8 +152,8 @@ export class GitHubClient {
       return createProjectV2.projectV2;
     } catch (e) {
       console.warn(
-        "⚠️ 프로젝트 생성 실패:", e.message,
-        "\n   → 토큰에 'project' scope가 있는지 확인하세요."
+        t("github.projectCreateFailed"), e.message,
+        `\n   ${t("github.projectScopeHint")}`
       );
       return null;
     }
@@ -174,7 +175,7 @@ export class GitHubClient {
     } catch (e) {
       // 이미 연결된 경우 또는 권한 부족 → 무시
       if (!e.message?.includes("already linked")) {
-        console.warn("⚠️ 프로젝트-레포 연결 실패:", e.message);
+        console.warn(t("github.projectLinkFailed"), e.message);
       }
     }
   }

@@ -7,6 +7,7 @@ import YAML from "yaml";
 import { execFileSync, spawn } from "child_process";
 import os from "os";
 import chalk from "chalk";
+import { t } from "../i18n/index.js";
 
 export function loadConfig(configPath) {
   // 설정 파일 경로 결정
@@ -14,8 +15,8 @@ export function loadConfig(configPath) {
     configPath || findConfigFile() || getDefaultConfigPath();
 
   if (!fs.existsSync(resolvedPath)) {
-    console.error(`설정 파일을 찾을 수 없습니다: ${resolvedPath}`);
-    console.error("agent-team.config.yaml 파일을 생성해주세요.");
+    console.error(t("config.configNotFound", { path: resolvedPath }));
+    console.error(t("config.configCreate"));
     process.exit(1);
   }
 
@@ -81,7 +82,7 @@ function probeCliAuth(cli) {
         env,
       });
     } catch {
-      return resolve({ ok: false, reason: "실행 실패" });
+      return resolve({ ok: false, reason: t("config.executionFailed") });
     }
 
     let resolved = false;
@@ -93,19 +94,19 @@ function probeCliAuth(cli) {
       resolve(result);
     };
 
-    const timer = setTimeout(() => done({ ok: false, reason: "응답 시간 초과" }), 30000);
+    const timer = setTimeout(() => done({ ok: false, reason: t("config.timeout") }), 30000);
 
     // stdout 또는 stderr 출력이 있으면 인증 성공 (CLI가 동작 중)
     proc.stdout.on("data", () => done({ ok: true }));
     proc.stderr.on("data", () => done({ ok: true }));
-    proc.on("close", (code) => done({ ok: code === 0, reason: code !== 0 ? "인증 실패" : null }));
-    proc.on("error", () => done({ ok: false, reason: "실행 실패" }));
+    proc.on("close", (code) => done({ ok: code === 0, reason: code !== 0 ? t("config.authFailed") : null }));
+    proc.on("error", () => done({ ok: false, reason: t("config.executionFailed") }));
 
     try {
       proc.stdin.write(probe.stdin);
       proc.stdin.end();
     } catch {
-      done({ ok: false, reason: "입력 실패" });
+      done({ ok: false, reason: t("config.inputFailed") });
     }
   });
 }
@@ -117,30 +118,30 @@ async function checkGitHub() {
   const token = process.env.GITHUB_TOKEN;
   const repo = process.env.GITHUB_REPO;
 
-  if (!token && !repo) return { ok: false, reason: "GITHUB_TOKEN, GITHUB_REPO 미설정" };
-  if (!token) return { ok: false, reason: "GITHUB_TOKEN 미설정" };
-  if (!repo) return { ok: false, reason: "GITHUB_REPO 미설정" };
+  if (!token && !repo) return { ok: false, reason: t("config.tokenRepoMissing") };
+  if (!token) return { ok: false, reason: t("config.tokenMissing") };
+  if (!repo) return { ok: false, reason: t("config.repoMissing") };
 
   const headers = { Authorization: `Bearer ${token}`, "User-Agent": "agent-team-cli" };
 
   try {
     // 1) 토큰 인증 확인
     const userRes = await fetch("https://api.github.com/user", { headers });
-    if (!userRes.ok) return { ok: false, reason: "토큰 인증 실패" };
+    if (!userRes.ok) return { ok: false, reason: t("config.tokenAuthFailed") };
     const userData = await userRes.json();
 
     // 2) 리포지토리 쓰기 권한 확인
     const repoRes = await fetch(`https://api.github.com/repos/${repo}`, { headers });
-    if (!repoRes.ok) return { ok: false, reason: `리포지토리 접근 불가 (${repo})` };
+    if (!repoRes.ok) return { ok: false, reason: t("config.repoAccessDenied", { repo }) };
 
     const repoData = await repoRes.json();
     if (!repoData.permissions?.push) {
-      return { ok: false, reason: `리포지토리 쓰기 권한 없음 (${repo})` };
+      return { ok: false, reason: t("config.repoWriteDenied", { repo }) };
     }
 
     return { ok: true, user: userData.login, repo };
   } catch {
-    return { ok: false, reason: "네트워크 연결 실패" };
+    return { ok: false, reason: t("config.networkFailed") };
   }
 }
 
@@ -176,20 +177,20 @@ export async function validateConnections(config) {
     const installed = isCliInstalled(cli);
 
     if (!installed) {
-      console.log(chalk.red(`  ❌ ${label} 미설치 → ${installCommands[cli] || ""}`));
+      console.log(chalk.red(`  ${t("config.notInstalled", { label, command: installCommands[cli] || "" })}`));
       missingClis.push(cli);
       continue;
     }
 
     // "확인 중" 표시 후, 인증 프로브 시작
-    rewriteLine(chalk.gray(`  ⏳ ${label} 인증 확인 중...`));
+    rewriteLine(chalk.gray(`  ${t("config.authChecking", { label })}`));
     authPromises.push(
       probeCliAuth(cli).then((auth) => {
         // 프로브 완료 시점에 즉시 결과 출력 (줄바꿈)
         if (auth.ok) {
-          rewriteLine(chalk.green(`  ✅ ${label} 연결됨\n`));
+          rewriteLine(chalk.green(`  ${t("config.connected", { label })}\n`));
         } else {
-          rewriteLine(chalk.yellow(`  ⚠️  ${label} 설치됨 · ${auth.reason || "인증 실패"}\n`));
+          rewriteLine(chalk.yellow(`  ${t("config.installedButAuthFailed", { label, reason: auth.reason || t("config.authFailed") })}\n`));
         }
         return auth;
       })
@@ -201,17 +202,17 @@ export async function validateConnections(config) {
 
   // GitHub 확인 (CLI 완료 후 시작)
   const ghLabel = "GitHub".padEnd(pad);
-  rewriteLine(chalk.gray(`  ⏳ ${ghLabel} 연동 확인 중...`));
+  rewriteLine(chalk.gray(`  ${t("config.authChecking", { label: ghLabel })}`));
   const github = await checkGitHub();
   if (github.ok) {
-    rewriteLine(chalk.green(`  ✅ ${ghLabel} 연동됨 (${github.repo})\n`));
+    rewriteLine(chalk.green(`  ${t("config.githubConnected", { label: ghLabel, repo: github.repo })}\n`));
   } else {
-    rewriteLine(chalk.red(`  ❌ ${ghLabel} ${github.reason || "미연동"}\n`));
+    rewriteLine(chalk.red(`  ${t("config.githubFailed", { label: ghLabel, reason: github.reason || "" })}\n`));
     console.log();
-    console.error(chalk.red("GitHub 연동이 필요합니다. 아래 사항을 확인해주세요:"));
-    console.error(chalk.gray("  1. .env 파일에 GITHUB_TOKEN, GITHUB_REPO가 올바르게 설정되어 있는지"));
-    console.error(chalk.gray("  2. 토큰에 Issues, Contents, Pull requests 쓰기 권한이 있는지"));
-    console.error(chalk.gray("  3. 토큰이 해당 리포지토리에 접근 가능한지\n"));
+    console.error(chalk.red(t("config.githubRequired")));
+    console.error(chalk.gray(`  ${t("config.githubStep1")}`));
+    console.error(chalk.gray(`  ${t("config.githubStep2")}`));
+    console.error(chalk.gray(`  ${t("config.githubStep3")}\n`));
     process.exit(1);
   }
   console.log();
@@ -222,13 +223,13 @@ export async function validateConnections(config) {
     for (const [, persona] of Object.entries(config.personas)) {
       const modelConfig = config.models[persona.model];
       if (modelConfig && missingClis.includes(modelConfig.cli)) {
-        blocked.push(`   - ${persona.name} (${persona.role}) → ${modelConfig.cli} (미설치)`);
+        blocked.push(`   - ${persona.name} (${persona.role}) → ${modelConfig.cli} (${t("config.installRequired", { cli: modelConfig.cli })})`);
       }
     }
     if (blocked.length > 0) {
-      console.error("\n❌ 사용 중인 페르소나에 필요한 CLI가 설치되지 않았습니다:");
+      console.error(`\n${t("config.missingCli")}`);
       blocked.forEach((line) => console.error(line));
-      console.error("\n위 CLI를 먼저 설치한 후 다시 실행해주세요.\n");
+      console.error(`\n${t("config.installFirst")}\n`);
       process.exit(1);
     }
   }

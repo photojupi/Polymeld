@@ -8,6 +8,7 @@ import { SessionStore } from "../session/session-store.js";
 import { CommandRouter } from "./command-router.js";
 import { StatusBar } from "./status-bar.js";
 import { PasteDetectStream } from "./paste-detect-stream.js";
+import { t } from "../i18n/index.js";
 
 export class ReplShell {
   constructor(config) {
@@ -32,7 +33,7 @@ export class ReplShell {
     if (id === true) {
       const sessions = store.list();
       if (sessions.length === 0) {
-        console.log(chalk.yellow("  저장된 세션이 없습니다. 새 세션을 시작합니다."));
+        console.log(chalk.yellow(`  ${t("repl.noSavedSession")}`));
         return;
       }
       id = sessions[0].id;
@@ -40,12 +41,12 @@ export class ReplShell {
 
     const data = store.load(id);
     if (!data) {
-      console.log(chalk.yellow(`  세션 ${id}를 찾을 수 없습니다. 새 세션을 시작합니다.`));
+      console.log(chalk.yellow(`  ${t("repl.sessionNotFound", { id })}`));
       return;
     }
 
     this.session = Session.fromJSON(data, this.config);
-    console.log(chalk.green(`  ✅ 세션 복원: ${id} (실행 ${this.session.runs.length}회)\n`));
+    console.log(chalk.green(`  ${t("repl.sessionRestored", { id, count: this.session.runs.length })}\n`));
   }
 
   /**
@@ -99,7 +100,7 @@ export class ReplShell {
           break;
         }
       } catch (error) {
-        console.log(chalk.red(`  오류: ${error.message}`));
+        console.log(chalk.red(`  ${t("repl.error", { message: error.message })}`));
       } finally {
         if (this._running) {
           this.rl.resume();
@@ -154,15 +155,15 @@ export class ReplShell {
         // 시각 피드백
         const lines = cleaned.split("\n");
         if (lines.length <= 5) {
-          console.log(chalk.gray(`\n  [📋 ${lines.length}줄 붙여넣기]`));
+          console.log(chalk.gray(`\n  ${t("repl.pasteLines", { count: lines.length })}`));
           for (const line of lines) {
             console.log(chalk.gray(`  │ ${line}`));
           }
         } else {
-          console.log(chalk.gray(`\n  [📋 ${lines.length}줄 붙여넣기]`));
+          console.log(chalk.gray(`\n  ${t("repl.pasteLines", { count: lines.length })}`));
           console.log(chalk.gray(`  │ ${lines[0]}`));
           console.log(chalk.gray(`  │ ${lines[1]}`));
-          console.log(chalk.gray(`  │ ... (${lines.length - 4}줄 생략)`));
+          console.log(chalk.gray(`  │ ${t("repl.pasteOmitted", { count: lines.length - 4 })}`));
           console.log(chalk.gray(`  │ ${lines[lines.length - 2]}`));
           console.log(chalk.gray(`  │ ${lines[lines.length - 1]}`));
         }
@@ -191,14 +192,14 @@ export class ReplShell {
   }
 
   _printBanner() {
-    console.log(chalk.bold.cyan("\n🤖 Agent Team CLI v0.1.0 - Interactive Mode\n"));
-    console.log(chalk.gray("  요구사항을 자연어로 입력하면 전체 파이프라인이 실행됩니다."));
-    console.log(chalk.gray("  /help 로 사용 가능한 커맨드를 확인하세요.\n"));
+    console.log(chalk.bold.cyan(`\n${t("repl.banner")}\n`));
+    console.log(chalk.gray(`  ${t("repl.bannerDesc")}`));
+    console.log(chalk.gray(`  ${t("repl.bannerHelp")}\n`));
 
     // 팀 구성 간략 출력
     const personas = this.config.personas;
     const names = Object.values(personas).map(p => p.name).join(", ");
-    console.log(chalk.gray(`  팀원: ${names}\n`));
+    console.log(chalk.gray(`  ${t("repl.teamMembers", { names })}\n`));
   }
 
   _handleExit() {
@@ -222,13 +223,13 @@ export class ReplShell {
     if (this.session.runs.length > 0) {
       try {
         const filePath = this.session.save();
-        console.log(chalk.gray(`\n  💾 세션 자동 저장: ${filePath}`));
+        console.log(chalk.gray(`\n  ${t("repl.autoSaved", { path: filePath })}`));
       } catch (e) {
-        console.log(chalk.yellow(`\n  ⚠️ 세션 저장 실패: ${e.message}`));
+        console.log(chalk.yellow(`\n  ${t("repl.saveFailed", { message: e.message })}`));
       }
     }
 
-    console.log(chalk.gray("  👋 Agent Team REPL 종료\n"));
+    console.log(chalk.gray(`  ${t("repl.exit")}\n`));
 
     if (this.rl) {
       this.rl.close();

@@ -14,6 +14,7 @@ import { PipelineOrchestrator } from "../pipeline/orchestrator.js";
 import { SessionStore } from "./session-store.js";
 import { LocalWorkspace } from "../workspace/local-workspace.js";
 import { NoOpWorkspace } from "../workspace/noop-workspace.js";
+import { t } from "../i18n/index.js";
 
 export class Session {
   constructor(config) {
@@ -62,11 +63,11 @@ export class Session {
         }
         if (this._validateWorkspaceRemote(ws)) {
           this.workspace = ws;
-          console.log(chalk.green(`  📂 워크스페이스: ${ws.repoPath}`));
+          console.log(chalk.green(`  ${t("session.workspace", { path: ws.repoPath })}`));
           return;
         }
       } catch (e) {
-        console.log(chalk.yellow(`  ⚠️ 설정된 워크스페이스 경로 오류: ${e.message}`));
+        console.log(chalk.yellow(`  ${t("session.workspaceError", { message: e.message })}`));
       }
     }
 
@@ -87,7 +88,7 @@ export class Session {
         const ws = new LocalWorkspace(cwd);
         if (this._validateWorkspaceRemote(ws)) {
           this.workspace = ws;
-          console.log(chalk.green(`  📂 워크스페이스 (자동감지): ${cwd}`));
+          console.log(chalk.green(`  ${t("session.workspaceAutoDetect", { path: cwd })}`));
           return;
         }
       } catch {
@@ -111,17 +112,14 @@ export class Session {
     if (!localRepo) {
       // remote가 없는 로컬 레포 → GitHub API와 분리됨을 경고
       console.log(chalk.yellow(
-        `  ⚠️ 워크스페이스에 origin remote가 없습니다. GitHub(${envRepo})와 연동되지 않습니다.`
+        `  ${t("session.remoteNoOrigin", { repo: envRepo })}`
       ));
       return true; // 로컬 작업은 허용
     }
 
     if (localRepo.toLowerCase() !== envRepo.toLowerCase()) {
       console.log(chalk.red(
-        `  ❌ 워크스페이스 remote 불일치!\n` +
-        `     로컬: ${localRepo}\n` +
-        `     .env:  ${envRepo}\n` +
-        `     → 워크스페이스를 건너뜁니다. config 또는 .env를 확인하세요.`
+        `  ${t("session.remoteMismatch", { local: localRepo, env: envRepo })}`
       ));
       return false;
     }
@@ -202,15 +200,15 @@ export class Session {
   async resumePipeline(options = {}) {
     const { requirement, title } = this.state.project;
     if (!requirement) {
-      throw new Error("재개할 파이프라인이 없습니다. 먼저 프로젝트를 실행해주세요.");
+      throw new Error(t("session.noResumablePipeline"));
     }
 
     this._ensureTeam();
 
     const completed = this.state.completedPhases;
-    console.log(chalk.cyan(`\n\u23EF\uFE0F  파이프라인 재개: "${title}"`));
+    console.log(chalk.cyan(`\n${t("session.resuming", { title })}`));
     if (completed.length > 0) {
-      console.log(chalk.gray(`  완료된 Phase: ${completed.join(", ")}`));
+      console.log(chalk.gray(`  ${t("session.completedPhases", { phases: completed.join(", ") })}`));
     }
 
     const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "semi-auto";

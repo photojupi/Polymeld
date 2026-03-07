@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { t } from "../../i18n/index.js";
 
 export function contextCommand(session) {
   const state = session.state;
@@ -9,18 +10,18 @@ export function contextCommand(session) {
     ["kickoffSummary", state.kickoffSummary],
     ["designDecisions", state.designDecisions],
     ["techStack", state.techStack],
-    ["tasks", `${state.tasks.length}개`],
-    ["completedTasks", `${state.completedTasks.length}개`],
-    ["messages", `${state.messages.length}개`],
+    ["tasks", `${state.tasks.length}`],
+    ["completedTasks", `${state.completedTasks.length}`],
+    ["messages", `${state.messages.length}`],
   ];
 
-  const hasData = fields.some(([, v]) => v && v !== "0개" && v !== "(없음)");
+  const hasData = fields.some(([, v]) => v && v !== "0");
   if (!hasData) {
-    console.log(chalk.gray("  PipelineState가 비어있습니다."));
+    console.log(chalk.gray(`  ${t("repl.context.empty")}`));
     return;
   }
 
-  console.log(chalk.bold("\n  🧠 PipelineState\n"));
+  console.log(chalk.bold(`\n  ${t("repl.context.header")}\n`));
   for (const [name, value] of fields) {
     const preview = String(value || "").substring(0, 60);
     console.log(`  ${chalk.cyan(name)}: ${preview}${preview.length >= 60 ? "..." : ""}`);

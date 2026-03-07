@@ -4,6 +4,7 @@
 import fs from "fs";
 import path from "path";
 import { execFileSync } from "child_process";
+import { t } from "../i18n/index.js";
 
 const EXCLUDE_DIRS = new Set([
   "node_modules", ".git", "dist", "build", ".next", "coverage",
@@ -33,7 +34,7 @@ export class LocalWorkspace {
   _validateGitRepo() {
     const gitDir = path.join(this.repoPath, ".git");
     if (!fs.existsSync(gitDir)) {
-      throw new Error(`Git 레포가 아닙니다: ${this.repoPath}`);
+      throw new Error(t("workspace.notGitRepo", { path: this.repoPath }));
     }
   }
 
@@ -185,7 +186,7 @@ export class LocalWorkspace {
         return {
           path: s.path,
           content: content.length > maxCharsPerFile
-            ? content.substring(0, maxCharsPerFile) + "\n...(절삭)"
+            ? content.substring(0, maxCharsPerFile) + `\n${t("workspace.truncated")}`
             : content,
         };
       });

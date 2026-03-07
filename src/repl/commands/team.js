@@ -1,7 +1,8 @@
 import chalk from "chalk";
+import { t } from "../../i18n/index.js";
 
 export function teamCommand(session) {
-  console.log(chalk.bold("\n  👥 팀 구성\n"));
+  console.log(chalk.bold(`\n  ${t("repl.team.header")}\n`));
 
   const personas = session.config.personas;
   for (const [id, persona] of Object.entries(personas)) {

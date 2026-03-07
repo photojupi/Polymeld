@@ -6,6 +6,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { InteractionManager } from "../config/interaction.js";
 import { ResponseParser } from "../models/response-parser.js";
+import { t } from "../i18n/index.js";
 
 
 export class PipelineOrchestrator {
@@ -44,45 +45,45 @@ export class PipelineOrchestrator {
     // 재개 시 에이전트 참조 재연결
     this._relinkAgents();
 
-    const modeLabel = isModification ? "수정" : "신규";
-    console.log(chalk.bold.cyan(`\n\uD83D\uDE80 Agent Team 파이프라인 시작 [${modeLabel}]\n`));
-    console.log(chalk.gray(`프로젝트: ${projectTitle}`));
-    console.log(chalk.gray(`요구사항: ${requirement}`));
-    console.log(chalk.gray(`인터랙션: ${this.interaction.mode}\n`));
+    const modeLabel = isModification ? t("pipeline.modeModification") : t("pipeline.modeNew");
+    console.log(chalk.bold.cyan(`\n${t("pipeline.start", { mode: modeLabel })}\n`));
+    console.log(chalk.gray(t("pipeline.project", { title: projectTitle })));
+    console.log(chalk.gray(t("pipeline.requirement", { requirement })));
+    console.log(chalk.gray(t("pipeline.interaction", { mode: this.interaction.mode }) + "\n"));
 
     // 모델 배정 현황 출력
     this._printModelAssignment();
 
     // Phase 0: 코드베이스 분석 (수정 모드 + 로컬 워크스페이스)
     if (isModification && this.workspace?.isLocal) {
-      await this._phase("0\uFE0F\u20E3  코드베이스 분석", () => this.phaseCodebaseAnalysis(requirement), { phaseId: "codebaseAnalysis" });
+      await this._phase(t("pipeline.phase.codebaseAnalysis"), () => this.phaseCodebaseAnalysis(requirement), { phaseId: "codebaseAnalysis" });
     }
 
     // Phase 1: 킥오프 미팅
-    await this._phase("1\uFE0F\u20E3  킥오프 미팅", () => this.phaseKickoff(), { phaseId: "kickoff" });
+    await this._phase(t("pipeline.phase.kickoff"), () => this.phaseKickoff(), { phaseId: "kickoff" });
 
     // Phase 2: 기술 설계 미팅
-    await this._phase("2\uFE0F\u20E3  기술 설계 미팅", () => this.phaseDesign(), { phaseId: "design" });
+    await this._phase(t("pipeline.phase.design"), () => this.phaseDesign(), { phaseId: "design" });
 
     // Phase 3: 태스크 분해
-    await this._phase("3\uFE0F\u20E3  태스크 분해", () => this.phaseTaskBreakdown(), { phaseId: "taskBreakdown" });
+    await this._phase(t("pipeline.phase.taskBreakdown"), () => this.phaseTaskBreakdown(), { phaseId: "taskBreakdown" });
 
     // Phase 4: 작업 분배
-    await this._phase("4\uFE0F\u20E3  작업 분배", () => this.phaseAssignment(), { phaseId: "assignment" });
+    await this._phase(t("pipeline.phase.assignment"), () => this.phaseAssignment(), { phaseId: "assignment" });
 
     // Phase 5: 개발
-    await this._phase("5\uFE0F\u20E3  개발", () => this.phaseDevelopment(), { phaseId: "development" });
+    await this._phase(t("pipeline.phase.development"), () => this.phaseDevelopment(), { phaseId: "development" });
 
     // Phase 6: 코드 리뷰
-    await this._phase("6\uFE0F\u20E3  코드 리뷰", () => this.phaseCodeReview(), { phaseId: "codeReview" });
+    await this._phase(t("pipeline.phase.codeReview"), () => this.phaseCodeReview(), { phaseId: "codeReview" });
 
     // Phase 7: QA
-    await this._phase("7\uFE0F\u20E3  QA", () => this.phaseQA(), { phaseId: "qa" });
+    await this._phase(t("pipeline.phase.qa"), () => this.phaseQA(), { phaseId: "qa" });
 
     // Phase 8: PR 생성
-    await this._phase("8\uFE0F\u20E3  PR 생성", () => this.phasePR(), { phaseId: "pr" });
+    await this._phase(t("pipeline.phase.pr"), () => this.phasePR(), { phaseId: "pr" });
 
-    console.log(chalk.bold.green("\n\u2705 파이프라인 완료!\n"));
+    console.log(chalk.bold.green(`\n${t("pipeline.completed")}\n`));
 
     // 결정 로그 출력
     const decisionLog = this.interaction.getDecisionLog();
@@ -92,7 +93,7 @@ export class PipelineOrchestrator {
     if (this.state.github.kickoffIssue && process.env.GITHUB_TOKEN) {
       await this.github.addComment(
         this.state.github.kickoffIssue,
-        `## \uD83E\uDD16 파이프라인 실행 완료\n\n**모드**: \`${this.interaction.mode}\`\n\n${decisionLog}`
+        t("pipeline.pipelineCompleteComment", { mode: this.interaction.mode, log: decisionLog })
       );
     }
   }
@@ -114,7 +115,7 @@ export class PipelineOrchestrator {
         : key === "gemini" ? chalk.hex("#4285F4")
           : chalk.hex("#10A37F");
 
-    console.log(chalk.bold("\uD83E\uDD16 모델 배정 현황:"));
+    console.log(chalk.bold(t("pipeline.modelAssignment")));
     console.log(chalk.gray("\u2500".repeat(50)));
 
     for (const agent of this.team.getActiveAgents()) {
@@ -132,7 +133,7 @@ export class PipelineOrchestrator {
   async _phase(name, fn, { phaseId } = {}) {
     // 이미 완료된 Phase → 스킵
     if (phaseId && this.state.isPhaseComplete(phaseId)) {
-      console.log(chalk.gray(`\n\u23ED\uFE0F  ${name} (이전 실행에서 완료됨 — 건너뜀)`));
+      console.log(chalk.gray(`\n${t("pipeline.phaseSkipped", { name })}`));
       return;
     }
 
@@ -145,9 +146,9 @@ export class PipelineOrchestrator {
         await fn();
         return { skipped: false };
       } catch (error) {
-        console.log(chalk.red(`\n\u274C 에러 발생: ${error.message}`));
+        console.log(chalk.red(`\n${t("pipeline.phaseError", { message: error.message })}`));
         const { action } = await this.interaction.confirmWarning(
-          `${name}에서 에러 발생: ${error.message}`,
+          t("pipeline.phaseErrorConfirm", { name, message: error.message }),
           "error"
         );
         if (action === "retry") return execute();
@@ -163,13 +164,13 @@ export class PipelineOrchestrator {
     // Phase 전환 확인
     const { action } = await this.interaction.confirmPhaseTransition(
       name,
-      "다음 Phase"
+      t("pipeline.nextPhase")
     );
 
     if (action === "retry") {
       result = await execute();
     } else if (action === "abort") {
-      console.log(chalk.yellow("\n\u23F9\uFE0F  파이프라인 중단"));
+      console.log(chalk.yellow(`\n${t("pipeline.pipelineAborted")}`));
       throw new Error("Pipeline aborted by user");
     }
 
@@ -216,18 +217,18 @@ export class PipelineOrchestrator {
     return {
       onSpeak: ({ phase, agent, content, round, totalRounds }) => {
         if (phase === "round_start") {
-          persist(chalk.cyan("●"), chalk.cyan(`라운드 ${round}/${totalRounds}`));
+          persist(chalk.cyan("●"), chalk.cyan(t("pipeline.roundLabel", { round, total: totalRounds })));
         } else if (phase === "speaking") {
           streamBuf = "";
-          spinner.text = `${agent} 발언 중...`;
+          spinner.text = t("pipeline.speaking", { agent });
         } else if (phase === "spoke" && content) {
           printSpeechPreview(agent, content);
         } else if (phase === "passed") {
-          persist(chalk.yellow("–"), `${agent} 패스`);
+          persist(chalk.yellow("–"), t("pipeline.passed", { agent }));
         } else if (phase === "empty_response") {
-          persist(chalk.yellow("⚠"), `${agent} 응답 없음`);
+          persist(chalk.yellow("⚠"), t("pipeline.emptyResponse", { agent }));
         } else if (phase === "summary" && content) {
-          printSpeechPreview(agent, content, { symbol: chalk.cyan("★"), label: `${agent} (정리)` });
+          printSpeechPreview(agent, content, { symbol: chalk.cyan("★"), label: t("pipeline.summary", { agent }) });
         }
       },
       onStream: ({ agent, chunk }) => {
@@ -235,7 +236,7 @@ export class PipelineOrchestrator {
         const lines = streamBuf.split("\n").filter((l) => l.trim());
         const lastLine = lines[lines.length - 1] || "";
         if (lastLine) {
-          const prefix = `${agent} 발언 중... `;
+          const prefix = t("pipeline.speaking", { agent }) + " ";
           const maxLen = cols() - prefix.length - 5;
           if (maxLen > 10) {
             spinner.text = prefix + chalk.dim(lastLine.substring(0, maxLen));
@@ -248,14 +249,14 @@ export class PipelineOrchestrator {
   // ─── Phase 0: 코드베이스 분석 (수정 모드) ──────────────
 
   async phaseCodebaseAnalysis(requirement) {
-    const spinner = ora("코드베이스 분석 중...").start();
+    const spinner = ora(t("pipeline.codebaseAnalyzing")).start();
 
     const parts = [];
 
     // 1. 디렉토리 구조
     const tree = this.workspace.getTree();
     if (tree) {
-      parts.push(`## 디렉토리 구조\n\`\`\`\n${tree}\n\`\`\``);
+      parts.push(`## ${t("pipeline.directoryStructure")}\n\`\`\`\n${tree}\n\`\`\``);
     }
 
     // 2. 요구사항에서 키워드 추출 → 관련 파일 탐색
@@ -282,13 +283,13 @@ export class PipelineOrchestrator {
     }
 
     if (relevantByName.length > 0) {
-      parts.push("## 관련 파일 (파일명 매칭)\n" + relevantByName.map(
+      parts.push(`## ${t("pipeline.relevantFilesByName")}\n` + relevantByName.map(
         f => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``
       ).join("\n\n"));
     }
 
     if (grepResults.length > 0) {
-      parts.push("## 관련 코드 (내용 검색)\n" + grepResults.slice(0, 8).map(
+      parts.push(`## ${t("pipeline.relevantCodeBySearch")}\n` + grepResults.slice(0, 8).map(
         r => `### ${r.path}\n\`\`\`\n${r.matches.join("\n")}\n\`\`\``
       ).join("\n\n"));
     }
@@ -296,28 +297,28 @@ export class PipelineOrchestrator {
     const analysis = parts.join("\n\n");
     this.state.codebaseAnalysis = analysis;
 
-    spinner.succeed(`코드베이스 분석 완료 (파일명 ${relevantByName.length}건, 내용 검색 ${grepResults.length}건)`);
-    console.log(chalk.gray(`  분석 크기: ${analysis.length}자`));
+    spinner.succeed(t("pipeline.codebaseComplete", { nameCount: relevantByName.length, grepCount: grepResults.length }));
+    console.log(chalk.gray(`  ${t("pipeline.codebaseSize", { size: analysis.length })}`));
   }
 
   // ─── Phase 1: 킥오프 미팅 ─────────────────────────────
 
   async phaseKickoff() {
-    const spinner = ora("킥오프 미팅 진행 중...").start();
+    const spinner = ora(t("pipeline.kickoffSpinner")).start();
 
     const requirement = this.state.project.requirement;
     const projectTitle = this.state.project.title;
 
     const meetingLog = await this.team.conductMeeting(
       requirement,
-      `프로젝트: ${projectTitle}`,
+      `${t("common.project")}: ${projectTitle}`,
       {
         rounds: this.config.pipeline?.max_discussion_rounds || 5,
         ...this._meetingCallbacks(spinner),
       }
     );
 
-    spinner.succeed("킥오프 미팅 완료");
+    spinner.succeed(t("pipeline.kickoffComplete"));
 
     // 킥오프 요약 저장
     const lastRound = meetingLog.rounds[meetingLog.rounds.length - 1];
@@ -326,18 +327,18 @@ export class PipelineOrchestrator {
 
     // 마크다운 생성
     const markdown = this.team.formatMeetingAsMarkdown(meetingLog, "kickoff");
-    console.log(chalk.gray("\n--- 회의록 미리보기 ---"));
+    console.log(chalk.gray(`\n${t("pipeline.meetingPreview")}`));
     console.log(markdown.substring(0, 500) + "...\n");
 
     // GitHub Issue 등록
-    const issueSpinner = ora("GitHub에 회의록 등록 중...").start();
+    const issueSpinner = ora(t("pipeline.githubRegistering")).start();
     const issue = await this.github.createIssue(
-      `\uD83D\uDCCB 킥오프 미팅: ${projectTitle}`,
+      t("pipeline.kickoffIssueTitle", { title: projectTitle }),
       markdown,
       ["meeting-notes", "kickoff", "agent-team"]
     );
     this.state.github.kickoffIssue = issue.number;
-    issueSpinner.succeed(`회의록 등록: #${issue.number}`);
+    issueSpinner.succeed(t("pipeline.meetingRegistered", { number: issue.number }));
 
     // 프로젝트에 추가
     await this.github.addIssueToProject(issue.node_id);
@@ -346,36 +347,23 @@ export class PipelineOrchestrator {
   // ─── Phase 2: 기술 설계 미팅 ──────────────────────────
 
   async phaseDesign() {
-    const spinner = ora("기술 설계 미팅 진행 중...").start();
+    const spinner = ora(t("pipeline.designSpinner")).start();
 
     const requirement = this.state.project.requirement;
     const projectTitle = this.state.project.title;
 
     const kickoff = this.state.kickoffSummary
-      ? `\n## 킥오프 미팅 결론\n${this.state.kickoffSummary.substring(0, 500)}\n`
+      ? t("agent.kickoffConclusion", { summary: this.state.kickoffSummary.substring(0, 500) })
       : "";
 
-    const topic = `프로젝트 "${projectTitle}"의 기술 설계를 논의합니다.
-
-## 요구사항
-${requirement}
-${kickoff}
-## 논의 사항
-1. 기술 스택 선정 (언어, 프레임워크, DB 등)
-2. 시스템 아키텍처 (모놀리식 vs 마이크로서비스 등)
-3. API 설계 방향
-4. 프론트엔드 구조
-5. 배포 전략
-6. 테스트 전략
-
-각자의 전문 영역에서 구체적인 제안을 해주세요. 의견이 다르면 반박하고 대안을 제시하세요.`;
+    const topic = t("agent.designTopic", { title: projectTitle, requirement, kickoff });
 
     const meetingLog = await this.team.conductMeeting(topic, "", {
       rounds: this.config.pipeline?.max_discussion_rounds || 3,
       ...this._meetingCallbacks(spinner),
     });
 
-    spinner.succeed("기술 설계 미팅 완료");
+    spinner.succeed(t("pipeline.designComplete"));
 
     const markdown = this.team.formatMeetingAsMarkdown(meetingLog, "design");
 
@@ -384,26 +372,26 @@ ${kickoff}
     const summary = lastRound.speeches.find((s) => s.isSummary && !s.isEmpty);
     this.state.designDecisions = summary?.content || markdown;
 
-    console.log(chalk.gray("\n--- 설계 결정 미리보기 ---"));
+    console.log(chalk.gray(`\n${t("pipeline.designPreview")}`));
     console.log(
       (summary?.content || "").substring(0, 500) + "...\n"
     );
 
-    const issueSpinner = ora("GitHub에 설계 문서 등록 중...").start();
+    const issueSpinner = ora(t("pipeline.designRegistering")).start();
     const issue = await this.github.createIssue(
-      `\uD83C\uDFD7\uFE0F 기술 설계: ${projectTitle}`,
+      t("pipeline.designIssueTitle", { title: projectTitle }),
       markdown,
       ["meeting-notes", "design", "agent-team"]
     );
     this.state.github.designIssue = issue.number;
-    issueSpinner.succeed(`설계 문서 등록: #${issue.number}`);
+    issueSpinner.succeed(t("pipeline.designRegistered", { number: issue.number }));
     await this.github.addIssueToProject(issue.node_id);
   }
 
   // ─── Phase 3: 태스크 분해 ─────────────────────────────
 
   async phaseTaskBreakdown() {
-    const spinner = ora("태스크 분해 중...").start();
+    const spinner = ora(t("pipeline.taskBreakdownSpinner")).start();
 
     const designDecisions = this.state.designDecisions || "";
     const requirement = this.state.project.requirement || "";
@@ -417,11 +405,11 @@ ${kickoff}
       availableRoles,
     });
 
-    spinner.succeed("태스크 분해 완료");
+    spinner.succeed(t("pipeline.taskBreakdownComplete"));
 
     const parsed = ResponseParser.parseTasks(result.tasks);
     if (!parsed.success) {
-      throw new Error(`태스크 JSON 파싱 실패: AI 응답을 구조화된 JSON으로 변환할 수 없습니다.\n원본(앞 200자): ${(result.tasks || "").substring(0, 200)}`);
+      throw new Error(t("pipeline.taskParseFailed", { raw: (result.tasks || "").substring(0, 200) }));
     }
     let tasks = parsed.tasks;
 
@@ -440,33 +428,37 @@ ${kickoff}
 
     this.state.tasks = tasks;
 
-    console.log(chalk.green(`\n\uD83D\uDCCB ${tasks.length}개 태스크 생성됨:\n`));
+    console.log(chalk.green(`\n${t("pipeline.tasksCreated", { count: tasks.length })}\n`));
 
     // GitHub Issues 생성
     for (const task of tasks) {
-      const taskSpinner = ora(`이슈 생성: ${task.title}`).start();
+      const taskSpinner = ora(t("pipeline.issueCreating", { title: task.title })).start();
 
-      const body = `## \uD83D\uDD27 ${task.title}
+      const depText = task.dependencies?.length
+        ? task.dependencies.map((d) => `- ${t("pipeline.taskBody.dependencies")} ${d}`).join("\n")
+        : t("pipeline.taskBody.noDependencies");
 
-### 설명
+      const body = `${t("pipeline.taskBody.title", { title: task.title })}
+
+${t("pipeline.taskBody.description")}
 ${task.description}
 
-### 담당 적합 역할
+${t("pipeline.taskBody.suitableRole")}
 ${task.suitable_role}
 
-### 작업 정보
-- **예상 소요**: ${task.estimated_hours}h
-- **우선순위**: ${task.priority}
-- **카테고리**: ${task.category}
+${t("pipeline.taskBody.workInfo")}
+- ${t("pipeline.taskBody.estimatedHours", { hours: task.estimated_hours })}
+- ${t("pipeline.taskBody.priority", { priority: task.priority })}
+- ${t("pipeline.taskBody.category", { category: task.category })}
 
-### 의존성
-${task.dependencies?.length ? task.dependencies.map((d) => `- 태스크 ${d}번`).join("\n") : "없음 (병렬 실행 가능)"}
+${t("pipeline.taskBody.dependencies")}
+${depText}
 
-### 수용 기준
+${t("pipeline.taskBody.acceptanceCriteria")}
 ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
 ---
-> \uD83E\uDD16 Agent Team에 의해 자동 생성 | 킥오프: #${this.state.github.kickoffIssue} | 설계: #${this.state.github.designIssue}`;
+> ${t("pipeline.taskBody.autoGenerated")} | ${t("pipeline.prBody.kickoffMeeting")}: #${this.state.github.kickoffIssue} | ${t("pipeline.prBody.designMeeting")}: #${this.state.github.designIssue}`;
 
       const issue = await this.github.createIssue(
         `\uD83D\uDD27 ${task.title}`,
@@ -478,20 +470,20 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       task.nodeId = issue.node_id;
 
       await this.github.addIssueToProject(issue.node_id);
-      taskSpinner.succeed(`#${issue.number}: ${task.title}`);
+      taskSpinner.succeed(t("pipeline.issueCreated", { number: issue.number, title: task.title }));
     }
   }
 
   // ─── Phase 4: 작업 분배 ───────────────────────────────
 
   async phaseAssignment() {
-    console.log(chalk.cyan("\n\uD83D\uDC64 팀장이 작업을 분배합니다...\n"));
+    console.log(chalk.cyan(`\n${t("pipeline.assignmentHeader")}\n`));
 
     for (const task of this.state.tasks) {
       const agent = this.team.assignTask(task);
-      const reason = `${agent.name}의 전문 영역(${agent.expertise.slice(0, 2).join(", ")})이 이 태스크에 적합`;
+      const reason = t("pipeline.assignReason", { name: agent.name, expertise: agent.expertise.slice(0, 2).join(", ") });
 
-      const comment = `\uD83D\uDC64 **팀장 배정 메모**: **${agent.name}** (${agent.role}, \`${agent.modelKey}\` 모델)에게 배정합니다.\n\n**이유**: ${reason}`;
+      const comment = t("pipeline.assignComment", { name: agent.name, role: agent.role, model: agent.modelKey, reason });
 
       await this.github.addComment(task.issueNumber, comment);
       await this.github.updateLabels(
@@ -507,7 +499,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         from: "tech_lead",
         to: agent.id,
         type: "task_assignment",
-        content: `태스크 "${task.title}" 배정. ${reason}`,
+        content: t("pipeline.assignMessage", { title: task.title, reason }),
         taskId: task.id,
       });
 
@@ -531,7 +523,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       // 순차 폴백: 기존 동작과 동일
       for (const task of this.state.tasks) {
         if (!task.assignedAgent || task.code) {
-          if (task.code) console.log(chalk.gray(`  ⏭️ ${task.title} (이미 개발 완료 — 건너뜀)`));
+          if (task.code) console.log(chalk.gray(`  ${t("pipeline.devSkipped", { title: task.title })}`));
           continue;
         }
         await this._developTask(task, { treeCache, baseBranch });
@@ -546,7 +538,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     // 재개 시 이미 완료된 태스크 처리
     for (const task of this.state.tasks) {
       if (task.code) {
-        console.log(chalk.gray(`  ⏭️ ${task.title} (이미 개발 완료 — 건너뜀)`));
+        console.log(chalk.gray(`  ${t("pipeline.devSkipped", { title: task.title })}`));
         completedIds.add(task.id);
       }
     }
@@ -556,12 +548,12 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       const readyTasks = this._getReadyTasks(this.state.tasks, completedIds, failedIds);
 
       if (readyTasks.length === 0) {
-        const remaining = this.state.tasks.filter(t =>
-          !completedIds.has(t.id) && !failedIds.has(t.id) && t.assignedAgent && !t.code
+        const remaining = this.state.tasks.filter(task =>
+          !completedIds.has(task.id) && !failedIds.has(task.id) && task.assignedAgent && !task.code
         );
         if (remaining.length === 0) break;
         // 순환 의존성 또는 실패한 태스크의 후속 작업
-        console.log(chalk.yellow(`\n  ⚠️ ${remaining.length}개 태스크가 의존성 미충족으로 대기 중 — 순차 실행합니다`));
+        console.log(chalk.yellow(`\n  ${t("pipeline.parallelWaiting", { count: remaining.length })}`));
         for (const task of remaining) {
           await this._developTask(task, { treeCache, baseBranch });
           completedIds.add(task.id);
@@ -571,7 +563,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
       if (readyTasks.length > 1) {
         console.log(chalk.cyan(
-          `\n⚡ ${readyTasks.length}개 태스크 병렬 실행: ${readyTasks.map(t => t.title).join(", ")}`
+          `\n${t("pipeline.parallelRunning", { count: readyTasks.length, titles: readyTasks.map(task => task.title).join(", ") })}`
         ));
       }
 
@@ -584,7 +576,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         const task = readyTasks[i];
         const result = results[i];
         if (result.status === "rejected") {
-          console.log(chalk.red(`  ❌ ${task.title} 실패: ${result.reason?.message || result.reason}`));
+          console.log(chalk.red(`  ${t("pipeline.taskFailed", { title: task.title, reason: result.reason?.message || result.reason })}`));
           failedIds.add(task.id);
         } else {
           completedIds.add(task.id);
@@ -604,7 +596,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
       // 재개 시 이미 리뷰 완료된 태스크 스킵
       if (task.reviewApproved != null) {
-        console.log(chalk.gray(`  \u23ED\uFE0F ${task.title} (이미 리뷰 완료 — 건너뜀)`));
+        console.log(chalk.gray(`  ${t("pipeline.reviewSkipped", { title: task.title })}`));
         continue;
       }
 
@@ -615,24 +607,24 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         attempt++;
         const isRetry = attempt > 1;
         const label = isRetry
-          ? `\uD83D\uDD0D 팀장 재리뷰 (${attempt}/${maxReviewRetries}): ${task.title}`
-          : `\uD83D\uDD0D 팀장 리뷰: ${task.title}`;
+          ? t("pipeline.reviewRetryLabel", { attempt, max: maxReviewRetries, title: task.title })
+          : t("pipeline.reviewLabel", { title: task.title });
         console.log(chalk.cyan(`\n${label}`));
 
         // 1) PromptAssembler로 리뷰 맥락 조립
         const spinner = ora(
-          `  ${lead.name} (${lead.modelKey}) 리뷰 중...`
+          `  ${t("pipeline.reviewSpinner", { agent: lead.name, model: lead.modelKey })}`
         ).start();
         const reviewBundle = this.assembler.forReview(this.state, { taskId: task.id });
         const result = await lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown");
-        spinner.succeed(`  리뷰 완료`);
+        spinner.succeed(`  ${t("pipeline.reviewComplete")}`);
 
         // 리뷰 결과를 태스크에 저장
         task.review = result.review;
 
         await this.github.addComment(
           task.issueNumber,
-          `\uD83D\uDD0D **${lead.name} 코드 리뷰** [시도 ${attempt}/${maxReviewRetries}] (\`${lead.modelKey}\`):\n\n${result.review}`
+          t("pipeline.reviewComment", { agent: lead.name, attempt, max: maxReviewRetries, model: lead.modelKey, review: result.review })
         );
 
         // 2) 결과 판정
@@ -642,7 +634,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
         if (!needsFix) {
           approved = true;
-          console.log(chalk.green(`  \u2705 리뷰 통과`));
+          console.log(chalk.green(`  ${t("pipeline.reviewApproved")}`));
 
           this.state.addMessage({
             from: "tech_lead",
@@ -656,7 +648,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
         console.log(
           chalk.yellow(
-            `  \uD83D\uDD04 수정 필요 (시도 ${attempt}/${maxReviewRetries})`
+            `  ${t("pipeline.reviewChangesRequested", { attempt, max: maxReviewRetries })}`
           )
         );
 
@@ -672,27 +664,27 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         if (attempt >= maxReviewRetries) {
           console.log(
             chalk.red(
-              `  \u26A0\uFE0F  최대 리뷰 재시도 횟수(${maxReviewRetries}) 도달`
+              `  ${t("pipeline.reviewMaxRetries", { max: maxReviewRetries })}`
             )
           );
           await this.github.addComment(
             task.issueNumber,
-            `\u26A0\uFE0F **시스템**: 코드 리뷰 재시도 ${maxReviewRetries}회 도달. 현재 상태로 QA 진행합니다.`
+            t("pipeline.reviewMaxRetriesComment", { max: maxReviewRetries })
           );
           break;
         }
 
         // 4) 팀장이 수정 방향을 개발자에게 전달
         const fixSpinner = ora(
-          `  ${lead.name} \u2192 ${task.assignedAgent?.name}: 수정 방향 전달 중...`
+          `  ${t("pipeline.fixGuidanceSpinner", { lead: lead.name, dev: task.assignedAgent?.name })}`
         ).start();
 
         const fixGuidanceBundle = this.assembler.forReview(this.state, { taskId: task.id });
         const fixGuidance = await lead.speak(
-          `다음 리뷰에서 수정이 필요합니다. ${task.assignedAgent?.name}에게 구체적인 수정 지시를 작성해주세요.\n\n리뷰 내용:\n${result.review}`,
+          t("agent.reviewFixInstruction", { dev: task.assignedAgent?.name, review: result.review }),
           fixGuidanceBundle
         );
-        fixSpinner.succeed(`  수정 지시 작성 완료`);
+        fixSpinner.succeed(`  ${t("pipeline.fixGuidanceComplete")}`);
 
         this.state.addMessage({
           from: "tech_lead",
@@ -709,7 +701,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
         // 5) 개발자가 수정
         const devSpinner = ora(
-          `  ${task.assignedAgent?.name} (${task.assignedAgent?.modelKey}) 수정 중...`
+          `  ${t("pipeline.fixSpinner", { agent: task.assignedAgent?.name, model: task.assignedAgent?.modelKey })}`
         ).start();
 
         const fixBundle = this.assembler.forFix(this.state, { agentId: task.assignedAgentId, taskId: task.id, feedbackSource: "review" });
@@ -723,11 +715,11 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
           await this.github.addComment(
             task.issueNumber,
-            `\uD83D\uDD04 **${task.assignedAgent?.name}** (\`${task.assignedAgent?.modelKey}\`): 리뷰 피드백 반영 완료 (시도 ${attempt})`
+            t("pipeline.fixReviewComment", { agent: task.assignedAgent?.name, model: task.assignedAgent?.modelKey, attempt })
           );
         }
         devSpinner.succeed(
-          `  ${task.assignedAgent?.name} 수정 완료 \u2192 재리뷰 진행`
+          `  ${t("pipeline.fixComplete", { agent: task.assignedAgent?.name })}`
         );
       }
 
@@ -747,7 +739,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
       // 재개 시 이미 QA 완료된 태스크 스킵
       if (task.qaPassed != null) {
-        console.log(chalk.gray(`  \u23ED\uFE0F ${task.title} (이미 QA 완료 — 건너뜀)`));
+        console.log(chalk.gray(`  ${t("pipeline.qaSkipped", { title: task.title })}`));
         continue;
       }
 
@@ -761,7 +753,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         from: "orchestrator",
         to: "qa",
         type: "qa_request",
-        content: `${task.title} QA 요청`,
+        content: t("pipeline.qaRequestMessage", { title: task.title }),
         taskId: task.id,
       });
 
@@ -772,24 +764,24 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         attempt++;
         const isRetry = attempt > 1;
         const label = isRetry
-          ? `\uD83E\uDDEA QA 재검증 (${attempt}/${maxQARetries}): ${task.title}`
-          : `\uD83E\uDDEA QA 검증: ${task.title}`;
+          ? t("pipeline.qaRetryLabel", { attempt, max: maxQARetries, title: task.title })
+          : t("pipeline.qaLabel", { title: task.title });
         console.log(chalk.cyan(`\n${label}`));
 
         // 1) PromptAssembler로 QA 맥락 조립
         const spinner = ora(
-          `  ${qaAgent.name} (${qaAgent.modelKey}) 테스트 중...`
+          `  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: qaAgent.modelKey })}`
         ).start();
         const qaBundle = this.assembler.forQA(this.state, { taskId: task.id });
         const result = await qaAgent.runQA(qaBundle);
-        spinner.succeed(`  QA 완료`);
+        spinner.succeed(`  ${t("pipeline.qaComplete")}`);
 
         // QA 결과를 태스크에 저장
         task.qa = result.qaResult;
 
         await this.github.addComment(
           task.issueNumber,
-          `\uD83E\uDDEA **${qaAgent.name} QA 결과** [시도 ${attempt}/${maxQARetries}] (\`${qaAgent.modelKey}\`):\n\n${result.qaResult}`
+          t("pipeline.qaComment", { agent: qaAgent.name, attempt, max: maxQARetries, model: qaAgent.modelKey, result: result.qaResult })
         );
 
         // 2) 결과 판정
@@ -799,7 +791,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
         if (!hasFail) {
           passed = true;
-          console.log(chalk.green(`  \u2705 QA 통과`));
+          console.log(chalk.green(`  ${t("pipeline.qaPassed")}`));
 
           this.state.addMessage({
             from: "qa",
@@ -813,7 +805,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
         console.log(
           chalk.yellow(
-            `  \uD83D\uDD04 QA 실패 - 수정 필요 (시도 ${attempt}/${maxQARetries})`
+            `  ${t("pipeline.qaFailed", { attempt, max: maxQARetries })}`
           )
         );
 
@@ -829,20 +821,20 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         if (attempt >= maxQARetries) {
           console.log(
             chalk.red(
-              `  \u26A0\uFE0F  최대 QA 재시도 횟수(${maxQARetries}) 도달`
+              `  ${t("pipeline.qaMaxRetries", { max: maxQARetries })}`
             )
           );
 
           // 사용자에게 최종 결정 요청
           const { action } = await this.interaction.confirmWarning(
-            `${task.title}: QA ${maxQARetries}회 실패. 어떻게 처리할까요?`,
+            t("pipeline.qaMaxRetriesConfirm", { title: task.title, max: maxQARetries }),
             "error"
           );
 
           if (action === "skip") {
             await this.github.addComment(
               task.issueNumber,
-              `\u26A0\uFE0F **시스템**: QA ${maxQARetries}회 실패. 사용자 결정으로 건너뜁니다.`
+              t("pipeline.qaSkipComment", { max: maxQARetries })
             );
             break;
           } else if (action === "abort") {
@@ -851,22 +843,22 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
           // "proceed" -> 실패 상태로 Done 처리
           await this.github.addComment(
             task.issueNumber,
-            `\u26A0\uFE0F **시스템**: QA ${maxQARetries}회 실패. 현재 상태로 진행합니다.`
+            t("pipeline.qaProceedComment", { max: maxQARetries })
           );
           break;
         }
 
         // 4) 팀장이 QA 결과를 분석하고 수정 방향 제시
         const analysisSpinner = ora(
-          `  ${lead.name} QA 실패 원인 분석 중...`
+          `  ${t("pipeline.qaAnalysisSpinner", { lead: lead.name })}`
         ).start();
 
         const qaAnalysisBundle = this.assembler.forQA(this.state, { taskId: task.id });
         const analysis = await lead.speak(
-          `QA에서 다음 이슈가 발견되었습니다. 원인을 분석하고 ${task.assignedAgent?.name}에게 구체적인 수정 지시를 작성해주세요.\n\nQA 결과:\n${result.qaResult}`,
+          t("agent.qaFixInstruction", { dev: task.assignedAgent?.name, qaResult: result.qaResult }),
           qaAnalysisBundle
         );
-        analysisSpinner.succeed(`  원인 분석 완료`);
+        analysisSpinner.succeed(`  ${t("pipeline.qaAnalysisComplete")}`);
 
         this.state.addMessage({
           from: "tech_lead",
@@ -878,12 +870,12 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
         await this.github.addComment(
           task.issueNumber,
-          `\uD83D\uDD2C **${lead.name} 분석 & 수정 지시** \u2192 ${task.assignedAgent?.name}:\n\n${analysis.content}`
+          t("pipeline.qaAnalysisComment", { lead: lead.name, dev: task.assignedAgent?.name, content: analysis.content })
         );
 
         // 5) 개발자가 수정
         const fixSpinner = ora(
-          `  ${task.assignedAgent?.name} (${task.assignedAgent?.modelKey}) 수정 중...`
+          `  ${t("pipeline.qaFixSpinner", { agent: task.assignedAgent?.name, model: task.assignedAgent?.modelKey })}`
         ).start();
 
         const fixBundle = this.assembler.forFix(this.state, { agentId: task.assignedAgentId, taskId: task.id, feedbackSource: "qa" });
@@ -897,11 +889,11 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
           await this.github.addComment(
             task.issueNumber,
-            `\uD83D\uDD04 **${task.assignedAgent?.name}** (\`${task.assignedAgent?.modelKey}\`): QA 피드백 반영 완료 (시도 ${attempt})`
+            t("pipeline.qaFixComment", { agent: task.assignedAgent?.name, model: task.assignedAgent?.modelKey, attempt })
           );
         }
         fixSpinner.succeed(
-          `  ${task.assignedAgent?.name} 수정 완료 \u2192 재테스트 진행`
+          `  ${t("pipeline.qaFixComplete", { agent: task.assignedAgent?.name })}`
         );
       }
 
@@ -948,19 +940,19 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       if (this.workspace?.isLocal) {
         try {
           this.workspace.gitPush(branchName);
-          console.log(chalk.gray(`  📤 push: ${branchName}`));
+          console.log(chalk.gray(`  ${t("pipeline.pushLog", { branch: branchName })}`));
         } catch (e) {
-          console.log(chalk.yellow(`  ⚠️ push 건너뜀: ${e.message}`));
+          console.log(chalk.yellow(`  ${t("pipeline.pushSkipped", { message: e.message })}`));
         }
       }
 
       const closesIssues = tasks
-        .map((t) => `Closes #${t.issueNumber}`)
+        .map((task) => `Closes #${task.issueNumber}`)
         .join("\n");
       const taskSummary = tasks
         .map(
-          (t) =>
-            `- **${t.title}** (${t.assignedAgent?.name} / ${t.assignedAgent?.modelKey})`
+          (task) =>
+            `- **${task.title}** (${task.assignedAgent?.name} / ${task.assignedAgent?.modelKey})`
         )
         .join("\n");
 
@@ -968,54 +960,54 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         taskId: tasks[0].id,
       });
 
-      const body = `## 변경 사항
-${projectTitle} - ${category} 구현
+      const body = `${t("pipeline.prBody.changes")}
+${t("pipeline.prBody.implementation", { title: projectTitle, category })}
 
-## 관련 이슈
+${t("pipeline.prBody.relatedIssues")}
 ${closesIssues}
 
-## 구현 내용
+${t("pipeline.prBody.contents")}
 
-### 태스크 목록
+${t("pipeline.prBody.taskList")}
 ${taskSummary}
 
-## 리뷰 & QA 이력
+${t("pipeline.prBody.reviewHistory")}
 ${tasks
-  .map((t) => {
-    const reviewIcon = t.reviewApproved ? "\u2705 Approved" : "\u26A0\uFE0F 조건부 통과";
-    const qaIcon = t.qaPassed ? "\u2705 Passed" : "\u26A0\uFE0F 조건부 통과";
-    const qaRetries = t.qaAttempts > 1 ? ` (${t.qaAttempts}회 시도)` : "";
-    return `- **${t.title}**: 리뷰 ${reviewIcon} / QA ${qaIcon}${qaRetries}`;
+  .map((task) => {
+    const reviewIcon = task.reviewApproved ? t("pipeline.prBody.reviewApproved") : t("pipeline.prBody.reviewConditional");
+    const qaIcon = task.qaPassed ? t("pipeline.prBody.qaPassed") : t("pipeline.prBody.qaConditional");
+    const qaRetries = task.qaAttempts > 1 ? ` ${t("pipeline.prBody.qaRetries", { count: task.qaAttempts })}` : "";
+    return `- **${task.title}**: ${reviewIcon} / QA ${qaIcon}${qaRetries}`;
   })
   .join("\n")}
 
-## 관련 회의/논의 기록
-- 킥오프 미팅: #${this.state.github.kickoffIssue}
-- 기술 설계: #${this.state.github.designIssue}
+${t("pipeline.prBody.meetingRecords")}
+- ${t("pipeline.prBody.kickoffMeeting")}: #${this.state.github.kickoffIssue}
+- ${t("pipeline.prBody.designMeeting")}: #${this.state.github.designIssue}
 
-## 소통 이력
+${t("pipeline.prBody.communicationLog")}
 ${communicationLog}
 
 ---
-> \uD83E\uDD16 Agent Team에 의해 자동 생성된 PR
+> ${t("pipeline.prBody.autoGenerated")}
 >
-> **모델 배정:**
+> ${t("pipeline.prBody.modelAssignment")}
 ${this.team
   .getActiveAgents()
   .map((a) => `> - ${a.name} (${a.role}): \`${a.modelKey}\``)
   .join("\n")}`;
 
       try {
-        const spinner = ora(`PR 생성: ${category}`).start();
+        const spinner = ora(t("pipeline.prSpinner", { category })).start();
         const pr = await this.github.createPR(
           `feat: ${projectTitle} - ${category}`,
           body,
           branchName
         );
-        spinner.succeed(`PR #${pr.number} 생성 완료`);
+        spinner.succeed(t("pipeline.prCreated", { number: pr.number }));
       } catch (e) {
         console.log(
-          chalk.yellow(`  \u26A0\uFE0F PR 생성 건너뜀 (${category}): ${e.message}`)
+          chalk.yellow(`  ${t("pipeline.prSkipped", { category, message: e.message })}`)
         );
       }
     }
@@ -1026,7 +1018,7 @@ ${this.team
     try {
       await this.onPhaseSave();
     } catch (e) {
-      console.log(chalk.yellow(`  \u26A0\uFE0F 체크포인트 저장 실패: ${e.message}`));
+      console.log(chalk.yellow(`  ${t("pipeline.checkpointFailed", { message: e.message })}`));
     }
   }
 
@@ -1042,7 +1034,7 @@ ${this.team
         task.assignedAgent = this.team.getAgent(task.assignedAgentId);
         if (!task.assignedAgent) {
           console.log(chalk.yellow(
-            `  \u26A0\uFE0F 에이전트 "${task.assignedAgentId}"를 찾을 수 없습니다 (태스크: ${task.title}). 팀장에게 재배정합니다.`
+            `  ${t("pipeline.agentNotFound", { id: task.assignedAgentId, title: task.title })}`
           ));
           task.assignedAgent = this.team.lead;
           task.assignedAgentId = this.team.lead.id;
@@ -1067,7 +1059,7 @@ ${this.team
         this.workspace.gitAdd([task.filePath]);
         this.workspace.gitCommit(commitMessage);
       } catch (e) {
-        console.log(chalk.yellow(`  ⚠️ 재커밋 실패: ${e.message}`));
+        console.log(chalk.yellow(`  ${t("pipeline.recommitFailed", { message: e.message })}`));
       }
     });
   }
@@ -1108,14 +1100,14 @@ ${this.team
     if (!agent) return;
 
     console.log(
-      chalk.cyan(`\n🔨 ${agent.name} (${agent.modelKey})이 개발 시작: ${task.title}`)
+      chalk.cyan(`\n${t("pipeline.devStart", { agent: agent.name, model: agent.modelKey, title: task.title })}`)
     );
 
     // GitHub 상태 업데이트
     await this.github.updateLabels(task.issueNumber, ["in-progress"], ["todo"]);
     await this.github.addComment(
       task.issueNumber,
-      `🚀 **${agent.name}** (\`${agent.modelKey}\`): 개발을 시작합니다.`
+      t("pipeline.devStartComment", { agent: agent.name, model: agent.modelKey })
     );
 
     // 브랜치명 생성
@@ -1132,9 +1124,9 @@ ${this.team
       );
       if (treeCache || relevantFiles.length > 0) {
         const parts = [];
-        if (treeCache) parts.push(`### 디렉토리 구조\n\`\`\`\n${treeCache}\n\`\`\``);
+        if (treeCache) parts.push(`### ${t("pipeline.directoryStructure")}\n\`\`\`\n${treeCache}\n\`\`\``);
         if (relevantFiles.length > 0) {
-          parts.push("### 관련 파일\n" + relevantFiles.map(
+          parts.push(`### ${t("pipeline.relevantFiles")}\n` + relevantFiles.map(
             (f) => `=== ${f.path} ===\n${f.content}`
           ).join("\n\n"));
         }
@@ -1143,10 +1135,10 @@ ${this.team
     }
 
     // LLM 호출 (병렬 실행의 핵심 — 가장 오래 걸리는 구간)
-    const spinner = ora(`  ${agent.name} 코드 작성 중...`).start();
+    const spinner = ora(`  ${t("pipeline.codingSpinner", { agent: agent.name })}`).start();
     const contextBundle = this.assembler.forCoding(this.state, { agentId: agent.id, taskId: task.id, codebaseContext });
     const result = await agent.writeCode(contextBundle);
-    spinner.succeed(`  ${agent.name} 코드 작성 완료`);
+    spinner.succeed(`  ${t("pipeline.codingComplete", { agent: agent.name })}`);
 
     task.code = result.code;
 
@@ -1169,9 +1161,9 @@ ${this.team
           this.workspace.gitCommit(
             `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
           );
-          console.log(chalk.gray(`  📁 로컬 커밋: ${filePath}`));
+          console.log(chalk.gray(`  ${t("pipeline.localCommit", { path: filePath })}`));
         } catch (e) {
-          console.log(chalk.yellow(`  ⚠️ 로컬 커밋 실패: ${e.message}`));
+          console.log(chalk.yellow(`  ${t("pipeline.localCommitFailed", { message: e.message })}`));
         }
       });
     } else {
@@ -1186,9 +1178,9 @@ ${this.team
             cleanCode,
             `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
           );
-          console.log(chalk.gray(`  📁 커밋: ${filePath}`));
+          console.log(chalk.gray(`  ${t("pipeline.commit", { path: filePath })}`));
         } catch (e) {
-          console.log(chalk.yellow(`  ⚠️ 커밋 건너뜀: ${e.message}`));
+          console.log(chalk.yellow(`  ${t("pipeline.commitSkipped", { message: e.message })}`));
         }
       });
     }
@@ -1197,13 +1189,13 @@ ${this.team
       from: agent.id,
       to: "tech_lead",
       type: "review_request",
-      content: `${task.title} 개발 완료. 리뷰를 요청합니다.`,
+      content: t("pipeline.devCompleteMessage", { title: task.title }),
       taskId: task.id,
     });
 
     // 이미지 생성
     if (agent.canGenerateImages && this._isImageTask(task)) {
-      const imageSpinner = ora(`  ${agent.name} 이미지 생성 중...`).start();
+      const imageSpinner = ora(`  ${t("pipeline.imageSpinner", { agent: agent.name })}`).start();
       try {
         const imageBundle = this.assembler.forImageGeneration(this.state, {
           imagePrompt: task.description || task.title,
@@ -1212,7 +1204,7 @@ ${this.team
         });
         const imageResult = await agent.generateImage(imageBundle);
         imageSpinner.succeed(
-          `  ${agent.name} 이미지 ${imageResult.images.length}개 생성 완료`
+          `  ${t("pipeline.imageComplete", { agent: agent.name, count: imageResult.images.length })}`
         );
 
         task.images = {
@@ -1224,18 +1216,18 @@ ${this.team
           const imageList = imageResult.images.map(img => `- \`${img.path}\``).join("\n");
           await this.github.addComment(
             task.issueNumber,
-            `🎨 **${agent.name}** (\`${agent.imageModelKey}\`): 이미지 생성 완료\n\n${imageList}\n\n${imageResult.textResponse || ""}`
+            t("pipeline.imageComment", { agent: agent.name, model: agent.imageModelKey, imageList, text: imageResult.textResponse || "" })
           );
         }
       } catch (e) {
-        imageSpinner.fail(`  이미지 생성 실패: ${e.message}`);
+        imageSpinner.fail(`  ${t("pipeline.imageFailed", { message: e.message })}`);
       }
     }
 
     // 완료 코멘트
     await this.github.addComment(
       task.issueNumber,
-      `✅ **${agent.name}** (\`${agent.modelKey}\`): 개발 완료. 리뷰를 요청합니다.\n\n<details>\n<summary>생성된 코드 미리보기</summary>\n\n${result.code.substring(0, 1000)}${result.code.length > 1000 ? "\n...(truncated)" : ""}\n</details>`
+      `${t("pipeline.devCompleteComment", { agent: agent.name, model: agent.modelKey })}\n\n<details>\n<summary>${t("pipeline.codePreviewSummary")}</summary>\n\n${result.code.substring(0, 1000)}${result.code.length > 1000 ? "\n...(truncated)" : ""}\n</details>`
     );
 
     await this.github.updateLabels(task.issueNumber, ["in-review"], ["in-progress"]);

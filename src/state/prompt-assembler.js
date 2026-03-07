@@ -2,6 +2,8 @@
 // 토큰 예산 내 프롬프트 맥락 조립기
 // PipelineState에서 작업별 필요한 맥락을 우선순위 기반으로 조립
 
+import { t } from "../i18n/index.js";
+
 // Phase별 기본 예산 (문자 수)
 // 각 Phase의 정보 필요량에 따라 차등 배분
 const PHASE_BUDGETS = {
@@ -33,13 +35,6 @@ export class PromptAssembler {
 
   /**
    * 회의 발언용 맥락 조립
-   * @param {import('./pipeline-state.js').PipelineState} state
-   * @param {Object} opts
-   * @param {string} opts.agentId
-   * @param {string} opts.topic
-   * @param {number} [opts.maxPreviousSpeeches=8]
-   * @param {number} [opts.maxChars]
-   * @returns {{ context: string, topic: string }}
    */
   forMeeting(state, { agentId, topic, maxPreviousSpeeches = 8, maxChars } = {}) {
     const budget = this._resolveBudget("meeting", maxChars);
@@ -70,7 +65,7 @@ export class PromptAssembler {
       const maxCodebase = Math.max(800, Math.floor((budget - used) * 0.3));
       const truncated = this._truncate(state.codebaseAnalysis, maxCodebase);
       if (truncated) {
-        const section = `## 기존 코드베이스 분석\n${truncated}`;
+        const section = `${t("promptAssembler.codebaseAnalysis")}\n${truncated}`;
         sections.push(section);
         used += section.length;
       }
@@ -80,7 +75,7 @@ export class PromptAssembler {
     if (used < budget - 500 && state.designDecisions) {
       const summary = this._truncate(state.designDecisions, budget - used - 100);
       if (summary) {
-        const section = `## 설계 결정 참고\n${summary}`;
+        const section = `${t("promptAssembler.designDecisions")}\n${summary}`;
         sections.push(section);
         used += section.length;
       }
@@ -94,13 +89,6 @@ export class PromptAssembler {
 
   /**
    * 코드 작성용 맥락 조립
-   * @param {import('./pipeline-state.js').PipelineState} state
-   * @param {Object} opts
-   * @param {string} opts.agentId
-   * @param {string} opts.taskId
-   * @param {string} [opts.codebaseContext] - 기존 코드베이스 맥락 (워크스페이스에서 조립)
-   * @param {number} [opts.maxChars]
-   * @returns {{ systemContext: string, taskDescription: string, acceptanceCriteria: string }}
    */
   forCoding(state, { agentId, taskId, codebaseContext, maxChars } = {}) {
     const budget = this._resolveBudget("coding", maxChars);
@@ -126,7 +114,7 @@ export class PromptAssembler {
 
       // 2a. 수정 지시 (최우선, 전체 포함)
       const latest = fixMessages[fixMessages.length - 1];
-      const fixSection = `## 팀장 수정 지시\n${latest.content}`;
+      const fixSection = `${t("promptAssembler.leadFixGuidance")}\n${latest.content}`;
       sections.push(fixSection);
       used += fixSection.length;
 
@@ -134,7 +122,7 @@ export class PromptAssembler {
       if (task?.review && budget - used > 200) {
         const reviewContent = this._truncate(task.review, Math.min(1500, budget - used - 200));
         if (reviewContent) {
-          const section = `## 이전 리뷰 결과\n${reviewContent}`;
+          const section = `${t("promptAssembler.previousReview")}\n${reviewContent}`;
           sections.push(section);
           used += section.length;
         }
@@ -143,7 +131,7 @@ export class PromptAssembler {
       if (task?.qa && budget - used > 200) {
         const qaContent = this._truncate(task.qa, Math.min(1000, budget - used - 200));
         if (qaContent) {
-          const section = `## 이전 QA 결과\n${qaContent}`;
+          const section = `${t("promptAssembler.previousQA")}\n${qaContent}`;
           sections.push(section);
           used += section.length;
         }
@@ -155,7 +143,7 @@ export class PromptAssembler {
         if (maxCodebase > 50) {
           const truncated = this._truncate(codebaseContext, maxCodebase);
           if (truncated) {
-            const section = `## 기존 코드베이스 참고\n${truncated}`;
+            const section = `${t("promptAssembler.codebaseRef")}\n${truncated}`;
             sections.push(section);
             used += section.length;
           }
@@ -166,7 +154,7 @@ export class PromptAssembler {
       if (state.designDecisions && budget - used > 200) {
         const summary = this._truncate(state.designDecisions, Math.min(1000, budget - used - 100));
         if (summary) {
-          const section = `## 설계 결정사항\n${summary}`;
+          const section = `${t("promptAssembler.designDecisionsRef")}\n${summary}`;
           sections.push(section);
           used += section.length;
         }
@@ -180,7 +168,7 @@ export class PromptAssembler {
         if (maxCodebase > 50) {
           const truncated = this._truncate(codebaseContext, maxCodebase);
           if (truncated) {
-            const section = `## 기존 코드베이스 참고\n${truncated}`;
+            const section = `${t("promptAssembler.codebaseRef")}\n${truncated}`;
             sections.push(section);
             used += section.length;
           }
@@ -191,7 +179,7 @@ export class PromptAssembler {
       if (state.techStack) {
         const valueStr = typeof state.techStack === "string"
           ? state.techStack : JSON.stringify(state.techStack, null, 2);
-        const techSection = `## 기술 스택\n${valueStr}`;
+        const techSection = `${t("promptAssembler.techStack")}\n${valueStr}`;
         if (used + techSection.length < budget) {
           sections.push(techSection);
           used += techSection.length;
@@ -203,7 +191,7 @@ export class PromptAssembler {
         const designBudget = Math.min(2500, Math.floor((budget - used) * 0.3));
         const summary = this._truncate(state.designDecisions, Math.max(0, Math.min(designBudget, budget - used - 200)));
         if (summary) {
-          const section = `## 설계 결정사항\n${summary}`;
+          const section = `${t("promptAssembler.designDecisionsRef")}\n${summary}`;
           sections.push(section);
           used += section.length;
         }
@@ -213,7 +201,7 @@ export class PromptAssembler {
       if (state.kickoffSummary && budget - used > 200) {
         const kickoff = this._truncate(state.kickoffSummary, Math.min(500, budget - used - 100));
         if (kickoff) {
-          const section = `## 킥오프 요약\n${kickoff}`;
+          const section = `${t("promptAssembler.kickoffSummary")}\n${kickoff}`;
           sections.push(section);
           used += section.length;
         }
@@ -229,12 +217,6 @@ export class PromptAssembler {
 
   /**
    * 코드 리뷰용 맥락 조립
-   * @param {import('./pipeline-state.js').PipelineState} state
-   * @param {Object} opts
-   * @param {string} opts.taskId
-   * @param {string} [opts.codebaseContext] - 기존 코드베이스 맥락
-   * @param {number} [opts.maxChars]
-   * @returns {{ systemContext: string, code: string, criteria: string }}
    */
   forReview(state, { taskId, codebaseContext, maxChars } = {}) {
     const budget = this._resolveBudget("review", maxChars);
@@ -247,7 +229,7 @@ export class PromptAssembler {
 
     // 태스크 설명
     if (task?.description) {
-      const section = `## 태스크 설명\n${task.description}`;
+      const section = `${t("promptAssembler.taskDescription")}\n${task.description}`;
       sections.push(section);
       used += section.length;
     }
@@ -258,7 +240,7 @@ export class PromptAssembler {
       if (maxCodebase > 50) {
         const truncated = this._truncate(codebaseContext, maxCodebase);
         if (truncated) {
-          const section = `## 기존 코드베이스 참고\n${truncated}`;
+          const section = `${t("promptAssembler.codebaseRef")}\n${truncated}`;
           sections.push(section);
           used += section.length;
         }
@@ -269,7 +251,7 @@ export class PromptAssembler {
     if (state.designDecisions) {
       const summary = this._truncate(state.designDecisions, budget - used - 200);
       if (summary) {
-        const section = `## 설계 결정 참고\n${summary}`;
+        const section = `${t("promptAssembler.designDecisions")}\n${summary}`;
         sections.push(section);
         used += section.length;
       }
@@ -279,7 +261,7 @@ export class PromptAssembler {
     if (state.kickoffSummary && budget - used > 200) {
       const kickoff = this._truncate(state.kickoffSummary, Math.min(500, budget - used - 100));
       if (kickoff) {
-        const section = `## 킥오프 요약\n${kickoff}`;
+        const section = `${t("promptAssembler.kickoffSummary")}\n${kickoff}`;
         sections.push(section);
         used += section.length;
       }
@@ -287,7 +269,7 @@ export class PromptAssembler {
 
     // 이전 리뷰 이력 (재리뷰 시)
     if (task?.review) {
-      const section = `## 이전 리뷰\n${task.review}`;
+      const section = `${t("promptAssembler.previousReview")}\n${task.review}`;
       if (used + section.length < budget) {
         sections.push(section);
         used += section.length;
@@ -303,11 +285,6 @@ export class PromptAssembler {
 
   /**
    * QA용 맥락 조립
-   * @param {import('./pipeline-state.js').PipelineState} state
-   * @param {Object} opts
-   * @param {string} opts.taskId
-   * @param {number} [opts.maxChars]
-   * @returns {{ systemContext: string, code: string, criteria: string, taskDescription: string }}
    */
   forQA(state, { taskId, maxChars } = {}) {
     const budget = this._resolveBudget("qa", maxChars);
@@ -321,7 +298,7 @@ export class PromptAssembler {
 
     // 리뷰 결과
     if (task?.review) {
-      const section = `## 코드 리뷰 결과\n${task.review}`;
+      const section = `${t("promptAssembler.reviewResult")}\n${task.review}`;
       if (used + section.length < budget) {
         sections.push(section);
         used += section.length;
@@ -330,7 +307,7 @@ export class PromptAssembler {
 
     // 이전 QA 결과 (재테스트 시)
     if (task?.qa) {
-      const section = `## 이전 QA 결과\n${task.qa}`;
+      const section = `${t("promptAssembler.previousQAResult")}\n${task.qa}`;
       if (used + section.length < budget) {
         sections.push(section);
         used += section.length;
@@ -347,13 +324,6 @@ export class PromptAssembler {
 
   /**
    * 수정 작업용 맥락 조립
-   * @param {import('./pipeline-state.js').PipelineState} state
-   * @param {Object} opts
-   * @param {string} opts.agentId
-   * @param {string} opts.taskId
-   * @param {"review"|"qa"} opts.feedbackSource
-   * @param {number} [opts.maxChars]
-   * @returns {{ systemContext: string, taskDescription: string, acceptanceCriteria: string, currentCode: string }}
    */
   forFix(state, { agentId, taskId, feedbackSource, maxChars } = {}) {
     const budget = this._resolveBudget("fix", maxChars);
@@ -366,8 +336,10 @@ export class PromptAssembler {
     // 1. 피드백 내용
     const feedback = feedbackSource === "review" ? task?.review : task?.qa;
     if (feedback) {
-      const label = feedbackSource === "review" ? "리뷰" : "QA";
-      const section = `## ${label} 피드백\n${feedback}`;
+      const label = feedbackSource === "review"
+        ? t("promptAssembler.reviewFeedback")
+        : t("promptAssembler.qaFeedback");
+      const section = `${label}\n${feedback}`;
       sections.push(section);
       used += section.length;
     }
@@ -379,9 +351,11 @@ export class PromptAssembler {
       const parts = recentFixes.map((msg, i) => {
         const isLatest = i === recentFixes.length - 1;
         const content = isLatest ? msg.content : this._truncate(msg.content, 500);
-        return isLatest ? `### 현재 수정 지시\n${content}` : `### 이전 수정 지시\n${content}`;
+        return isLatest
+          ? `${t("promptAssembler.currentFixGuidance")}\n${content}`
+          : `${t("promptAssembler.previousFixGuidance")}\n${content}`;
       });
-      const section = `## 팀장 수정 지시\n${parts.join("\n\n")}`;
+      const section = `${t("promptAssembler.fixGuidanceSection")}\n${parts.join("\n\n")}`;
       if (used + section.length < budget) {
         sections.push(section);
         used += section.length;
@@ -392,7 +366,7 @@ export class PromptAssembler {
     if (state.designDecisions) {
       const summary = this._truncate(state.designDecisions, Math.min(1000, budget - used - 200));
       if (summary) {
-        const section = `## 설계 참고\n${summary}`;
+        const section = `${t("promptAssembler.designRef")}\n${summary}`;
         sections.push(section);
         used += section.length;
       }
@@ -402,7 +376,7 @@ export class PromptAssembler {
     if (state.kickoffSummary && budget - used > 200) {
       const kickoff = this._truncate(state.kickoffSummary, Math.min(500, budget - used - 100));
       if (kickoff) {
-        const section = `## 킥오프 요약\n${kickoff}`;
+        const section = `${t("promptAssembler.kickoffSummary")}\n${kickoff}`;
         sections.push(section);
         used += section.length;
       }
@@ -418,13 +392,6 @@ export class PromptAssembler {
 
   /**
    * 이미지 생성용 맥락 조립
-   * @param {import('./pipeline-state.js').PipelineState} state
-   * @param {Object} opts
-   * @param {string} opts.imagePrompt
-   * @param {string} [opts.taskId]
-   * @param {string} [opts.outputDir]
-   * @param {number} [opts.maxChars]
-   * @returns {{ systemContext: string, imagePrompt: string, outputDir: string }}
    */
   forImageGeneration(state, { imagePrompt, taskId, outputDir, maxChars } = {}) {
     const budget = this._resolveBudget("image", maxChars);
@@ -439,7 +406,7 @@ export class PromptAssembler {
     // 2. 디자인 가이드라인
     if (state.designDecisions) {
       const summary = this._truncate(state.designDecisions, Math.min(2000, budget - used - 500));
-      const section = `## 디자인 가이드라인\n${summary}`;
+      const section = `${t("promptAssembler.designGuideline")}\n${summary}`;
       sections.push(section);
       used += section.length;
     }
@@ -448,7 +415,7 @@ export class PromptAssembler {
     if (taskId) {
       const task = state.findTask(taskId);
       if (task?.description) {
-        const section = `## 관련 태스크\n${task.description}`;
+        const section = `${t("promptAssembler.relatedTask")}\n${task.description}`;
         if (used + section.length < budget) {
           sections.push(section);
         }
@@ -466,13 +433,14 @@ export class PromptAssembler {
 
   /** @private */
   _buildProjectSection(state) {
-    return `## 프로젝트: ${state.project.title}\n### 요구사항\n${state.project.requirement}`;
+    return `${t("promptAssembler.project", { title: state.project.title })}\n${t("promptAssembler.requirementSection")}\n${state.project.requirement}`;
   }
 
   /** @private */
   _buildSpeechSection(speeches, maxChars) {
-    const lines = ["## 이전 논의"];
-    let used = lines[0].length;
+    const header = t("promptAssembler.previousDiscussion");
+    const lines = [header];
+    let used = header.length;
 
     for (const msg of speeches) {
       const line = `**${msg.from}**: ${msg.content}`;
@@ -489,6 +457,6 @@ export class PromptAssembler {
     if (!text) return null;
     const str = typeof text === "string" ? text : JSON.stringify(text);
     if (str.length <= maxChars) return str;
-    return str.substring(0, maxChars - 20) + "\n...(예산 내 절삭)";
+    return str.substring(0, maxChars - 20) + `\n${t("promptAssembler.truncated")}`;
   }
 }
