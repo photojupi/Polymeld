@@ -266,40 +266,18 @@ export class GitHubClient {
       });
       return;
     } catch (e) {
-      if (e.status !== 409) throw e;
+      if (e.status !== 409 && e.status !== 404) throw e;
     }
 
-    const { data: blob } = await this.octokit.rest.git.createBlob({
+    // 빈 레포에서는 Git Data API(createBlob 등)가 동작하지 않으므로
+    // Contents API를 사용하여 초기 커밋 생성
+    await this.octokit.rest.repos.createOrUpdateFileContents({
       owner: this.owner,
       repo: this.repo,
-      content: Buffer.from(`# ${this.repo}\n`).toString("base64"),
-      encoding: "base64",
-    });
-
-    const { data: tree } = await this.octokit.rest.git.createTree({
-      owner: this.owner,
-      repo: this.repo,
-      tree: [{ path: "README.md", mode: "100644", type: "blob", sha: blob.sha }],
-    });
-
-    const { data: commit } = await this.octokit.rest.git.createCommit({
-      owner: this.owner,
-      repo: this.repo,
+      path: "README.md",
       message: "Initial commit",
-      tree: tree.sha,
-      parents: [],
+      content: Buffer.from(`# ${this.repo}\n`).toString("base64"),
     });
-
-    try {
-      await this.octokit.rest.git.createRef({
-        owner: this.owner,
-        repo: this.repo,
-        ref: "refs/heads/main",
-        sha: commit.sha,
-      });
-    } catch (e) {
-      if (e.status !== 422) throw e;
-    }
   }
 
   // ─── Branches ─────────────────────────────────────────
