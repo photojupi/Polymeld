@@ -2,6 +2,17 @@
 // 토큰 예산 내 프롬프트 맥락 조립기
 // PipelineState에서 작업별 필요한 맥락을 우선순위 기반으로 조립
 
+// Phase별 기본 예산 (문자 수)
+// 각 Phase의 정보 필요량에 따라 차등 배분
+const PHASE_BUDGETS = {
+  meeting: 8000,   // 이전 발언이 많으므로 여유 확보
+  coding:  12000,  // 코드 퀄리티 직결 → 가장 큰 예산
+  review:  6000,   // 코드 자체는 별도 전달, 맥락만
+  qa:      4000,   // 리뷰 결과 + 이전 QA만 참조
+  fix:     10000,  // 피드백 + 수정 지시 + 설계 모두 필요
+  image:   6000,
+};
+
 export class PromptAssembler {
   /**
    * @param {Object} [options]
@@ -9,6 +20,15 @@ export class PromptAssembler {
    */
   constructor(options = {}) {
     this.maxChars = options.maxChars || 6000;
+    // maxChars가 명시적으로 주어지면 모든 Phase에 동일 적용 (하위 호환)
+    this._hasExplicitMaxChars = !!options.maxChars;
+  }
+
+  /** Phase별 차등 예산 해석. 명시적 override → constructor maxChars → Phase 기본값 */
+  _resolveBudget(phase, maxCharsOverride) {
+    if (maxCharsOverride) return maxCharsOverride;
+    if (this._hasExplicitMaxChars) return this.maxChars;
+    return PHASE_BUDGETS[phase] || this.maxChars;
   }
 
   /**
@@ -22,7 +42,7 @@ export class PromptAssembler {
    * @returns {{ context: string, topic: string }}
    */
   forMeeting(state, { agentId, topic, maxPreviousSpeeches = 8, maxChars } = {}) {
-    const budget = maxChars || this.maxChars;
+    const budget = this._resolveBudget("meeting", maxChars);
     const sections = [];
     let used = 0;
 
@@ -45,8 +65,9 @@ export class PromptAssembler {
     }
 
     // 3. 코드베이스 분석 (수정 모드에서 Phase 0 결과)
+    // 최소 800자를 보장하여 후반 라운드에서도 코드베이스 정보 유지
     if (state.codebaseAnalysis && budget - used > 200) {
-      const maxCodebase = Math.floor((budget - used) * 0.4);
+      const maxCodebase = Math.max(800, Math.floor((budget - used) * 0.3));
       const truncated = this._truncate(state.codebaseAnalysis, maxCodebase);
       if (truncated) {
         const section = `## 기존 코드베이스 분석\n${truncated}`;
@@ -82,7 +103,7 @@ export class PromptAssembler {
    * @returns {{ systemContext: string, taskDescription: string, acceptanceCriteria: string }}
    */
   forCoding(state, { agentId, taskId, codebaseContext, maxChars } = {}) {
-    const budget = maxChars || this.maxChars;
+    const budget = this._resolveBudget("coding", maxChars);
     const sections = [];
     let used = 0;
 
@@ -96,76 +117,106 @@ export class PromptAssembler {
     const taskDesc = task?.description || "";
     const criteria = task?.acceptance_criteria?.join("\n") || "";
 
-    // 3. 기존 코드베이스 맥락 (높은 우선순위)
-    if (codebaseContext && budget - used > 100) {
-      const maxCodebase = Math.min(codebaseContext.length, Math.floor((budget - used) * 0.4));
-      if (maxCodebase > 50) {
-        const truncated = this._truncate(codebaseContext, maxCodebase);
-        if (truncated) {
-          const section = `## 기존 코드베이스 참고\n${truncated}`;
+    // fix 사이클 판정: 수정 지시가 있으면 수정 모드
+    const fixMessages = state.getMessagesFor(agentId, { type: "fix_guidance", taskId });
+    const isFixCycle = fixMessages.length > 0;
+
+    if (isFixCycle) {
+      // === 수정 코딩: 피드백 이해가 최우선 ===
+
+      // 2a. 수정 지시 (최우선, 전체 포함)
+      const latest = fixMessages[fixMessages.length - 1];
+      const fixSection = `## 팀장 수정 지시\n${latest.content}`;
+      sections.push(fixSection);
+      used += fixSection.length;
+
+      // 2b. 이전 리뷰/QA 결과 (수정 대상이므로 우선 포함)
+      if (task?.review && budget - used > 200) {
+        const reviewContent = this._truncate(task.review, Math.min(1500, budget - used - 200));
+        if (reviewContent) {
+          const section = `## 이전 리뷰 결과\n${reviewContent}`;
           sections.push(section);
           used += section.length;
         }
       }
-    }
 
-    // 4. 기술 스택
-    if (state.techStack) {
-      const valueStr = typeof state.techStack === "string"
-        ? state.techStack : JSON.stringify(state.techStack, null, 2);
-      const techSection = `## 기술 스택\n${valueStr}`;
-      if (used + techSection.length < budget) {
-        sections.push(techSection);
-        used += techSection.length;
+      if (task?.qa && budget - used > 200) {
+        const qaContent = this._truncate(task.qa, Math.min(1000, budget - used - 200));
+        if (qaContent) {
+          const section = `## 이전 QA 결과\n${qaContent}`;
+          sections.push(section);
+          used += section.length;
+        }
       }
-    }
 
-    // 5. 설계 결정 (코드베이스 맥락이 있으면 예산 축소)
-    if (state.designDecisions) {
-      const designBudget = codebaseContext ? 1000 : 2000;
-      const summary = this._truncate(state.designDecisions, Math.min(designBudget, budget - used - 500));
-      if (summary) {
-        const section = `## 설계 결정사항\n${summary}`;
-        sections.push(section);
-        used += section.length;
+      // 2c. 코드베이스 (남은 예산의 40%)
+      if (codebaseContext && budget - used > 100) {
+        const maxCodebase = Math.min(codebaseContext.length, Math.floor((budget - used) * 0.4));
+        if (maxCodebase > 50) {
+          const truncated = this._truncate(codebaseContext, maxCodebase);
+          if (truncated) {
+            const section = `## 기존 코드베이스 참고\n${truncated}`;
+            sections.push(section);
+            used += section.length;
+          }
+        }
       }
-    }
 
-    // 6. 킥오프 요약 (보충 맥락)
-    if (state.kickoffSummary && budget - used > 200) {
-      const kickoff = this._truncate(state.kickoffSummary, Math.min(500, budget - used - 100));
-      if (kickoff) {
-        const section = `## 킥오프 요약\n${kickoff}`;
-        sections.push(section);
-        used += section.length;
+      // 2d. 설계 결정 (축소)
+      if (state.designDecisions && budget - used > 200) {
+        const summary = this._truncate(state.designDecisions, Math.min(1000, budget - used - 100));
+        if (summary) {
+          const section = `## 설계 결정사항\n${summary}`;
+          sections.push(section);
+          used += section.length;
+        }
       }
-    }
+    } else {
+      // === 최초 코딩: 코드베이스 이해가 최우선 ===
 
-    // 7. 수정 지시 메시지
-    const fixMessages = state.getMessagesFor(agentId, { type: "fix_guidance", taskId });
-    if (fixMessages.length > 0) {
-      const latest = fixMessages[fixMessages.length - 1];
-      const fixSection = `## 팀장 수정 지시\n${latest.content}`;
-      if (used + fixSection.length < budget) {
-        sections.push(fixSection);
-        used += fixSection.length;
+      // 3. 기존 코드베이스 맥락 (50% 할당)
+      if (codebaseContext && budget - used > 100) {
+        const maxCodebase = Math.min(codebaseContext.length, Math.floor((budget - used) * 0.5));
+        if (maxCodebase > 50) {
+          const truncated = this._truncate(codebaseContext, maxCodebase);
+          if (truncated) {
+            const section = `## 기존 코드베이스 참고\n${truncated}`;
+            sections.push(section);
+            used += section.length;
+          }
+        }
       }
-    }
 
-    // 8. 이전 리뷰/QA 결과
-    if (task?.review) {
-      const section = `## 이전 리뷰 결과\n${task.review}`;
-      if (used + section.length < budget) {
-        sections.push(section);
-        used += section.length;
+      // 4. 기술 스택
+      if (state.techStack) {
+        const valueStr = typeof state.techStack === "string"
+          ? state.techStack : JSON.stringify(state.techStack, null, 2);
+        const techSection = `## 기술 스택\n${valueStr}`;
+        if (used + techSection.length < budget) {
+          sections.push(techSection);
+          used += techSection.length;
+        }
       }
-    }
 
-    if (task?.qa) {
-      const section = `## 이전 QA 결과\n${task.qa}`;
-      if (used + section.length < budget) {
-        sections.push(section);
-        used += section.length;
+      // 5. 설계 결정 (남은 예산의 30%, cap 2500자)
+      if (state.designDecisions) {
+        const designBudget = Math.min(2500, Math.floor((budget - used) * 0.3));
+        const summary = this._truncate(state.designDecisions, Math.max(0, Math.min(designBudget, budget - used - 200)));
+        if (summary) {
+          const section = `## 설계 결정사항\n${summary}`;
+          sections.push(section);
+          used += section.length;
+        }
+      }
+
+      // 6. 킥오프 요약 (보충 맥락)
+      if (state.kickoffSummary && budget - used > 200) {
+        const kickoff = this._truncate(state.kickoffSummary, Math.min(500, budget - used - 100));
+        if (kickoff) {
+          const section = `## 킥오프 요약\n${kickoff}`;
+          sections.push(section);
+          used += section.length;
+        }
       }
     }
 
@@ -186,7 +237,7 @@ export class PromptAssembler {
    * @returns {{ systemContext: string, code: string, criteria: string }}
    */
   forReview(state, { taskId, codebaseContext, maxChars } = {}) {
-    const budget = maxChars || this.maxChars;
+    const budget = this._resolveBudget("review", maxChars);
     const sections = [];
     let used = 0;
 
@@ -259,7 +310,7 @@ export class PromptAssembler {
    * @returns {{ systemContext: string, code: string, criteria: string, taskDescription: string }}
    */
   forQA(state, { taskId, maxChars } = {}) {
-    const budget = maxChars || this.maxChars;
+    const budget = this._resolveBudget("qa", maxChars);
     const sections = [];
     let used = 0;
 
@@ -305,7 +356,7 @@ export class PromptAssembler {
    * @returns {{ systemContext: string, taskDescription: string, acceptanceCriteria: string, currentCode: string }}
    */
   forFix(state, { agentId, taskId, feedbackSource, maxChars } = {}) {
-    const budget = maxChars || this.maxChars;
+    const budget = this._resolveBudget("fix", maxChars);
     const sections = [];
     let used = 0;
 
@@ -321,11 +372,16 @@ export class PromptAssembler {
       used += section.length;
     }
 
-    // 2. 수정 지시
+    // 2. 수정 지시 (최근 2개까지, 이전 것은 축약)
     const fixMessages = state.getMessagesFor(agentId, { type: "fix_guidance", taskId });
     if (fixMessages.length > 0) {
-      const latest = fixMessages[fixMessages.length - 1];
-      const section = `## 팀장 수정 지시\n${latest.content}`;
+      const recentFixes = fixMessages.slice(-2);
+      const parts = recentFixes.map((msg, i) => {
+        const isLatest = i === recentFixes.length - 1;
+        const content = isLatest ? msg.content : this._truncate(msg.content, 500);
+        return isLatest ? `### 현재 수정 지시\n${content}` : `### 이전 수정 지시\n${content}`;
+      });
+      const section = `## 팀장 수정 지시\n${parts.join("\n\n")}`;
       if (used + section.length < budget) {
         sections.push(section);
         used += section.length;
@@ -371,7 +427,7 @@ export class PromptAssembler {
    * @returns {{ systemContext: string, imagePrompt: string, outputDir: string }}
    */
   forImageGeneration(state, { imagePrompt, taskId, outputDir, maxChars } = {}) {
-    const budget = maxChars || this.maxChars;
+    const budget = this._resolveBudget("image", maxChars);
     const sections = [];
     let used = 0;
 
