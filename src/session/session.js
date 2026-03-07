@@ -5,6 +5,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import chalk from "chalk";
+import ora from "ora";
 import { PipelineState } from "../state/pipeline-state.js";
 import { PromptAssembler } from "../state/prompt-assembler.js";
 import { ModelAdapter } from "../models/adapter.js";
@@ -170,7 +171,14 @@ export class Session {
 
     // 프로젝트 정보 설정 (title은 워크스페이스 정보에서 자동 파생)
     this.state.project.requirement = requirement;
-    this.state.project.title = await this._deriveTitle(requirement);
+    const titleSpinner = ora(t("repl.preparingSpinner")).start();
+    try {
+      this.state.project.title = await this._deriveTitle(requirement);
+      titleSpinner.succeed(t("repl.preparingComplete", { title: this.state.project.title }));
+    } catch (err) {
+      titleSpinner.fail();
+      throw err;
+    }
     const title = this.state.project.title;
     const isModification = this.runs.length > 0;
 

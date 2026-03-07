@@ -270,6 +270,8 @@
     "saveFailed": "⚠️ セッション保存失敗: {{message}}",
     "exit": "👋 Polymeld REPL 終了",
     "pipelineStart": "🤖 Polymeld パイプライン開始",
+    "preparingSpinner": "リーダーが要件を分析中...",
+    "preparingComplete": "{{title}}",
     "pipelineFailed": "❌ パイプライン実行失敗: {{message}}",
     "unknownCommand": "不明なコマンド: {{cmd}}",
     "unknownCommandHelp": "/help で使用可能なコマンドを確認できます。",

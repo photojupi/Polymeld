@@ -270,6 +270,8 @@
     "saveFailed": "⚠️ Session save failed: {{message}}",
     "exit": "👋 Polymeld REPL terminated",
     "pipelineStart": "🤖 Polymeld Pipeline Start",
+    "preparingSpinner": "Tech Lead analyzing requirements...",
+    "preparingComplete": "{{title}}",
     "pipelineFailed": "❌ Pipeline execution failed: {{message}}",
     "unknownCommand": "Unknown command: {{cmd}}",
     "unknownCommandHelp": "Type /help to see available commands.",

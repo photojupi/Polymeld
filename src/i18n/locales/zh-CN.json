@@ -270,6 +270,8 @@
     "saveFailed": "⚠️ 会话保存失败: {{message}}",
     "exit": "👋 Polymeld REPL 已退出",
     "pipelineStart": "🤖 Polymeld 流水线启动",
+    "preparingSpinner": "团队负责人正在分析需求...",
+    "preparingComplete": "{{title}}",
     "pipelineFailed": "❌ 流水线执行失败: {{message}}",
     "unknownCommand": "未知命令: {{cmd}}",
     "unknownCommandHelp": "输入 /help 查看可用命令。",
