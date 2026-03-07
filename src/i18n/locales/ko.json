@@ -249,6 +249,7 @@
     "issuesDisabled": "Issues 기능이 비활성화되어 있습니다 ({{repo}}) — 리포지토리 Settings → Features에서 Issues를 활성화해주세요",
     "pullsAccessDenied": "Pull Requests 접근 권한 없음 ({{repo}}) — 토큰에 Pull requests 권한을 추가해주세요",
     "pullsDisabled": "Pull Requests를 사용할 수 없습니다 ({{repo}}) — 리포지토리 설정을 확인해주세요",
+    "projectsAccessDenied": "GitHub Projects 접근 불가 — 칸반 보드 기능이 비활성화됩니다. Classic PAT: 'project' 스코프 / Fine-grained PAT: Projects 읽기/쓰기 권한 필요",
     "networkFailed": "네트워크 연결 실패",
     "installRequired": "{{cli}} 설치 필요",
     "choice": {
