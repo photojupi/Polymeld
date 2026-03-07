@@ -15,6 +15,7 @@ export class NoOpGitHub {
   async updateLabels() {}
   async closeIssue() {}
   async addIssueToProject() {}
+  async ensureInitialCommit() {}
   async createBranch() {}
   async commitFile() {}
   async createPR() { return { number: 0 }; }
@@ -252,6 +253,53 @@ export class GitHubClient {
     }
 
     return null;
+  }
+
+  // ─── Repository Initialization ─────────────────────────
+
+  async ensureInitialCommit() {
+    try {
+      await this.octokit.rest.git.getRef({
+        owner: this.owner,
+        repo: this.repo,
+        ref: "heads/main",
+      });
+      return;
+    } catch (e) {
+      if (e.status !== 409) throw e;
+    }
+
+    const { data: blob } = await this.octokit.rest.git.createBlob({
+      owner: this.owner,
+      repo: this.repo,
+      content: Buffer.from(`# ${this.repo}\n`).toString("base64"),
+      encoding: "base64",
+    });
+
+    const { data: tree } = await this.octokit.rest.git.createTree({
+      owner: this.owner,
+      repo: this.repo,
+      tree: [{ path: "README.md", mode: "100644", type: "blob", sha: blob.sha }],
+    });
+
+    const { data: commit } = await this.octokit.rest.git.createCommit({
+      owner: this.owner,
+      repo: this.repo,
+      message: "Initial commit",
+      tree: tree.sha,
+      parents: [],
+    });
+
+    try {
+      await this.octokit.rest.git.createRef({
+        owner: this.owner,
+        repo: this.repo,
+        ref: "refs/heads/main",
+        sha: commit.sha,
+      });
+    } catch (e) {
+      if (e.status !== 422) throw e;
+    }
   }
 
   // ─── Branches ─────────────────────────────────────────
