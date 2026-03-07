@@ -87,6 +87,7 @@
     "speaking": "{{agent}} 発言中...",
     "passed": "{{agent}} パス",
     "emptyResponse": "{{agent}} 応答なし",
+    "linesOmitted": "...（{{count}}行省略）",
     "summary": "{{agent}}（まとめ）",
     "codebaseAnalyzing": "コードベースを分析中...",
     "codebaseComplete": "コードベース分析完了（ファイル名 {{nameCount}}件、内容検索 {{grepCount}}件）",
