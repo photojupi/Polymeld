@@ -54,9 +54,12 @@ export class ResponseParser {
   static parseTasks(raw) {
     const json = this._extractJson(raw);
     if (json) {
-      const tasks = json.tasks || (Array.isArray(json) ? json : null);
-      if (tasks && Array.isArray(tasks)) {
-        return { success: true, tasks };
+      const arr = json.tasks || (Array.isArray(json) ? json : null);
+      if (arr && Array.isArray(arr)) {
+        const tasks = arr.filter(t => t && typeof t === 'object' && !Array.isArray(t));
+        if (tasks.length > 0) {
+          return { success: true, tasks };
+        }
       }
     }
     return { success: false, error: "JSON 파싱 실패", raw };
