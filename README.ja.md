@@ -38,10 +38,9 @@ Claude Code、Gemini CLI、Codex CLIを各ペルソナに割り当て、
 │       │               │               │                     │
 │  ┌────┴────┐   ┌──────┴──────┐  ┌─────┴─────┐             │
 │  │ 김아키   │   │ 류창작      │  │ 한코딩    │              │
-│  │ (リーダー)│   │ 박프론트    │  │ (エース)  │              │
-│  │ 안보안   │   │ 강기획      │  │ 정테스트  │              │
-│  └─────────┘   │ 윤경험*     │  │ 이서버    │              │
-│                │ 그림솔*     │  └──────────┘              │
+│  │ (リーダー)│   │ 강기획      │  │ (エース)  │              │
+│  │ 안보안   │   │ 윤경험*     │  │ 정테스트  │              │
+│  └─────────┘   │ 그림솔*     │  └──────────┘              │
 │                └─────────────┘                              │
 │  * 画像生成時に Nano Banana 2 を使用                        │
 │  会議中 [PASS] で自発的に参加を調整                         │
@@ -297,8 +296,6 @@ pipeline:
 | 한코딩 | Ace Programmer | GPT-5.4 | - | - |
 | 류창작 | Creative Programmer | Gemini 3.1 Pro | - | - |
 | 정테스트 | QA Engineer | GPT-5.4 | - | 100 |
-| 이서버 | Backend Developer | GPT-5.4 | - | - |
-| 박프론트 | Frontend Engineer | Gemini 3.1 Pro | - | - |
 | 강기획 | Ace Planner | Gemini 3.1 Pro | - | - |
 | 안보안 | Security Expert | Claude Opus 4.6 | - | - |
 | 윤경험 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
