@@ -133,13 +133,13 @@ export function isCliInstalled(command) {
 
 /**
  * CLI 인증 프로브 - 최소한의 프롬프트로 실제 연결 확인
- * stdout 또는 stderr에 데이터가 오면 즉시 성공 처리
+ * stdout 출력 시 즉시 성공, 그 외는 종료 코드로 판정
  */
 function probeCliAuth(cli) {
   const probes = {
     claude: { args: ["-p", "--output-format", "text", "--max-turns", "1"], stdin: "Reply OK" },
     gemini: { args: ["--output-format", "text"], stdin: "Reply OK" },
-    codex: { args: ["exec", "--skip-git-repo-check", "--full-auto", "--output-format", "text"], stdin: "echo OK" },
+    codex: { args: ["exec", "--sandbox", "read-only", "--skip-git-repo-check", "--full-auto", "--output-format", "text"], stdin: "echo OK" },
   };
   const probe = probes[cli];
   if (!probe) return Promise.resolve({ ok: false, reason: "unknown" });
@@ -169,10 +169,15 @@ function probeCliAuth(cli) {
 
     const timer = setTimeout(() => done({ ok: false, reason: t("config.timeout") }), 30000);
 
-    // stdout 또는 stderr 출력이 있으면 인증 성공 (CLI가 동작 중)
+    // stdout 출력이 있으면 인증 성공 (CLI가 실제 응답을 생성 중)
+    // stderr는 버퍼링만 — 인증 실패 에러도 stderr로 오므로 성공 판정에 사용하지 않음
+    let stderr = "";
     proc.stdout.on("data", () => done({ ok: true }));
-    proc.stderr.on("data", () => done({ ok: true }));
-    proc.on("close", (code) => done({ ok: code === 0, reason: code !== 0 ? t("config.authFailed") : null }));
+    proc.stderr.on("data", (d) => { stderr += d.toString(); });
+    proc.on("close", (code) => done({
+      ok: code === 0,
+      reason: code !== 0 ? (stderr.trim().substring(0, 200) || t("config.authFailed")) : null,
+    }));
     proc.on("error", () => done({ ok: false, reason: t("config.executionFailed") }));
 
     try {
