@@ -7,6 +7,7 @@ import { Session } from "../session/session.js";
 import { SessionStore } from "../session/session-store.js";
 import { CommandRouter } from "./command-router.js";
 import { StatusBar } from "./status-bar.js";
+import { PasteDetectStream } from "./paste-detect-stream.js";
 
 export class ReplShell {
   constructor(config) {
@@ -15,8 +16,10 @@ export class ReplShell {
     this.router = new CommandRouter(this);
     this.statusBar = new StatusBar(this);
     this.rl = null;
+    this.pasteStream = null;
     this._running = false;
     this._exiting = false;
+    this._cleanupBracketedPaste = null;
   }
 
   /**
@@ -52,9 +55,22 @@ export class ReplShell {
     this._printBanner();
     this._running = true;
 
+    // TTY인 경우 Bracketed Paste Mode 활성화
+    let inputStream = process.stdin;
+    if (process.stdin.isTTY) {
+      this.pasteStream = new PasteDetectStream(process.stdin);
+      process.stdin.pipe(this.pasteStream);
+      inputStream = this.pasteStream;
+
+      process.stdout.write("\x1b[?2004h");
+      const cleanup = () => process.stdout.write("\x1b[?2004l");
+      process.on("exit", cleanup);
+      this._cleanupBracketedPaste = cleanup;
+    }
+
     const commands = ["/status", "/history", "/save", "/load", "/team", "/context", "/resume", "/help", "/exit", "/quit"];
     this.rl = readline.createInterface({
-      input: process.stdin,
+      input: inputStream,
       output: process.stdout,
       completer: (line) => {
         if (!line.startsWith("/")) return [[], line];
@@ -103,27 +119,74 @@ export class ReplShell {
 
     this.statusBar.print();
 
+    const keypressSource = this.pasteStream || process.stdin;
+
     return new Promise((resolve) => {
       let timer = null;
+      let pastedContent = null;
+
       const onKeypress = () => {
         if (this.rl.line === "/") {
           clearTimeout(timer);
           timer = setTimeout(() => {
             if (this.rl.line === "/") {
-              process.stdin.removeListener("keypress", onKeypress);
+              keypressSource.removeListener("keypress", onKeypress);
               this.rl.write("\n");
             }
           }, 80);
         }
       };
-      process.stdin.on("keypress", onKeypress);
+      keypressSource.on("keypress", onKeypress);
+
+      const onPaste = (content) => {
+        const cleaned = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+        // 단일 줄 붙여넣기는 일반 타이핑처럼 처리
+        if (!cleaned.includes("\n")) {
+          this.rl.write(cleaned);
+          return;
+        }
+
+        // 여러 줄 붙여넣기
+        const typedPrefix = this.rl.line || "";
+        pastedContent = typedPrefix + cleaned;
+
+        // 시각 피드백
+        const lines = cleaned.split("\n");
+        if (lines.length <= 5) {
+          console.log(chalk.gray(`\n  [📋 ${lines.length}줄 붙여넣기]`));
+          for (const line of lines) {
+            console.log(chalk.gray(`  │ ${line}`));
+          }
+        } else {
+          console.log(chalk.gray(`\n  [📋 ${lines.length}줄 붙여넣기]`));
+          console.log(chalk.gray(`  │ ${lines[0]}`));
+          console.log(chalk.gray(`  │ ${lines[1]}`));
+          console.log(chalk.gray(`  │ ... (${lines.length - 4}줄 생략)`));
+          console.log(chalk.gray(`  │ ${lines[lines.length - 2]}`));
+          console.log(chalk.gray(`  │ ${lines[lines.length - 1]}`));
+        }
+
+        // readline question 강제 완료
+        this.rl.write("\n");
+      };
+
+      if (this.pasteStream) {
+        this.pasteStream.once("paste", onPaste);
+      }
+
+      const onClose = () => resolve(null);
+      this.rl.once("close", onClose);
 
       this.rl.question(promptStr, (answer) => {
         clearTimeout(timer);
-        process.stdin.removeListener("keypress", onKeypress);
-        resolve(answer);
+        keypressSource.removeListener("keypress", onKeypress);
+        this.rl.removeListener("close", onClose);
+        if (this.pasteStream) {
+          this.pasteStream.removeListener("paste", onPaste);
+        }
+        resolve(pastedContent ?? answer);
       });
-      this.rl.once("close", () => resolve(null));
     });
   }
 
@@ -142,6 +205,18 @@ export class ReplShell {
     if (this._exiting) return; // 이중 호출 방지
     this._exiting = true;
     this._running = false;
+
+    // Bracketed Paste Mode 비활성화 및 스트림 정리
+    if (this._cleanupBracketedPaste) {
+      process.stdout.write("\x1b[?2004l");
+      process.removeListener("exit", this._cleanupBracketedPaste);
+      this._cleanupBracketedPaste = null;
+    }
+    if (this.pasteStream) {
+      process.stdin.unpipe(this.pasteStream);
+      this.pasteStream.destroy();
+      this.pasteStream = null;
+    }
 
     // 자동 저장
     if (this.session.runs.length > 0) {
