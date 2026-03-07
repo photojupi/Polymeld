@@ -226,6 +226,7 @@
     "tokenAuthFailed": "令牌认证失败",
     "repoAccessDenied": "仓库访问被拒绝（{{repo}}）",
     "repoWriteDenied": "仓库写入权限被拒绝（{{repo}}）",
+    "scopeProjectMissing": "缺少 'project' 权限 — GitHub Projects 功能将受限",
     "networkFailed": "网络连接失败",
     "installRequired": "需要安装 {{cli}}",
     "choice": {

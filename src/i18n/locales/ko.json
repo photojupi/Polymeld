@@ -226,6 +226,7 @@
     "tokenAuthFailed": "토큰 인증 실패",
     "repoAccessDenied": "리포지토리 접근 불가 ({{repo}})",
     "repoWriteDenied": "리포지토리 쓰기 권한 없음 ({{repo}})",
+    "scopeProjectMissing": "'project' 스코프 없음 — GitHub Projects 기능이 제한됩니다",
     "networkFailed": "네트워크 연결 실패",
     "installRequired": "{{cli}} 설치 필요",
     "choice": {
