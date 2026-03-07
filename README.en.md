@@ -60,40 +60,41 @@ Assign Claude Code, Gemini CLI, and Codex CLI to individual personas, and automa
 git clone <this-repo>
 cd polymeld
 npm install
+npm link                                    # Register `polymeld` command globally
 
 # 2. Install CLI tools (if not already installed)
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 3. Set environment variables (.env file)
-cp .env.example .env
-# Edit the .env file to configure your GitHub token and repository
-#   GITHUB_TOKEN=ghp_xxxxx
-#   GITHUB_REPO=owner/repo
-# ⚠️ Empty repos are OK — an Initial Commit is auto-created and the origin remote is configured.
+# 3. Initial setup (interactive wizard)
+polymeld init --global      # Global config + credentials setup
+# Or run without arguments to start the onboarding wizard automatically:
+polymeld
 
 # 4. (Optional) Local workspace integration
 # Run from your target project directory for auto-detection:
-cd ~/projects/my-app && node /path/to/polymeld/src/index.js start
-# Or specify in polymeld.config.yaml:
+cd ~/projects/my-app && polymeld start
+# Or specify in your config file:
 #   project:
 #     local_path: ~/projects/my-app
 
 # 5. Verify configuration (CLI auth + GitHub integration auto-validated)
-node src/index.js test-models
+polymeld test-models
 
 # 6. Run!
-node src/index.js run "Implement user authentication (email/password + OAuth)"
+polymeld run "Implement user authentication (email/password + OAuth)"
 
 # 7. Specify language (optional; auto-detects OS locale if not set)
-node src/index.js run "chat feature" --lang en   # English
-node src/index.js run "chat feature" --lang ja   # 日本語
-node src/index.js run "chat feature" --lang zh-CN # 中文(简体)
+polymeld run "chat feature" --lang en   # English
+polymeld run "chat feature" --lang ja   # 日本語
+polymeld run "chat feature" --lang zh-CN # 中文(简体)
 
 # 8. Run tests
 npm test
 ```
+
+> **First-run onboarding**: Running `polymeld` without arguments will launch the onboarding wizard (model selection → credential input) if no global config exists, then automatically enter REPL mode.
 
 ## Configuration
 
@@ -118,7 +119,36 @@ GITHUB_REPO=owner/repo            # Target repository (owner/repo format)
 
 > Note: API keys for AI CLI tools are managed by each CLI independently (follow each CLI's authentication method).
 
-### polymeld.config.yaml
+### Config File Load Order
+
+Configuration is merged hierarchically (lower layers override upper layers):
+
+| Priority | Path | Purpose |
+|----------|------|---------|
+| 1 (highest) | `-c` flag | Uses only the specified file |
+| 2 | `~/.polymeld/config.yaml` | Global settings (shared across all projects) |
+| 3 | `.polymeld/config.yaml` | Project shared settings (git-committed) |
+| 4 | `.polymeld/config.local.yaml` | Project local settings (personal, .gitignore) |
+| 5 | `polymeld.config.yaml` | Legacy compatibility |
+
+### Credentials Management
+
+Credentials are stored securely in `~/.polymeld/credentials.yaml` (file permissions `0600`):
+
+```yaml
+# ~/.polymeld/credentials.yaml
+GITHUB_TOKEN: ghp_xxxxx
+GITHUB_REPO: owner/repo
+ANTHROPIC_API_KEY: sk-...
+GOOGLE_API_KEY: AIzaSy...
+OPENAI_API_KEY: sk-...
+```
+
+**Load priority**: `.env` (dotenv) → `~/.polymeld/credentials.yaml` → environment variables (`process.env` takes precedence)
+
+> Use `polymeld auth` to input credentials interactively, or `polymeld auth --show` to check current credential status.
+
+### config.yaml Options
 
 #### Project Settings (Local Workspace)
 
@@ -159,12 +189,18 @@ models:
 cli:
   timeout: 600000          # Default timeout 10 min (milliseconds)
   timeouts:
-    claude: 900000         # Claude 15 min (for thinking 100%)
-    gemini: 600000         # Gemini 10 min
-    codex: 900000          # Codex 15 min (for xhigh)
+    claude:                # Dual timeout (idle + max)
+      idle: 300000         #   5 min: terminate if no output since last activity (resets on output)
+      max: 1800000         #   30 min: absolute upper limit (prevents infinite loops)
+    gemini: 600000         # Single timeout also supported (10 min)
+    codex:
+      idle: 300000
+      max: 1800000
   max_turns:
     claude: 10             # Max agentic loop turns for Claude
 ```
+
+> **Dual timeout**: `idle` resets whenever output is detected, preventing premature termination of active processes. `max` is an absolute upper limit to prevent infinite loops. Single numeric values are also supported for backward compatibility.
 
 #### Persona Assignment
 
@@ -280,12 +316,12 @@ pipeline:
 ### Full Pipeline Execution
 ```bash
 # Full-auto mode (default) — all phases run automatically
-node src/index.js run "Implement real-time chat feature"
+polymeld run "Implement real-time chat feature"
 
 # Specify interaction mode
-node src/index.js run "chat feature" --mode full-auto   # Default
-node src/index.js run "chat feature" --mode semi-auto   # Confirm at each phase
-node src/index.js run "chat feature" --mode manual      # Manual control
+polymeld run "chat feature" --mode full-auto   # Default
+polymeld run "chat feature" --mode semi-auto   # Confirm at each phase
+polymeld run "chat feature" --mode manual      # Manual control
 ```
 
 > The project title is automatically derived from the workspace name.
@@ -293,30 +329,30 @@ node src/index.js run "chat feature" --mode manual      # Manual control
 ### Run Meetings Only
 ```bash
 # Kickoff meeting
-node src/index.js meeting kickoff "Implement user authentication"
+polymeld meeting kickoff "Implement user authentication"
 
 # Technical design meeting (3-round discussion)
-node src/index.js meeting design "Migrate to microservices architecture" --rounds 3
+polymeld meeting design "Migrate to microservices architecture" --rounds 3
 ```
 
 ### Test Model Connections
 ```bash
-node src/index.js test-models
+polymeld test-models
 ```
 
 ### Interactive REPL Mode
 ```bash
 # Start REPL
-node src/index.js start
+polymeld start
 
 # Resume previous session (most recent)
-node src/index.js start --resume
+polymeld start --resume
 
 # Resume a specific session
-node src/index.js start --resume <sessionId>
+polymeld start --resume <sessionId>
 
 # Specify interaction mode
-node src/index.js start --mode full-auto
+polymeld start --mode full-auto
 ```
 
 In REPL mode, enter your requirements in natural language at the prompt to run the full pipeline.
@@ -345,7 +381,20 @@ Session context (PipelineState, execution history) is preserved across runs.
 
 ### Initialize Configuration
 ```bash
-node src/index.js init
+# Initialize global config (~/.polymeld/ with config.yaml + credentials.yaml)
+polymeld init --global
+
+# Initialize project config (.polymeld/config.yaml)
+polymeld init
+```
+
+### Credentials Management
+```bash
+# Input tokens/API keys interactively
+polymeld auth
+
+# Check current credential status (masked)
+polymeld auth --show
 ```
 
 ## Local Workspace Integration
@@ -363,7 +412,7 @@ When you designate a local Git repository as the workspace, agents **read and re
 
 ### Workspace Detection Priority
 
-1. `project.local_path` setting in `polymeld.config.yaml`
+1. `project.local_path` setting in config file
 2. Auto-detection of `.git` in the current directory (excluding Polymeld's own repo)
 3. If not detected, falls back to `NoOpWorkspace` (GitHub API only mode)
 
@@ -504,7 +553,10 @@ src/
 │       ├── ja.json             # 日本語
 │       └── zh-CN.json          # 中文(简体)
 ├── config/
-│   ├── loader.js               # YAML config loader + CLI/GitHub connection validation + scope check
+│   ├── loader.js               # YAML config loader (hierarchical merge) + CLI/GitHub validation
+│   ├── init.js                 # Interactive setup wizard (global/project)
+│   ├── credentials.js          # Credentials management (~/.polymeld/credentials.yaml)
+│   ├── paths.js                # Cross-platform path utilities
 │   └── interaction.js          # Interaction mode management
 ├── models/
 │   ├── adapter.js              # CLI abstraction (claude/gemini/codex) + thinking mapping
@@ -523,6 +575,7 @@ src/
 ├── repl/
 │   ├── repl-shell.js           # REPL loop (status bar + command menu)
 │   ├── command-router.js       # Slash command routing + tab completion
+│   ├── status-bar.js           # Status bar rendering
 │   ├── paste-detect-stream.js  # Bracketed Paste Mode (multi-line input)
 │   └── commands/               # Slash command handlers
 │       ├── help.js
@@ -581,7 +634,7 @@ When given project requirements, run the Polymeld CLI:
 
 ## Persona Customization
 
-You can add or modify personas in `polymeld.config.yaml`:
+You can add or modify personas in your `config.yaml`:
 
 ```yaml
 personas:

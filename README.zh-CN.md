@@ -61,40 +61,41 @@
 git clone <this-repo>
 cd polymeld
 npm install
+npm link                                    # 全局注册 `polymeld` 命令
 
 # 2. 安装 CLI 工具（如未安装）
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 3. 配置环境变量（.env 文件）
-cp .env.example .env
-# 编辑 .env 文件，设置 GitHub 令牌和仓库配置
-#   GITHUB_TOKEN=ghp_xxxxx
-#   GITHUB_REPO=owner/repo
-# ⚠️ 空仓库也可以 — 会自动创建 Initial Commit 并设置 origin remote。
+# 3. 初始设置（交互式向导）
+polymeld init --global      # 全局配置 + 凭证输入
+# 或不带参数运行，会自动启动引导向导：
+polymeld
 
 # 4.（可选）关联本地工作区
 # 在目标项目目录中运行即可自动检测：
-cd ~/projects/my-app && node /path/to/polymeld/src/index.js start
-# 或在 polymeld.config.yaml 中指定：
+cd ~/projects/my-app && polymeld start
+# 或在配置文件中指定：
 #   project:
 #     local_path: ~/projects/my-app
 
 # 5. 验证配置（CLI 认证 + GitHub 集成自动验证）
-node src/index.js test-models
+polymeld test-models
 
 # 6. 运行！
-node src/index.js run "사용자 인증 기능 구현 (이메일/비밀번호 + OAuth)"
+polymeld run "实现用户认证功能（邮箱/密码 + OAuth）"
 
 # 7. 指定语言（可选，未指定时自动检测 OS 区域设置）
-node src/index.js run "채팅 기능" --lang en   # English
-node src/index.js run "채팅 기능" --lang ja   # 日本語
-node src/index.js run "채팅 기능" --lang zh-CN # 中文(简体)
+polymeld run "聊天功能" --lang en   # English
+polymeld run "聊天功能" --lang ja   # 日本語
+polymeld run "聊天功能" --lang zh-CN # 中文(简体)
 
 # 8. 测试
 npm test
 ```
+
+> **首次运行引导**：不带参数运行 `polymeld` 时，如果不存在全局配置，将引导完成引导向导（模型选择 → 凭证输入），然后自动进入 REPL 模式。
 
 ## 配置
 
@@ -119,7 +120,36 @@ GITHUB_REPO=owner/repo            # 目标仓库（owner/repo 格式）
 
 > 注意：AI CLI 工具的 API 密钥由各 CLI 自行管理（请按照各 CLI 的认证方式操作）。
 
-### polymeld.config.yaml
+### 配置文件加载顺序
+
+配置按层级合并（下层覆盖上层）：
+
+| 优先级 | 路径 | 用途 |
+|--------|------|------|
+| 1（最高） | `-c` 标志 | 仅使用指定的文件 |
+| 2 | `~/.polymeld/config.yaml` | 全局设置（所有项目通用） |
+| 3 | `.polymeld/config.yaml` | 项目共享设置（git 提交对象） |
+| 4 | `.polymeld/config.local.yaml` | 项目本地设置（个人用，.gitignore） |
+| 5 | `polymeld.config.yaml` | 旧版兼容 |
+
+### 凭证管理
+
+凭证安全存储在 `~/.polymeld/credentials.yaml`（文件权限 `0600`）：
+
+```yaml
+# ~/.polymeld/credentials.yaml
+GITHUB_TOKEN: ghp_xxxxx
+GITHUB_REPO: owner/repo
+ANTHROPIC_API_KEY: sk-...
+GOOGLE_API_KEY: AIzaSy...
+OPENAI_API_KEY: sk-...
+```
+
+**加载优先级**：`.env`（dotenv） → `~/.polymeld/credentials.yaml` → 环境变量（`process.env` 优先）
+
+> 使用 `polymeld auth` 交互式输入凭证，或使用 `polymeld auth --show` 查看当前凭证状态。
+
+### config.yaml 配置项
 
 #### 项目设置（本地工作区）
 
@@ -160,12 +190,18 @@ models:
 cli:
   timeout: 600000          # 默认超时 10 分钟（毫秒）
   timeouts:
-    claude: 900000         # Claude 15 分钟（应对 thinking 100%）
-    gemini: 600000         # Gemini 10 分钟
-    codex: 900000          # Codex 15 分钟（应对 xhigh）
+    claude:                # 双重超时（idle + max）
+      idle: 300000         #   5 分钟：最后输出后无响应时终止（有输出则重置）
+      max: 1800000         #   30 分钟：绝对上限（防止无限循环）
+    gemini: 600000         # 也支持单一超时（10 分钟）
+    codex:
+      idle: 300000
+      max: 1800000
   max_turns:
     claude: 10             # Claude 智能体循环最大轮次
 ```
+
+> **双重超时**：`idle` 在每次有输出时重置，防止活跃进程被提前终止。`max` 为绝对上限，防止无限循环。也向后兼容单一数值。
 
 #### 角色分配
 
@@ -247,8 +283,8 @@ pipeline:
 **实时发言预览**：会议中实时在 spinner 上显示各 AI 响应的生成过程，完成后永久输出内容：
 
 ```
-⠇ 한코딩 发言中... 이 부분은 O(n log n)으로 풀 수 있습니다
-✓ 한코딩: 이 부분은 O(n log n)으로 풀 수 있습니다. 분할 정복으로...
+⠇ 한코딩 发言中... 这部分可以用 O(n log n) 解决
+✓ 한코딩: 这部分可以用 O(n log n) 解决。使用分治法...
 ```
 
 **自主跳过 (`[PASS]`)**：角色在相关话题无贡献内容时通过 `[PASS]` 自动跳过。会议记录中会保留跳过记录。
@@ -281,12 +317,12 @@ pipeline:
 ### 运行完整流水线
 ```bash
 # 全自动模式（默认）— 自动推进所有 Phase
-node src/index.js run "실시간 채팅 기능 구현"
+polymeld run "实现实时聊天功能"
 
 # 指定交互模式
-node src/index.js run "채팅 기능" --mode full-auto   # 默认
-node src/index.js run "채팅 기능" --mode semi-auto   # 每个 Phase 确认
-node src/index.js run "채팅 기능" --mode manual      # 手动控制
+polymeld run "聊天功能" --mode full-auto   # 默认
+polymeld run "聊天功能" --mode semi-auto   # 每个 Phase 确认
+polymeld run "聊天功能" --mode manual      # 手动控制
 ```
 
 > 项目标题从工作区名称自动派生。
@@ -294,30 +330,30 @@ node src/index.js run "채팅 기능" --mode manual      # 手动控制
 ### 仅进行会议
 ```bash
 # 启动会议
-node src/index.js meeting kickoff "사용자 인증 기능 구현"
+polymeld meeting kickoff "实现用户认证功能"
 
 # 技术设计会议（3 轮讨论）
-node src/index.js meeting design "마이크로서비스 아키텍처 전환" --rounds 3
+polymeld meeting design "迁移到微服务架构" --rounds 3
 ```
 
 ### 模型连接测试
 ```bash
-node src/index.js test-models
+polymeld test-models
 ```
 
 ### 交互式 REPL 模式
 ```bash
 # 启动 REPL
-node src/index.js start
+polymeld start
 
 # 恢复上一个会话（最近的会话）
-node src/index.js start --resume
+polymeld start --resume
 
 # 恢复指定会话
-node src/index.js start --resume <sessionId>
+polymeld start --resume <sessionId>
 
 # 指定交互模式
-node src/index.js start --mode full-auto
+polymeld start --mode full-auto
 ```
 
 在 REPL 模式下，在提示符中输入自然语言需求即可运行完整流水线。
@@ -346,7 +382,20 @@ node src/index.js start --mode full-auto
 
 ### 初始化配置
 ```bash
-node src/index.js init
+# 初始化全局配置（~/.polymeld/ 中创建 config.yaml + credentials.yaml）
+polymeld init --global
+
+# 初始化项目配置（.polymeld/config.yaml）
+polymeld init
+```
+
+### 凭证管理
+```bash
+# 交互式输入令牌/API 密钥
+polymeld auth
+
+# 查看当前凭证状态（已脱敏）
+polymeld auth --show
 ```
 
 ## 本地工作区联动
@@ -364,7 +413,7 @@ node src/index.js init
 
 ### 工作区检测优先级
 
-1. `polymeld.config.yaml` 中的 `project.local_path` 设置
+1. 配置文件中的 `project.local_path` 设置
 2. 当前目录的 `.git` 自动检测（排除 Polymeld 自身仓库）
 3. 未检测到时以 `NoOpWorkspace` 使用 GitHub API 专用模式
 
@@ -505,7 +554,10 @@ src/
 │       ├── ja.json             # 日本語
 │       └── zh-CN.json          # 中文(简体)
 ├── config/
-│   ├── loader.js               # YAML 配置加载器 + CLI/GitHub 连接验证 + 范围检查
+│   ├── loader.js               # YAML 配置加载器（层级合并）+ CLI/GitHub 连接验证
+│   ├── init.js                 # 交互式设置初始化向导（全局/项目）
+│   ├── credentials.js          # 凭证管理（~/.polymeld/credentials.yaml）
+│   ├── paths.js                # 跨平台路径工具
 │   └── interaction.js          # 交互模式管理
 ├── models/
 │   ├── adapter.js              # CLI 抽象化（claude/gemini/codex）+ thinking 映射
@@ -524,6 +576,7 @@ src/
 ├── repl/
 │   ├── repl-shell.js           # REPL 循环（状态栏 + 命令菜单）
 │   ├── command-router.js       # 斜杠命令路由 + Tab 自动补全
+│   ├── status-bar.js           # 状态栏渲染
 │   ├── paste-detect-stream.js  # Bracketed Paste Mode（多行输入）
 │   └── commands/               # 斜杠命令处理器
 │       ├── help.js
@@ -570,19 +623,19 @@ test/
 
 ```bash
 # 在 Claude Code 中
-node /path/to/polymeld/src/index.js run "요구사항" --no-interactive
+node /path/to/polymeld/src/index.js run "需求说明" --no-interactive
 ```
 
 或注册到 CLAUDE.md：
 ```markdown
 ## Polymeld
 当给出项目需求时，运行 Polymeld CLI：
-`node ./polymeld/src/index.js run "요구사항" --no-interactive`
+`node ./polymeld/src/index.js run "需求说明" --no-interactive`
 ```
 
 ## 角色自定义
 
-可以在 `polymeld.config.yaml` 中添加/修改角色：
+可以在配置文件（`config.yaml`）中添加/修改角色：
 
 ```yaml
 personas:
@@ -590,21 +643,21 @@ personas:
     name: 최배포
     role: DevOps Engineer
     model: codex
-    description: "CI/CD와 인프라 자동화에 집착. 배포 파이프라인의 완벽함을 추구."
+    description: "痴迷于 CI/CD 和基础设施自动化。追求部署流水线的完美。"
     expertise:
-      - CI/CD 파이프라인 구축
-      - 컨테이너 오케스트레이션
-      - 인프라 자동화
+      - CI/CD 流水线构建
+      - 容器编排
+      - 基础设施自动化
 
   concept_artist:
     name: 이컨셉
     role: Concept Artist
     model: gemini              # 讨论/策划时使用文本模型
     image_model: gemini_image  # 图像生成时使用图像模型
-    description: "컨셉 아트와 비주얼 디자인 전문가"
+    description: "概念艺术和视觉设计专家"
     expertise:
-      - 컨셉 아트 제작
-      - 캐릭터/배경 디자인
+      - 概念艺术制作
+      - 角色/背景设计
 ```
 
 > 所有角色都参与会议，在不相关的话题中通过 `[PASS]` 自主跳过。无需额外的 on_demand 设置。
