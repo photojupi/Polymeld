@@ -419,7 +419,7 @@
     "previousDiscussion": "## Previous Discussion",
     "speakWithPrev": "Please share your opinion as {{name}} ({{role}}).",
     "speakNoPrev": "Please share your opinion on this topic as {{name}} ({{role}}).",
-    "passConditions": "Respond with [PASS] only if any of the following apply:\n- You have no tasks to directly undertake on this topic\n- The topic has already been sufficiently covered in previous discussions with nothing new to add\n- You would be repeating substantially the same content as your previous statement\nDo not force content. Only speak when you have new perspectives or specific proposals.",
+    "passConditions": "If any of the following apply, write [PASS] alone on the first line. Do not add any explanation, reasoning, emoji, or other text:\n- You have no tasks to directly undertake on this topic\n- The topic has already been sufficiently covered in previous discussions with nothing new to add\n- You would be repeating substantially the same content as your previous statement\n\nCorrect format: [PASS]\nIncorrect format: ✔ Security [PASS] No issues found\n\nDo not force content. Only speak when you have new perspectives or specific proposals.",
     "devTask": "## Development Task",
     "acceptanceCriteria": "## Acceptance Criteria",
     "currentCode": "## Current Code",
