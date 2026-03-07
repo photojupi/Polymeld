@@ -502,6 +502,13 @@
     "projectScopeHint": "→ 请检查令牌是否有 'project' 权限。",
     "projectLinkFailed": "⚠️ 项目-仓库关联失败:"
   },
+  "onboarding": {
+    "welcome": "🚀 欢迎使用 Polymeld！",
+    "description": "多AI模型开发团队模拟工具。让我们开始初始设置。",
+    "startSetup": "开始初始设置？",
+    "skipped": "已跳过设置。准备好后请运行 polymeld init --global。",
+    "ready": "✅ 设置完成！正在进入交互模式..."
+  },
   "common": {
     "project": "项目",
     "error": "错误"

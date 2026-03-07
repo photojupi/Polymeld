@@ -502,6 +502,13 @@
     "projectScopeHint": "→ トークンに 'project' スコープがあるか確認してください。",
     "projectLinkFailed": "⚠️ プロジェクト-リポ連携失敗:"
   },
+  "onboarding": {
+    "welcome": "🚀 Polymeldへようこそ！",
+    "description": "マルチAIモデル開発チームシミュレーションです。初期設定を始めましょう。",
+    "startSetup": "初期設定を開始しますか？",
+    "skipped": "設定をスキップしました。準備ができたら polymeld init --global を実行してください。",
+    "ready": "✅ 設定完了！インタラクティブモードに入ります..."
+  },
   "common": {
     "project": "プロジェクト",
     "error": "エラー"
