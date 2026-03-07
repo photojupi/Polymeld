@@ -233,6 +233,12 @@
     "githubStep4": "4. Classic PAT: 'repo' + 'project' scopes / Fine-grained PAT: Issues, Contents, Pull requests, Projects write permissions",
     "missingCli": "❌ Required CLI tools for active personas are not installed:",
     "installFirst": "Please install the above CLI tools first, then try again.",
+    "notInstalledApiMode": "⚠️  {{label}} CLI not installed · using API key",
+    "apiKeySet": "API key set",
+    "apiModeLabel": "API key mode",
+    "apiModeNotice": "ℹ️  The following personas will use API key (CLI not installed):",
+    "missingBackend": "❌ Neither CLI nor API key is configured for the following personas:",
+    "installOrApiKey": "Please install the CLI or set an API key, then try again.\n  Install CLI: npm install -g <package>\n  API key: polymeld auth or ~/.polymeld/credentials.yaml",
     "executionFailed": "Execution failed",
     "timeout": "Response timed out",
     "authFailed": "Authentication failed",
@@ -465,7 +471,10 @@
     "reviewInstruction": "Please review the following code.\n\n## Code\n```\n{{code}}\n```\n\n## Acceptance Criteria\n{{criteria}}\n\n## Review Format\n- Strengths\n- Areas for improvement (specify lines/logic)\n- Security issues\n- Performance issues\n\nPlease include the following JSON block at the end:\n```json\n{ \"verdict\": \"APPROVED or CHANGES_REQUESTED\", \"summary\": \"one-line summary\" }\n```",
     "imageOnlyGemini": "Image generation currently supports only gemini CLI. ({{cli}})",
     "notGitRepo": "Not a git repository: {{path}}",
-    "installRequired": "{{cli}} installation required"
+    "installRequired": "{{cli}} installation required",
+    "noBackend": "Cannot use model {{key}}: {{cli}} CLI not installed + API key not set",
+    "cliRateLimitApiSwitch": "⚠️ {{key}} CLI rate limit reached → switching to API key",
+    "sdkNotInstalled": "Please install the SDK for API usage: npm install {{sdk}}"
   },
   "promptAssembler": {
     "project": "## Project: {{title}}",

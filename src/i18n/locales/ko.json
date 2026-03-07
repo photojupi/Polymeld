@@ -233,6 +233,12 @@
     "githubStep4": "4. Classic PAT: 'repo' + 'project' 스코프 / Fine-grained PAT: Issues·Contents·Pull requests·Projects 쓰기 권한",
     "missingCli": "❌ 사용 중인 페르소나에 필요한 CLI가 설치되지 않았습니다:",
     "installFirst": "위 CLI를 먼저 설치한 후 다시 실행해주세요.",
+    "notInstalledApiMode": "⚠️  {{label}} CLI 미설치 · API key로 대체",
+    "apiKeySet": "API key 설정됨",
+    "apiModeLabel": "API key 모드",
+    "apiModeNotice": "ℹ️  다음 페르소나는 CLI 미설치로 API key를 사용합니다:",
+    "missingBackend": "❌ 사용 중인 페르소나에 CLI 또는 API key가 설정되지 않았습니다:",
+    "installOrApiKey": "CLI를 설치하거나 API key를 설정한 후 다시 실행해주세요.\n  CLI 설치: npm install -g <패키지>\n  API key: polymeld auth 또는 ~/.polymeld/credentials.yaml",
     "executionFailed": "실행 실패",
     "timeout": "응답 시간 초과",
     "authFailed": "인증 실패",
@@ -465,7 +471,10 @@
     "reviewInstruction": "다음 코드를 리뷰해주세요.\n\n## 코드\n```\n{{code}}\n```\n\n## 수용 기준\n{{criteria}}\n\n## 리뷰 형식\n- 좋은 점\n- 개선 필요 사항 (구체적 라인/로직 지적)\n- 보안 이슈\n- 성능 이슈\n\n마지막에 다음 JSON 블록을 반드시 추가해주세요:\n```json\n{ \"verdict\": \"APPROVED 또는 CHANGES_REQUESTED\", \"summary\": \"한줄 요약\" }\n```",
     "imageOnlyGemini": "이미지 생성은 현재 gemini CLI만 지원합니다. ({{cli}})",
     "notGitRepo": "Git 레포가 아닙니다: {{path}}",
-    "installRequired": "{{cli}} 설치 필요"
+    "installRequired": "{{cli}} 설치 필요",
+    "noBackend": "{{key}} 모델을 사용할 수 없습니다: {{cli}} CLI 미설치 + API key 미설정",
+    "cliRateLimitApiSwitch": "⚠️ {{key}} CLI 사용량 초과 → API key로 전환합니다",
+    "sdkNotInstalled": "API 사용을 위해 SDK를 설치해주세요: npm install {{sdk}}"
   },
   "promptAssembler": {
     "project": "## 프로젝트: {{title}}",

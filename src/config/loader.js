@@ -297,7 +297,22 @@ function rewriteLine(text) {
 }
 
 /**
- * CLI 설치 + 인증 + GitHub 연동 상태를 실시간으로 확인·출력
+ * 해당 CLI 프로바이더에 대응하는 API key가 설정되어 있는지 확인
+ */
+function hasApiKey(cli) {
+  switch (cli) {
+    case "claude": return !!process.env.ANTHROPIC_API_KEY;
+    case "gemini": return !!process.env.GOOGLE_API_KEY;
+    case "codex": return !!process.env.OPENAI_API_KEY;
+    default: return false;
+  }
+}
+
+/**
+ * CLI 설치 + 인증 + API key + GitHub 연동 상태를 실시간으로 확인·출력
+ *
+ * CLI 미설치 + API key 있음 → 경고 후 진행 (API 모드)
+ * CLI 미설치 + API key 없음 → 차단
  */
 export async function validateConnections(config) {
   const installCommands = {
@@ -311,7 +326,7 @@ export async function validateConnections(config) {
     Object.values(config.models).map((m) => m.cli)
   )];
 
-  // 각 CLI: 설치 확인 → 인증 확인 → 결과 (순차 출력, 인증은 병렬)
+  // 각 CLI: 설치 확인 → 인증 확인 → API key 확인 → 결과
   const pad = 8;
   const authPromises = [];
   const missingClis = [];
@@ -319,9 +334,16 @@ export async function validateConnections(config) {
   for (const cli of allClis) {
     const label = cli.padEnd(pad);
     const installed = isCliInstalled(cli);
+    const apiKeyAvailable = hasApiKey(cli);
 
     if (!installed) {
-      console.log(chalk.red(`  ${t("config.notInstalled", { label, command: installCommands[cli] || "" })}`));
+      if (apiKeyAvailable) {
+        // CLI 미설치 + API key 있음 → 경고 (API 모드로 사용 가능)
+        console.log(chalk.yellow(`  ${t("config.notInstalledApiMode", { label })}`));
+      } else {
+        // CLI 미설치 + API key 없음 → 에러
+        console.log(chalk.red(`  ${t("config.notInstalled", { label, command: installCommands[cli] || "" })}`));
+      }
       missingClis.push(cli);
       continue;
     }
@@ -331,10 +353,11 @@ export async function validateConnections(config) {
     authPromises.push(
       probeCliAuth(cli).then((auth) => {
         // 프로브 완료 시점에 즉시 결과 출력 (줄바꿈)
+        const apiSuffix = apiKeyAvailable ? ` · ${t("config.apiKeySet")}` : "";
         if (auth.ok) {
-          rewriteLine(chalk.green(`  ${t("config.connected", { label })}\n`));
+          rewriteLine(chalk.green(`  ${t("config.connected", { label })}${apiSuffix}\n`));
         } else {
-          rewriteLine(chalk.yellow(`  ${t("config.installedButAuthFailed", { label, reason: auth.reason || t("config.authFailed") })}\n`));
+          rewriteLine(chalk.yellow(`  ${t("config.installedButAuthFailed", { label, reason: auth.reason || t("config.authFailed") })}${apiSuffix}\n`));
         }
         return auth;
       })
@@ -367,19 +390,32 @@ export async function validateConnections(config) {
   }
   console.log();
 
-  // 필수 CLI 미설치 시 종료
+  // 필수 백엔드 누락 시 종료 (CLI 미설치 + API key 없음)
   if (missingClis.length > 0) {
     const blocked = [];
+    const apiOnly = [];
+
     for (const [, persona] of Object.entries(config.personas)) {
       const modelConfig = config.models[persona.model];
       if (modelConfig && missingClis.includes(modelConfig.cli)) {
-        blocked.push(`   - ${persona.name} (${persona.role}) → ${modelConfig.cli} (${t("config.installRequired", { cli: modelConfig.cli })})`);
+        if (hasApiKey(modelConfig.cli)) {
+          apiOnly.push(`   - ${persona.name} (${persona.role}) → ${t("config.apiModeLabel")}`);
+        } else {
+          blocked.push(`   - ${persona.name} (${persona.role}) → ${modelConfig.cli} (${t("config.installRequired", { cli: modelConfig.cli })})`);
+        }
       }
     }
+
+    if (apiOnly.length > 0) {
+      console.log(chalk.yellow(`  ${t("config.apiModeNotice")}`));
+      apiOnly.forEach((line) => console.log(chalk.yellow(line)));
+      console.log();
+    }
+
     if (blocked.length > 0) {
-      console.error(`\n${t("config.missingCli")}`);
+      console.error(`\n${t("config.missingBackend")}`);
       blocked.forEach((line) => console.error(line));
-      console.error(`\n${t("config.installFirst")}\n`);
+      console.error(`\n${t("config.installOrApiKey")}\n`);
       process.exit(1);
     }
   }
