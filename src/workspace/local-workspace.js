@@ -19,9 +19,13 @@ const CODE_EXTENSIONS = new Set([
 export class LocalWorkspace {
   isLocal = true;
 
-  constructor(repoPath) {
+  constructor(repoPath, { autoInit = false } = {}) {
     this.repoPath = path.resolve(repoPath);
-    this._validateGitRepo();
+    if (autoInit) {
+      this._ensureGitRepo();
+    } else {
+      this._validateGitRepo();
+    }
     this._treeCache = null;
     this._filesCache = null;
   }
@@ -30,6 +34,16 @@ export class LocalWorkspace {
     const gitDir = path.join(this.repoPath, ".git");
     if (!fs.existsSync(gitDir)) {
       throw new Error(`Git 레포가 아닙니다: ${this.repoPath}`);
+    }
+  }
+
+  _ensureGitRepo() {
+    if (!fs.existsSync(this.repoPath)) {
+      fs.mkdirSync(this.repoPath, { recursive: true });
+    }
+    const gitDir = path.join(this.repoPath, ".git");
+    if (!fs.existsSync(gitDir)) {
+      execFileSync("git", ["init"], { cwd: this.repoPath, stdio: "pipe" });
     }
   }
 
