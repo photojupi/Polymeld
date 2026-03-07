@@ -170,16 +170,28 @@ models:
   claude:
     cli: claude
     model: claude-opus-4-6
+    fallback: gemini               # rate limit 时切换的模型
   gemini:
     cli: gemini
     model: gemini-3.1-pro-preview
+    fallback: claude
   codex:
     cli: codex
     model: gpt-5.4
+    fallback: claude
   gemini_image:
     cli: gemini
     model: gemini-3.1-flash-image    # Nano Banana 2（图像生成专用）
 ```
+
+#### fallback（Rate Limit 自动切换）
+
+为模型设置 `fallback` 字段后，当遇到 rate limit 时会自动切换到备用模型：
+
+- **CLI → API → fallback** 3 级优先级链
+- CLI 使用量超限时自动切换到 API key 后端
+- API key 也遇到 rate limit 时切换到 `fallback` 模型
+- 从 stderr 自动检测 rate limit 模式（`Rate limit reached`、`Resource exhausted`、`usage limit` 等）
 
 #### CLI 执行设置
 
@@ -254,9 +266,16 @@ personas:
 各 CLI 转换规则：
 | CLI | 参数 | 转换 |
 |-----|---------|------|
-| Claude | `--effort` | 0-25: low, 26-75: medium, 76-100: high |
+| Claude | `--effort` | 0-33: low, 34-75: medium, 76-100: high |
 | Codex | `-c model_reasoning_effort` | 0-25: low, 26-60: medium, 61-85: high, 86-100: xhigh |
 | Gemini | (CLI 不支持此标志) | 仅通过 settings.json `thinkingConfig` 控制 |
+
+API 后端使用时的转换：
+| API | 参数 | 转换 |
+|-----|---------|------|
+| Claude (Anthropic) | `thinking.budget_tokens` | 0-33: 禁用、34-75: 4096、76-100: 16384 |
+| Gemini (Google) | `thinkingConfig.thinkingBudget` | 0-33: 1024、34-75: 8192、76-100: 24576 |
+| OpenAI | `reasoning_effort` | 0-25: low、26-60: medium、61-100: high |
 
 #### parallel_development（并行执行）
 
@@ -468,13 +487,13 @@ Phase 5: 开发（基于依赖关系的并行执行）
 Phase 6: 代码评审
   → 组长评审其他模型编写的代码
   → ResponseParser 提取 APPROVED / CHANGES_REQUESTED 判定
-  → 评审 → 修改 → 重新评审循环（最多 3 次）
+  → 需要修改时，组长直接编写修复代码并重新提交
   → 评审结果记录为 Issue Comment
 
 Phase 7: QA
   → QA 验证代码
   → ResponseParser 提取 PASS / FAIL 判定
-  → QA 失败 → 组长分析 → 修改 → 重新验证（最多 3 次）
+  → 失败时组长直接修复并重新提交
   → 测试结果以表格形式记录在 Issue Comment 中
 
 Phase 8: PR 创建
@@ -568,6 +587,7 @@ src/
 │   ├── repl-shell.js           # REPL 循环（状态栏 + 命令菜单）
 │   ├── command-router.js       # 斜杠命令路由 + Tab 自动补全
 │   ├── status-bar.js           # 状态栏渲染
+│   ├── slash-menu.js           # 内联搜索斜杠菜单（直接 stdin 处理）
 │   ├── paste-detect-stream.js  # Bracketed Paste Mode（多行输入）
 │   └── commands/               # 斜杠命令处理器
 │       ├── help.js
@@ -588,6 +608,7 @@ test/
 ├── pipeline-state.test.js      # PipelineState 单元测试
 ├── prompt-assembler.test.js    # PromptAssembler 单元测试
 ├── paste-detect-stream.test.js # Bracketed Paste Mode 测试
+├── slash-menu.test.js          # 斜杠菜单内联搜索测试
 ├── i18n.test.js                # 翻译键同步验证（4 种语言一致）
 └── team.test.js                # Team 角色规范化测试
 ```

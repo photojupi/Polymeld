@@ -170,16 +170,28 @@ models:
   claude:
     cli: claude
     model: claude-opus-4-6
+    fallback: gemini               # rate limit 시 전환할 모델
   gemini:
     cli: gemini
     model: gemini-3.1-pro-preview
+    fallback: claude
   codex:
     cli: codex
     model: gpt-5.4
+    fallback: claude
   gemini_image:
     cli: gemini
     model: gemini-3.1-flash-image    # Nano Banana 2 (이미지 생성 특화)
 ```
+
+#### fallback (Rate Limit 자동 전환)
+
+각 모델에 `fallback` 필드를 설정하면, rate limit 발생 시 자동으로 대체 모델로 전환합니다:
+
+- **CLI → API → fallback** 3단계 우선순위 체인
+- CLI 사용량 초과 시 API key 백엔드로 자동 전환
+- API key도 rate limit이면 `fallback` 모델로 최종 전환
+- stderr에서 rate limit 패턴을 자동 감지 (`Rate limit reached`, `Resource exhausted`, `usage limit` 등)
 
 #### CLI 실행 설정
 
@@ -254,9 +266,16 @@ personas:
 CLI별 변환:
 | CLI | 파라미터 | 변환 |
 |-----|---------|------|
-| Claude | `--effort` | 0-25: low, 26-75: medium, 76-100: high |
+| Claude | `--effort` | 0-33: low, 34-75: medium, 76-100: high |
 | Codex | `-c model_reasoning_effort` | 0-25: low, 26-60: medium, 61-85: high, 86-100: xhigh |
 | Gemini | (CLI 플래그 미지원) | settings.json `thinkingConfig`으로만 제어 |
+
+API 백엔드 사용 시 변환:
+| API | 파라미터 | 변환 |
+|-----|---------|------|
+| Claude (Anthropic) | `thinking.budget_tokens` | 0-33: 비활성, 34-75: 4096, 76-100: 16384 |
+| Gemini (Google) | `thinkingConfig.thinkingBudget` | 0-33: 1024, 34-75: 8192, 76-100: 24576 |
+| OpenAI | `reasoning_effort` | 0-25: low, 26-60: medium, 61-100: high |
 
 #### parallel_development (병렬 실행)
 
@@ -468,13 +487,13 @@ Phase 5: 개발 (의존성 기반 병렬 실행)
 Phase 6: 코드 리뷰
   → 팀장이 다른 모델이 작성한 코드를 리뷰
   → ResponseParser가 APPROVED / CHANGES_REQUESTED 판정 추출
-  → 리뷰 → 수정 → 재리뷰 사이클 (최대 3회)
+  → 수정 필요 시 팀장이 직접 수정 코드 작성 후 재커밋
   → 리뷰 결과가 Issue Comment로 기록
 
 Phase 7: QA
   → QA가 코드 검증
   → ResponseParser가 PASS / FAIL 판정 추출
-  → QA 실패 → 팀장 분석 → 수정 → 재검증 (최대 3회)
+  → 실패 시 팀장이 직접 수정 후 재커밋
   → 테스트 결과가 Issue Comment에 표 형태로 기록
 
 Phase 8: PR 생성
@@ -568,6 +587,7 @@ src/
 │   ├── repl-shell.js           # REPL 루프 (상태 바 + 커맨드 메뉴)
 │   ├── command-router.js       # 슬래시 명령어 라우팅 + Tab 자동완성
 │   ├── status-bar.js           # 상태 바 렌더링
+│   ├── slash-menu.js           # 인라인 검색 슬래시 메뉴 (stdin 직접 처리)
 │   ├── paste-detect-stream.js  # Bracketed Paste Mode (멀티라인 입력)
 │   └── commands/               # 슬래시 명령어 핸들러
 │       ├── help.js
@@ -588,6 +608,7 @@ test/
 ├── pipeline-state.test.js      # PipelineState 단위 테스트
 ├── prompt-assembler.test.js    # PromptAssembler 단위 테스트
 ├── paste-detect-stream.test.js # Bracketed Paste Mode 테스트
+├── slash-menu.test.js          # 슬래시 메뉴 인라인 검색 테스트
 ├── i18n.test.js                # 번역 키 동기화 검증 (4개 언어 일치)
 └── team.test.js                # Team 페르소나 정규화 테스트
 ```
