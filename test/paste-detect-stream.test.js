@@ -116,4 +116,47 @@ describe("PasteDetectStream", () => {
     assert.equal(rawModeSet, true);
     assert.equal(ret, stream); // 체이닝 가능
   });
+
+  it("일반 문자를 버퍼링하지 않고 즉시 전달 (스마트 버퍼링)", async () => {
+    const { source, stream } = createStream();
+    const chunks = collectData(stream);
+
+    // 글자별로 입력 (한글 5자 시뮬레이션)
+    source.write("안");
+    source.write("녕");
+    source.write("하");
+    source.write("세");
+    source.write("요");
+
+    // 즉시 전달되는지 확인 (tick 대기)
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(chunks.join(""), "안녕하세요");
+  });
+
+  it("ESC로 끝나는 데이터는 마커 확인을 위해 홀딩", async () => {
+    const { source, stream } = createStream();
+    const chunks = collectData(stream);
+
+    source.write("hello\x1b");
+    await new Promise((resolve) => setImmediate(resolve));
+
+    // "hello"는 통과, "\x1b"는 홀딩 (마커 접두사 가능)
+    assert.equal(chunks.join(""), "hello");
+
+    // 마커가 아닌 다른 데이터가 오면 홀딩된 \x1b도 통과
+    source.write("X");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(chunks.join(""), "hello\x1bX");
+  });
+
+  it("짧은 영문 입력도 즉시 전달", async () => {
+    const { source, stream } = createStream();
+    const chunks = collectData(stream);
+
+    source.write("a");
+    source.write("b");
+    source.write("c");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(chunks.join(""), "abc");
+  });
 });

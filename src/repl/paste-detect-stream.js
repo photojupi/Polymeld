@@ -4,9 +4,20 @@
 
 import { Transform } from "stream";
 
-const PASTE_START = "\x1b[200~"; // 6 bytes
-const PASTE_END = "\x1b[201~";   // 6 bytes
-const MARKER_MAX_LEN = PASTE_START.length; // 시작/종료 마커 길이 동일
+const PASTE_START = "\x1b[200~"; // 6 chars
+const PASTE_END = "\x1b[201~";   // 6 chars
+
+// data 끝부분이 marker의 접두사와 얼마나 겹치는지 반환
+// 예: data="hello\x1b[2", marker="\x1b[200~" → 3 ("\x1b[2"가 marker 접두사)
+function trailingMarkerPrefixLen(data, marker) {
+  const maxCheck = Math.min(data.length, marker.length - 1);
+  for (let len = maxCheck; len > 0; len--) {
+    if (marker.startsWith(data.substring(data.length - len))) {
+      return len;
+    }
+  }
+  return 0;
+}
 
 export class PasteDetectStream extends Transform {
   constructor(source) {
@@ -38,16 +49,15 @@ export class PasteDetectStream extends Transform {
       if (this._pasting) {
         const endIdx = data.indexOf(PASTE_END);
         if (endIdx === -1) {
-          // 종료 마커가 청크 경계에 걸릴 수 있으므로 마지막 바이트 보존
-          if (data.length < MARKER_MAX_LEN) {
-            this._partial = data;
-            data = "";
+          // 끝부분이 PASTE_END 접두사와 겹치는 경우만 홀딩
+          const hold = trailingMarkerPrefixLen(data, PASTE_END);
+          if (hold > 0) {
+            this._pasteBuffer += data.substring(0, data.length - hold);
+            this._partial = data.substring(data.length - hold);
           } else {
-            const safe = data.length - (MARKER_MAX_LEN - 1);
-            this._pasteBuffer += data.substring(0, safe);
-            this._partial = data.substring(safe);
-            data = "";
+            this._pasteBuffer += data;
           }
+          data = "";
         } else {
           this._pasteBuffer += data.substring(0, endIdx);
           this._pasting = false;
@@ -58,16 +68,15 @@ export class PasteDetectStream extends Transform {
       } else {
         const startIdx = data.indexOf(PASTE_START);
         if (startIdx === -1) {
-          // 시작 마커가 청크 경계에 걸릴 수 있으므로 마지막 바이트 보존
-          if (data.length < MARKER_MAX_LEN) {
-            this._partial = data;
-            data = "";
+          // 끝부분이 PASTE_START 접두사와 겹치는 경우만 홀딩
+          const hold = trailingMarkerPrefixLen(data, PASTE_START);
+          if (hold > 0) {
+            output += data.substring(0, data.length - hold);
+            this._partial = data.substring(data.length - hold);
           } else {
-            const safe = data.length - (MARKER_MAX_LEN - 1);
-            output += data.substring(0, safe);
-            this._partial = data.substring(safe);
-            data = "";
+            output += data;
           }
+          data = "";
         } else {
           if (startIdx > 0) {
             output += data.substring(0, startIdx);
