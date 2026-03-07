@@ -452,6 +452,8 @@
     "cliError": "[{{cli}}] CLI 오류 (exit {{code}}): {{output}}",
     "noOutput": "(출력 없음)",
     "timeout": "타임아웃 ({{seconds}}초 초과)",
+    "timeoutIdle": "유휴 타임아웃 ({{seconds}}초간 출력 없음)",
+    "timeoutMax": "최대 타임아웃 ({{seconds}}초 초과)",
     "cliExecFailed": "CLI 실행 실패 ({{command}}): {{message}}",
     "systemInstructions": "## 시스템 지침",
     "request": "## 요청",

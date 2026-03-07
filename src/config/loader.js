@@ -121,7 +121,7 @@ function mergeLayers(layers) {
 /**
  * CLI 명령어 존재 여부 확인
  */
-function isCliInstalled(command) {
+export function isCliInstalled(command) {
   try {
     const cmd = os.platform() === "win32" ? "where" : "which";
     execFileSync(cmd, [command], { stdio: "pipe" });
@@ -139,7 +139,7 @@ function probeCliAuth(cli) {
   const probes = {
     claude: { args: ["-p", "--output-format", "text", "--max-turns", "1"], stdin: "Reply OK" },
     gemini: { args: ["--output-format", "text"], stdin: "Reply OK" },
-    codex: { args: ["exec", "--output-format", "text"], stdin: "echo OK" },
+    codex: { args: ["exec", "--skip-git-repo-check", "--full-auto", "--output-format", "text"], stdin: "echo OK" },
   };
   const probe = probes[cli];
   if (!probe) return Promise.resolve({ ok: false, reason: "unknown" });
