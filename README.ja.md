@@ -54,16 +54,16 @@ Claude Code、Gemini CLI、Codex CLIを各ペルソナに割り当て、
 └──────────────────────────┴──────────────────────────────────┘
 ```
 
+## インストール
+
+```bash
+npm install -g polymeld
+```
+
 ## クイックスタート
 
 ```bash
-# 1. クローンとインストール
-git clone <this-repo>
-cd polymeld
-npm install
-npm link                                    # `polymeld`コマンドをグローバルに登録
-
-# 2. CLIツールのインストール（未インストールの場合）
+# 1. CLIツールのインストール（未インストールの場合）
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI

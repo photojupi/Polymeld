@@ -53,16 +53,16 @@ Assign Claude Code, Gemini CLI, and Codex CLI to individual personas, and automa
 └──────────────────────────┴──────────────────────────────────┘
 ```
 
+## Installation
+
+```bash
+npm install -g polymeld
+```
+
 ## Quick Start
 
 ```bash
-# 1. Clone and install
-git clone <this-repo>
-cd polymeld
-npm install
-npm link                                    # Register `polymeld` command globally
-
-# 2. Install CLI tools (if not already installed)
+# 1. Install CLI tools (if not already installed)
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI

@@ -54,16 +54,16 @@ Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 └──────────────────────────┴──────────────────────────────────┘
 ```
 
+## 설치
+
+```bash
+npm install -g polymeld
+```
+
 ## 빠른 시작
 
 ```bash
-# 1. 클론 및 설치
-git clone <this-repo>
-cd polymeld
-npm install
-npm link                                    # `polymeld` 명령어를 전역으로 등록
-
-# 2. CLI 도구 설치 (미설치 시)
+# 1. CLI 도구 설치 (미설치 시)
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI

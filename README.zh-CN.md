@@ -54,16 +54,16 @@
 └──────────────────────────┴──────────────────────────────────┘
 ```
 
+## 安装
+
+```bash
+npm install -g polymeld
+```
+
 ## 快速开始
 
 ```bash
-# 1. 克隆并安装
-git clone <this-repo>
-cd polymeld
-npm install
-npm link                                    # 全局注册 `polymeld` 命令
-
-# 2. 安装 CLI 工具（如未安装）
+# 1. 安装 CLI 工具（如未安装）
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
