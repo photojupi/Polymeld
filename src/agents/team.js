@@ -159,6 +159,12 @@ export class Team {
           continue;
         }
 
+        // [SPEAK] 접두사 + 근거 요약 줄 제거
+        const speakMatch = speech.content.trim().match(/^\[SPEAK\]\s*\n.*\n([\s\S]*)$/i);
+        if (speakMatch) {
+          speech.content = speakMatch[1].trim();
+        }
+
         this.state.broadcastMessage({
           from: agent.id,
           type: "meeting_speech",
