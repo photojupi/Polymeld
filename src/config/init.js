@@ -122,6 +122,34 @@ export async function runAuthPrompt() {
   }
 }
 
+/**
+ * 첫 실행 온보딩 위저드
+ * initGlobalConfig + 환영 메시지를 묶어 원스톱 설정 경험 제공
+ */
+export async function runOnboarding() {
+  console.log(chalk.bold.cyan(`\n${t("onboarding.welcome")}`));
+  console.log(chalk.gray(`  ${t("onboarding.description")}\n`));
+
+  const { proceed } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "proceed",
+      message: t("onboarding.startSetup"),
+      default: true,
+    },
+  ]);
+
+  if (!proceed) {
+    console.log(chalk.gray(`\n  ${t("onboarding.skipped")}\n`));
+    return false;
+  }
+
+  await initGlobalConfig();
+
+  console.log(chalk.green(`\n${t("onboarding.ready")}\n`));
+  return true;
+}
+
 function generateGlobalTemplate(models) {
   const modelEntries = [];
   if (models.includes("claude")) {

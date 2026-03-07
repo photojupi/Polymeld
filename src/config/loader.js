@@ -12,6 +12,14 @@ import { t } from "../i18n/index.js";
 import { getGlobalConfigDir, getProjectConfigDir } from "./paths.js";
 
 /**
+ * 글로벌 설정 존재 여부 확인 (온보딩 분기용)
+ */
+export function hasGlobalConfig() {
+  const globalConfig = path.join(getGlobalConfigDir(), "config.yaml");
+  return fs.existsSync(globalConfig);
+}
+
+/**
  * 설정 로드 (계층적 병합)
  * -c 플래그: 해당 파일만 사용 (하위 호환)
  * 플래그 없음: 글로벌 → 프로젝트 공유 → 프로젝트 로컬 → 레거시 CWD 순서로 병합

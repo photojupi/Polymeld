@@ -502,6 +502,13 @@
     "projectScopeHint": "→ 토큰에 'project' scope가 있는지 확인하세요.",
     "projectLinkFailed": "⚠️ 프로젝트-레포 연결 실패:"
   },
+  "onboarding": {
+    "welcome": "🚀 Polymeld에 오신 것을 환영합니다!",
+    "description": "멀티 AI 모델 기반 개발팀 시뮬레이션입니다. 초기 설정을 시작합니다.",
+    "startSetup": "초기 설정을 시작할까요?",
+    "skipped": "설정을 건너뛰었습니다. 준비되면 polymeld init --global 을 실행하세요.",
+    "ready": "✅ 설정이 완료되었습니다! 인터랙티브 모드로 진입합니다..."
+  },
   "common": {
     "project": "프로젝트",
     "error": "에러"

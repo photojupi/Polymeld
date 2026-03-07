@@ -502,6 +502,13 @@
     "projectScopeHint": "→ Check if token has 'project' scope.",
     "projectLinkFailed": "⚠️ Project-repo linking failed:"
   },
+  "onboarding": {
+    "welcome": "🚀 Welcome to Polymeld!",
+    "description": "Multi-AI model dev team simulation. Let's get you set up.",
+    "startSetup": "Start initial setup?",
+    "skipped": "Setup skipped. Run polymeld init --global when you're ready.",
+    "ready": "✅ Setup complete! Entering interactive mode..."
+  },
   "common": {
     "project": "Project",
     "error": "Error"

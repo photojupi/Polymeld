@@ -13,7 +13,7 @@ await initI18n();
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { loadConfig, validateConnections } from "./config/loader.js";
+import { loadConfig, validateConnections, hasGlobalConfig } from "./config/loader.js";
 import { ModelAdapter } from "./models/adapter.js";
 import { Team } from "./agents/team.js";
 import { GitHubClient, NoOpGitHub } from "./github/client.js";
@@ -22,7 +22,7 @@ import { PipelineState } from "./state/pipeline-state.js";
 import { PromptAssembler } from "./state/prompt-assembler.js";
 import { ReplShell } from "./repl/repl-shell.js";
 import { Session } from "./session/session.js";
-import { initGlobalConfig, initProjectConfig, runAuthPrompt } from "./config/init.js";
+import { initGlobalConfig, initProjectConfig, runAuthPrompt, runOnboarding } from "./config/init.js";
 import { getCredentialStatus } from "./config/credentials.js";
 
 const program = new Command();
@@ -262,4 +262,24 @@ program
     await repl.start();
   });
 
-program.parse();
+// 인수 없이 실행 시: 온보딩 또는 REPL 직접 진입
+// --lang 플래그와 그 값을 제외한 실제 CLI 인수 확인
+const userArgs = process.argv.slice(2).filter((arg, i, arr) => {
+  if (arg === "--lang") return false;
+  if (i > 0 && arr[i - 1] === "--lang") return false;
+  return true;
+});
+
+if (userArgs.length === 0) {
+  if (!hasGlobalConfig()) {
+    const completed = await runOnboarding();
+    if (!completed) process.exit(0);
+  }
+
+  const config = loadConfig();
+  await validateConnections(config);
+  const repl = new ReplShell(config);
+  await repl.start();
+} else {
+  program.parse();
+}
