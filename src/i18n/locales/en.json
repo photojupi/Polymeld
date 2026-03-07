@@ -226,6 +226,7 @@
     "tokenAuthFailed": "Token authentication failed",
     "repoAccessDenied": "Repository access denied ({{repo}})",
     "repoWriteDenied": "Repository write access denied ({{repo}})",
+    "scopeProjectMissing": "'project' scope not found — GitHub Projects features will be limited",
     "networkFailed": "Network connection failed",
     "installRequired": "{{cli}} installation required",
     "choice": {

@@ -130,7 +130,17 @@ async function checkGitHub() {
     if (!userRes.ok) return { ok: false, reason: t("config.tokenAuthFailed") };
     const userData = await userRes.json();
 
-    // 2) 리포지토리 쓰기 권한 확인
+    // 2) 토큰 스코프 확인 (Classic PAT만 — Fine-grained PAT은 이 헤더 없음)
+    const warnings = [];
+    const scopeHeader = userRes.headers.get("x-oauth-scopes");
+    if (scopeHeader != null) {
+      const scopes = scopeHeader.split(",").map(s => s.trim()).filter(Boolean);
+      if (!scopes.includes("project")) {
+        warnings.push(t("config.scopeProjectMissing"));
+      }
+    }
+
+    // 3) 리포지토리 쓰기 권한 확인
     const repoRes = await fetch(`https://api.github.com/repos/${repo}`, { headers });
     if (!repoRes.ok) return { ok: false, reason: t("config.repoAccessDenied", { repo }) };
 
@@ -139,7 +149,7 @@ async function checkGitHub() {
       return { ok: false, reason: t("config.repoWriteDenied", { repo }) };
     }
 
-    return { ok: true, user: userData.login, repo };
+    return { ok: true, user: userData.login, repo, warnings };
   } catch {
     return { ok: false, reason: t("config.networkFailed") };
   }
@@ -206,6 +216,11 @@ export async function validateConnections(config) {
   const github = await checkGitHub();
   if (github.ok) {
     rewriteLine(chalk.green(`  ${t("config.githubConnected", { label: ghLabel, repo: github.repo })}\n`));
+    if (github.warnings?.length) {
+      for (const w of github.warnings) {
+        console.log(chalk.yellow(`  ⚠️  ${ghLabel} ${w}`));
+      }
+    }
   } else {
     rewriteLine(chalk.red(`  ${t("config.githubFailed", { label: ghLabel, reason: github.reason || "" })}\n`));
     console.log();

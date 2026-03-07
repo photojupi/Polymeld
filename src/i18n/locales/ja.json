@@ -226,6 +226,7 @@
     "tokenAuthFailed": "トークン認証失敗",
     "repoAccessDenied": "リポジトリアクセス拒否（{{repo}}）",
     "repoWriteDenied": "リポジトリ書き込み権限なし（{{repo}}）",
+    "scopeProjectMissing": "'project' スコープなし — GitHub Projects機能が制限されます",
     "networkFailed": "ネットワーク接続失敗",
     "installRequired": "{{cli}} のインストールが必要",
     "choice": {
