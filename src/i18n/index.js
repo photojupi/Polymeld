@@ -17,6 +17,7 @@ export async function initI18n(overrideLng) {
   await i18next.init({
     lng,
     fallbackLng: "en",
+    showSupportNotice: false,
     interpolation: { escapeValue: false },
     resources: {
       en: { translation: loadJSON("en.json") },
