@@ -91,8 +91,6 @@ polymeld run "チャット機能" --lang en   # English
 polymeld run "チャット機能" --lang ja   # 日本語
 polymeld run "チャット機能" --lang zh-CN # 中文(简体)
 
-# 8. テスト
-npm test
 ```
 
 > **初回起動時のオンボーディング**: `polymeld`を引数なしで実行すると、グローバル設定が存在しない場合、オンボーディングウィザード（モデル選択 → 認証情報入力）を案内した後、REPLモードに自動遷移します。
@@ -619,14 +617,14 @@ test/
 
 ```bash
 # Claude Code内で
-node /path/to/polymeld/src/index.js run "要件" --no-interactive
+polymeld run "要件" --no-interactive
 ```
 
 またはCLAUDE.mdに登録：
 ```markdown
 ## Polymeld
 プロジェクト要件が与えられたらPolymeld CLIを実行してください：
-`node ./polymeld/src/index.js run "要件" --no-interactive`
+`polymeld run "要件" --no-interactive`
 ```
 
 ## ペルソナカスタマイズ

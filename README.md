@@ -91,8 +91,6 @@ polymeld run "채팅 기능" --lang en   # English
 polymeld run "채팅 기능" --lang ja   # 日本語
 polymeld run "채팅 기능" --lang zh-CN # 中文(简体)
 
-# 8. 테스트
-npm test
 ```
 
 > **첫 실행 시 온보딩**: `polymeld`를 인수 없이 실행하면, 글로벌 설정이 없는 경우 온보딩 위저드(모델 선택 → 자격 증명 입력)를 안내한 후 REPL 모드로 자동 진입합니다.
@@ -619,14 +617,14 @@ test/
 
 ```bash
 # Claude Code 내에서
-node /path/to/polymeld/src/index.js run "요구사항" --no-interactive
+polymeld run "요구사항" --no-interactive
 ```
 
 또는 CLAUDE.md에 등록:
 ```markdown
 ## Polymeld
 프로젝트 요구사항이 주어지면 Polymeld CLI를 실행하세요:
-`node ./polymeld/src/index.js run "요구사항" --no-interactive`
+`polymeld run "요구사항" --no-interactive`
 ```
 
 ## 페르소나 커스터마이징
