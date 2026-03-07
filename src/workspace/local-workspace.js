@@ -265,7 +265,21 @@ export class LocalWorkspace {
     } catch {
       // 없으면 새로 생성
       const baseRef = base || this.getCurrentBranch();
-      this._git(["checkout", "-b", name, baseRef]);
+      if (this._isValidRef(baseRef)) {
+        this._git(["checkout", "-b", name, baseRef]);
+      } else {
+        // 빈 레포(커밋 없음) 또는 base ref가 존재하지 않는 경우
+        this._git(["checkout", "-b", name]);
+      }
+    }
+  }
+
+  _isValidRef(ref) {
+    try {
+      this._git(["rev-parse", "--verify", ref]);
+      return true;
+    } catch {
+      return false;
     }
   }
 
