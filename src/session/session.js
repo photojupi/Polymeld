@@ -150,6 +150,7 @@ export class Session {
 
     // GitHub 초기화
     if (this.github) {
+      await this.github.ensureInitialCommit();
       await this.github.ensureLabels(this.config.github?.labels || {});
       await this.github.findOrCreateProject(this.config.github?.project_name || `${this.github.repo}_autollm`);
     }
@@ -209,6 +210,7 @@ export class Session {
 
     // GitHub 초기화
     if (this.github) {
+      await this.github.ensureInitialCommit();
       await this.github.ensureLabels(this.config.github?.labels || {});
       await this.github.findOrCreateProject(this.config.github?.project_name || `${this.github.repo}_autollm`);
     }
