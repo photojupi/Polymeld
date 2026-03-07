@@ -223,6 +223,8 @@ export class PipelineOrchestrator {
           printSpeechPreview(agent, content);
         } else if (phase === "passed") {
           persist(chalk.yellow("–"), `${agent} 패스`);
+        } else if (phase === "empty_response") {
+          persist(chalk.yellow("⚠"), `${agent} 응답 없음`);
         } else if (phase === "summary" && content) {
           printSpeechPreview(agent, content, { symbol: chalk.cyan("★"), label: `${agent} (정리)` });
         }
@@ -318,7 +320,7 @@ export class PipelineOrchestrator {
 
     // 킥오프 요약 저장
     const lastRound = meetingLog.rounds[meetingLog.rounds.length - 1];
-    const summary = lastRound.speeches.find((s) => s.isSummary);
+    const summary = lastRound.speeches.find((s) => s.isSummary && !s.isEmpty);
     this.state.kickoffSummary = summary?.content || "";
 
     // 마크다운 생성
@@ -378,7 +380,7 @@ ${kickoff}
 
     // 팀장의 마지막 정리를 설계 결정사항으로 저장
     const lastRound = meetingLog.rounds[meetingLog.rounds.length - 1];
-    const summary = lastRound.speeches.find((s) => s.isSummary);
+    const summary = lastRound.speeches.find((s) => s.isSummary && !s.isEmpty);
     this.state.designDecisions = summary?.content || markdown;
 
     console.log(chalk.gray("\n--- 설계 결정 미리보기 ---"));
