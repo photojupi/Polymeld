@@ -5,13 +5,14 @@
 // PipelineState + PromptAssembler 기반 아키텍처
 
 import "dotenv/config";
+import { loadCredentials } from "./config/credentials.js";
 import { initI18n, t } from "./i18n/index.js";
 
+loadCredentials();
 await initI18n();
 
 import { Command } from "commander";
 import chalk from "chalk";
-import inquirer from "inquirer";
 import { loadConfig, validateConnections } from "./config/loader.js";
 import { ModelAdapter } from "./models/adapter.js";
 import { Team } from "./agents/team.js";
@@ -21,6 +22,8 @@ import { PipelineState } from "./state/pipeline-state.js";
 import { PromptAssembler } from "./state/prompt-assembler.js";
 import { ReplShell } from "./repl/repl-shell.js";
 import { Session } from "./session/session.js";
+import { initGlobalConfig, initProjectConfig, runAuthPrompt } from "./config/init.js";
+import { getCredentialStatus } from "./config/credentials.js";
 
 const program = new Command();
 
@@ -196,24 +199,35 @@ program
 program
   .command("init")
   .description(t("cli.init.description"))
-  .action(async () => {
-    const { models } = await inquirer.prompt([
-      {
-        type: "checkbox",
-        name: "models",
-        message: t("cli.init.selectModels"),
-        choices: [
-          { name: "Claude Code (Anthropic)", value: "claude", checked: true },
-          { name: "Gemini CLI (Google)", value: "gemini" },
-          { name: "Codex CLI (OpenAI)", value: "codex" },
-        ],
-      },
-    ]);
+  .option("--global", t("cli.init.optGlobal"))
+  .action(async (options) => {
+    if (options.global) {
+      await initGlobalConfig();
+    } else {
+      await initProjectConfig();
+    }
+  });
 
-    console.log(chalk.green(`\n${t("cli.init.created")}`));
-    console.log(chalk.gray(t("cli.init.step1")));
-    console.log(chalk.gray(t("cli.init.step2")));
-    console.log(chalk.gray(t("cli.init.step3") + "\n"));
+// ─── 자격 증명 관리 ────────────────────────────────────────
+
+program
+  .command("auth")
+  .description(t("cli.auth.description"))
+  .option("--show", t("cli.auth.optShow"))
+  .action(async (options) => {
+    if (options.show) {
+      const status = getCredentialStatus();
+      console.log(chalk.bold(`\n${t("cli.auth.header")}\n`));
+      for (const s of status) {
+        const icon = s.set ? chalk.green("✅") : chalk.gray("⬚");
+        const val = s.masked || chalk.gray(t("cli.auth.notSet"));
+        console.log(`  ${icon} ${s.key}: ${val}`);
+      }
+      console.log();
+      return;
+    }
+
+    await runAuthPrompt();
   });
 
 // ─── 인터랙티브 REPL 모드 ────────────────────────────────
