@@ -91,8 +91,6 @@ polymeld run "聊天功能" --lang en   # English
 polymeld run "聊天功能" --lang ja   # 日本語
 polymeld run "聊天功能" --lang zh-CN # 中文(简体)
 
-# 8. 测试
-npm test
 ```
 
 > **首次运行引导**：不带参数运行 `polymeld` 时，如果不存在全局配置，将引导完成引导向导（模型选择 → 凭证输入），然后自动进入 REPL 模式。
@@ -619,14 +617,14 @@ test/
 
 ```bash
 # 在 Claude Code 中
-node /path/to/polymeld/src/index.js run "需求说明" --no-interactive
+polymeld run "需求说明" --no-interactive
 ```
 
 或注册到 CLAUDE.md：
 ```markdown
 ## Polymeld
 当给出项目需求时，运行 Polymeld CLI：
-`node ./polymeld/src/index.js run "需求说明" --no-interactive`
+`polymeld run "需求说明" --no-interactive`
 ```
 
 ## 角色自定义

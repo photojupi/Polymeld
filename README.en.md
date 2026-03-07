@@ -90,8 +90,6 @@ polymeld run "chat feature" --lang en   # English
 polymeld run "chat feature" --lang ja   # 日本語
 polymeld run "chat feature" --lang zh-CN # 中文(简体)
 
-# 8. Run tests
-npm test
 ```
 
 > **First-run onboarding**: Running `polymeld` without arguments will launch the onboarding wizard (model selection → credential input) if no global config exists, then automatically enter REPL mode.
@@ -618,14 +616,14 @@ This CLI can also be invoked from within Claude Code:
 
 ```bash
 # From inside Claude Code
-node /path/to/polymeld/src/index.js run "requirements" --no-interactive
+polymeld run "requirements" --no-interactive
 ```
 
 Or register it in CLAUDE.md:
 ```markdown
 ## Polymeld
 When given project requirements, run the Polymeld CLI:
-`node ./polymeld/src/index.js run "requirements" --no-interactive`
+`polymeld run "requirements" --no-interactive`
 ```
 
 ## Persona Customization
