@@ -176,7 +176,14 @@ export class ReplShell {
         this.pasteStream.once("paste", onPaste);
       }
 
-      const onClose = () => resolve(null);
+      const onClose = () => {
+        clearTimeout(timer);
+        keypressSource.removeListener("keypress", onKeypress);
+        if (this.pasteStream) {
+          this.pasteStream.removeListener("paste", onPaste);
+        }
+        resolve(null);
+      };
       this.rl.once("close", onClose);
 
       this.rl.question(promptStr, (answer) => {
@@ -234,5 +241,7 @@ export class ReplShell {
     if (this.rl) {
       this.rl.close();
     }
+
+    process.exit(0);
   }
 }
