@@ -283,6 +283,14 @@ export class LocalWorkspace {
     }
   }
 
+  addRemote(name, url) {
+    try {
+      this._git(["remote", "add", name, url]);
+    } catch {
+      // 이미 존재하는 경우 무시
+    }
+  }
+
   gitPush(branch) {
     const currentBranch = branch || this.getCurrentBranch();
     try {
