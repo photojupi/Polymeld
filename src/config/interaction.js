@@ -42,7 +42,6 @@ export class InteractionManager {
       choices: [
         { name: "진행", value: "proceed" },
         { name: "이 Phase 다시 실행", value: "retry" },
-        { name: "수정 후 계속", value: "edit" },
         { name: "파이프라인 중단", value: "abort" },
       ],
       default: "proceed",
