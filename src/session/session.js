@@ -136,6 +136,30 @@ export class Session {
     }
   }
 
+  async _ensureGitHubReady() {
+    if (!this.github) return;
+    await this.github.ensureInitialCommit();
+    await this.github.ensureLabels(this.config.github?.labels || {});
+    await this.github.findOrCreateProject(
+      this.config.github?.project_name || `${this.github.repo}_autollm`
+    );
+  }
+
+  _createOrchestrator(interactionMode) {
+    return new PipelineOrchestrator(
+      this.team,
+      this.github || new NoOpGitHub(),
+      this.config,
+      interactionMode,
+      {
+        state: this.state,
+        assembler: this.assembler,
+        workspace: this.workspace,
+        onPhaseSave: () => this.save(),
+      }
+    );
+  }
+
   /**
    * 파이프라인 실행 (기존 Orchestrator 그대로 사용)
    */
@@ -153,25 +177,8 @@ export class Session {
     // runPipeline()은 항상 Phase 리셋 (재개는 /resume → resumePipeline()만 사용)
     this.state.resetPhases();
 
-    // GitHub 초기화
-    if (this.github) {
-      await this.github.ensureInitialCommit();
-      await this.github.ensureLabels(this.config.github?.labels || {});
-      await this.github.findOrCreateProject(this.config.github?.project_name || `${this.github.repo}_autollm`);
-    }
-
-    const orchestrator = new PipelineOrchestrator(
-      this.team,
-      this.github || new NoOpGitHub(),
-      this.config,
-      interactionMode,
-      {
-        state: this.state,
-        assembler: this.assembler,
-        workspace: this.workspace,
-        onPhaseSave: () => this.save(),
-      }
-    );
+    await this._ensureGitHubReady();
+    const orchestrator = this._createOrchestrator(interactionMode);
 
     const runEntry = {
       requirement,
@@ -213,25 +220,8 @@ export class Session {
 
     const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "semi-auto";
 
-    // GitHub 초기화
-    if (this.github) {
-      await this.github.ensureInitialCommit();
-      await this.github.ensureLabels(this.config.github?.labels || {});
-      await this.github.findOrCreateProject(this.config.github?.project_name || `${this.github.repo}_autollm`);
-    }
-
-    const orchestrator = new PipelineOrchestrator(
-      this.team,
-      this.github || new NoOpGitHub(),
-      this.config,
-      interactionMode,
-      {
-        state: this.state,
-        assembler: this.assembler,
-        workspace: this.workspace,
-        onPhaseSave: () => this.save(),
-      }
-    );
+    await this._ensureGitHubReady();
+    const orchestrator = this._createOrchestrator(interactionMode);
 
     const runEntry = {
       requirement,

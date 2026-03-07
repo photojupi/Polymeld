@@ -173,100 +173,12 @@ export class Team {
       // 중간 라운드: 팀장 결론 확인 (결론 시 조기 종료)
       let shouldBreak = false;
       if (round > 0 && !isLastRound) {
-        onSpeak({ phase: "speaking", agent: this.lead.name, round: round + 1 });
-
-        const checkBundle = this.assembler.forMeeting(this.state, {
-          agentId: this.lead.id,
-          topic,
-          maxPreviousSpeeches: 10,
-        });
-
-        const checkResponse = await this.lead.speak(
-          t("agent.concludeInstruction"),
-          checkBundle,
-          { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
-        );
-
-        const content = checkResponse.content.trim();
-
-        if (!content) {
-          // 빈 응답 방어
-          onSpeak({ phase: "empty_response", agent: this.lead.name });
-          roundLog.speeches.push({
-            agent: this.lead.name,
-            role: this.lead.role,
-            model: checkResponse.model,
-            content: t("agent.noResponse"),
-            isEmpty: true,
-          });
-        } else if (/^\[CONCLUDE\]/i.test(content)) {
-          const stripped = content.replace(/^\[CONCLUDE\]\s*/i, "");
-          if (stripped.length > 0) {
-            // 결론 도출 → 종합 정리로 기록, 조기 종료
-            this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content: stripped });
-            roundLog.speeches.push({ ...checkResponse, content: stripped, isSummary: true });
-            onSpeak({ phase: "summary", agent: this.lead.name, content: stripped });
-            shouldBreak = true;
-          } else {
-            // [CONCLUDE]만 있고 내용 없음
-            onSpeak({ phase: "empty_response", agent: this.lead.name });
-            roundLog.speeches.push({
-              agent: this.lead.name,
-              role: this.lead.role,
-              model: checkResponse.model,
-              content: t("agent.noResponse"),
-              isEmpty: true,
-            });
-          }
-        } else {
-          // 결론 안 냄 → 방향 제시 발언으로 기록
-          this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content });
-          roundLog.speeches.push(checkResponse);
-          onSpeak({ phase: "spoke", agent: this.lead.name, content });
-        }
+        shouldBreak = await this._checkMidRoundConclusion({ topic, roundLog, onSpeak, onStream });
       }
 
       // 팀장 정리 (마지막 라운드)
       if (isLastRound) {
-        onSpeak({ phase: "speaking", agent: this.lead.name, round: round + 1 });
-
-        const summaryBundle = this.assembler.forMeeting(this.state, {
-          agentId: this.lead.id,
-          topic,
-          maxPreviousSpeeches: 20,
-        });
-
-        const summary = await this.lead.speak(
-          t("agent.summaryInstruction"),
-          summaryBundle,
-          { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
-        );
-
-        if (!summary.content.trim()) {
-          // 빈 응답 방어
-          onSpeak({ phase: "empty_response", agent: this.lead.name });
-          roundLog.speeches.push({
-            agent: this.lead.name,
-            role: this.lead.role,
-            model: summary.model,
-            content: t("agent.noResponse"),
-            isEmpty: true,
-            isSummary: true,
-          });
-        } else {
-          this.state.broadcastMessage({
-            from: this.lead.id,
-            type: "meeting_speech",
-            content: summary.content,
-          });
-
-          roundLog.speeches.push({ ...summary, isSummary: true });
-          onSpeak({
-            phase: "summary",
-            agent: this.lead.name,
-            content: summary.content,
-          });
-        }
+        await this._conductFinalSummary({ topic, roundLog, onSpeak, onStream });
       }
 
       meetingLog.rounds.push(roundLog);
@@ -370,5 +282,114 @@ export class Team {
     // fallback: 개발자 중 첫 번째, 없으면 팀장이 직접 처리
     const allDevs = this.getDevelopers();
     return allDevs[0] || this.lead;
+  }
+
+  // ─── conductMeeting 내부 헬퍼 ──────────────────────────
+
+  /**
+   * 중간 라운드에서 팀장의 결론 확인
+   * @returns {Promise<boolean>} shouldBreak - true면 회의 조기 종료
+   */
+  async _checkMidRoundConclusion({ topic, roundLog, onSpeak, onStream }) {
+    onSpeak({ phase: "speaking", agent: this.lead.name, round: roundLog.round });
+
+    const checkBundle = this.assembler.forMeeting(this.state, {
+      agentId: this.lead.id,
+      topic,
+      maxPreviousSpeeches: 10,
+    });
+
+    const checkResponse = await this.lead.speak(
+      t("agent.concludeInstruction"),
+      checkBundle,
+      { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
+    );
+
+    const content = checkResponse.content.trim();
+
+    if (!content) {
+      // 빈 응답 방어
+      onSpeak({ phase: "empty_response", agent: this.lead.name });
+      roundLog.speeches.push({
+        agent: this.lead.name,
+        role: this.lead.role,
+        model: checkResponse.model,
+        content: t("agent.noResponse"),
+        isEmpty: true,
+      });
+      return false;
+    }
+
+    if (/^\[CONCLUDE\]/i.test(content)) {
+      const stripped = content.replace(/^\[CONCLUDE\]\s*/i, "");
+      if (stripped.length > 0) {
+        // 결론 도출 → 종합 정리로 기록, 조기 종료
+        this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content: stripped });
+        roundLog.speeches.push({ ...checkResponse, content: stripped, isSummary: true });
+        onSpeak({ phase: "summary", agent: this.lead.name, content: stripped });
+        return true;
+      }
+      // [CONCLUDE]만 있고 내용 없음
+      onSpeak({ phase: "empty_response", agent: this.lead.name });
+      roundLog.speeches.push({
+        agent: this.lead.name,
+        role: this.lead.role,
+        model: checkResponse.model,
+        content: t("agent.noResponse"),
+        isEmpty: true,
+      });
+      return false;
+    }
+
+    // 결론 안 냄 → 방향 제시 발언으로 기록
+    this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content });
+    roundLog.speeches.push(checkResponse);
+    onSpeak({ phase: "spoke", agent: this.lead.name, content });
+    return false;
+  }
+
+  /**
+   * 마지막 라운드 팀장 정리
+   */
+  async _conductFinalSummary({ topic, roundLog, onSpeak, onStream }) {
+    onSpeak({ phase: "speaking", agent: this.lead.name, round: roundLog.round });
+
+    const summaryBundle = this.assembler.forMeeting(this.state, {
+      agentId: this.lead.id,
+      topic,
+      maxPreviousSpeeches: 20,
+    });
+
+    const summary = await this.lead.speak(
+      t("agent.summaryInstruction"),
+      summaryBundle,
+      { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
+    );
+
+    if (!summary.content.trim()) {
+      // 빈 응답 방어
+      onSpeak({ phase: "empty_response", agent: this.lead.name });
+      roundLog.speeches.push({
+        agent: this.lead.name,
+        role: this.lead.role,
+        model: summary.model,
+        content: t("agent.noResponse"),
+        isEmpty: true,
+        isSummary: true,
+      });
+    } else {
+      this.state.broadcastMessage({
+        from: this.lead.id,
+        type: "meeting_speech",
+        content: summary.content,
+      });
+
+      roundLog.speeches.push({ ...summary, isSummary: true });
+      onSpeak({
+        phase: "summary",
+        agent: this.lead.name,
+        content: summary.content,
+      });
+    }
   }
 }
