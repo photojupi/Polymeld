@@ -174,10 +174,14 @@ function probeCliAuth(cli) {
     let stderr = "";
     proc.stdout.on("data", () => done({ ok: true }));
     proc.stderr.on("data", (d) => { stderr += d.toString(); });
-    proc.on("close", (code) => done({
-      ok: code === 0,
-      reason: code !== 0 ? (stderr.trim().substring(0, 200) || t("config.authFailed")) : null,
-    }));
+    proc.on("close", (code) => {
+      let reason = null;
+      if (code !== 0) {
+        const lines = stderr.trim().split("\n").filter((l) => l.trim());
+        reason = (lines[lines.length - 1] || "").trim().substring(0, 200) || t("config.authFailed");
+      }
+      done({ ok: code === 0, reason });
+    });
     proc.on("error", () => done({ ok: false, reason: t("config.executionFailed") }));
 
     try {
