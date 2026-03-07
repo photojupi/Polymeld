@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/index.js",
   "bin": {
-    "polymeld": "./src/index.js"
+    "polymeld": "src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",
@@ -26,6 +26,12 @@
     "ora": "^8.1.1",
     "yaml": "^2.7.0"
   },
+  "files": [
+    "src/",
+    "polymeld.config.yaml",
+    "README.md",
+    ".env.example"
+  ],
   "engines": {
     "node": ">=18"
   }
