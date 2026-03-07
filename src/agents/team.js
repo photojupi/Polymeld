@@ -198,12 +198,10 @@ export class Team {
    * 회의 로그를 마크다운으로 변환
    * meetingLog 구조를 유지하여 호환성 확보
    */
-  formatMeetingAsMarkdown(meetingLog, meetingType = "meeting") {
+  formatMeetingAsMarkdown(meetingLog) {
     const lines = [];
-    const typeEmoji = meetingType === "kickoff" ? "\uD83D\uDCCB" : "\uD83C\uDFD7\uFE0F";
-    const typeLabel = meetingType === "kickoff"
-      ? t("agent.meetingMarkdown.kickoff")
-      : t("agent.meetingMarkdown.design");
+    const typeEmoji = "\uD83D\uDCCB";
+    const typeLabel = t("agent.meetingMarkdown.planning");
 
     lines.push(`## ${t("agent.meetingMarkdown.record", { emoji: typeEmoji, type: typeLabel })}\n`);
     lines.push(`- ${t("agent.meetingMarkdown.datetime", { time: meetingLog.timestamp })}`);

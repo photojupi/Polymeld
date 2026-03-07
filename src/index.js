@@ -99,11 +99,10 @@ program
 program
   .command("meeting")
   .description(t("cli.meeting.description"))
-  .argument("<type>", t("cli.meeting.argType"))
   .argument("<topic>", t("cli.meeting.argTopic"))
   .option("-c, --config <path>", t("cli.run.optConfig"))
   .option("-r, --rounds <n>", t("cli.run.optTimeout"))
-  .action(async (type, topic, options) => {
+  .action(async (topic, options) => {
     const config = loadConfig(options.config);
     await validateConnections(config);
     const adapter = new ModelAdapter(config);
@@ -114,10 +113,10 @@ program
 
     const team = new Team(config, adapter, { state, assembler });
 
-    console.log(chalk.bold.cyan(`\n${t("cli.meeting.meetingStart", { type })}\n`));
+    console.log(chalk.bold.cyan(`\n${t("cli.meeting.meetingStart")}\n`));
 
     const meetingLog = await team.conductMeeting(topic, "", {
-      rounds: options.rounds ? parseInt(options.rounds) : undefined,
+      rounds: options.rounds ? parseInt(options.rounds) : (config.pipeline?.max_planning_rounds || 2),
       onSpeak: ({ phase, agent, content }) => {
         if (phase === "spoke") {
           console.log(chalk.bold(`\n[${agent}]`));
@@ -127,7 +126,7 @@ program
       },
     });
 
-    const markdown = team.formatMeetingAsMarkdown(meetingLog, type);
+    const markdown = team.formatMeetingAsMarkdown(meetingLog);
 
     // GitHub에 등록
     if (process.env.GITHUB_TOKEN && process.env.GITHUB_REPO) {
@@ -135,12 +134,11 @@ program
         process.env.GITHUB_TOKEN,
         process.env.GITHUB_REPO
       );
-      const emoji = type === "kickoff" ? "📋" : "🏗️";
       const title = await team.generateTitle(topic);
       const issue = await github.createIssue(
-        t("cli.meeting.meetingIssueTitle", { emoji, type, title }),
+        t("cli.meeting.meetingIssueTitle", { title }),
         markdown,
-        ["meeting-notes", type, "polymeld"]
+        ["meeting-notes", "planning", "polymeld"]
       );
       console.log(chalk.green(`\n${t("cli.meeting.meetingRegistered", { number: issue.number, url: github.issueUrl(issue.number) })}`));
     }

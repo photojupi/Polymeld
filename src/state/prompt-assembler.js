@@ -197,15 +197,6 @@ export class PromptAssembler {
         }
       }
 
-      // 6. 킥오프 요약 (보충 맥락)
-      if (state.kickoffSummary && budget - used > 200) {
-        const kickoff = this._truncate(state.kickoffSummary, Math.min(500, budget - used - 100));
-        if (kickoff) {
-          const section = `${t("promptAssembler.kickoffSummary")}\n${kickoff}`;
-          sections.push(section);
-          used += section.length;
-        }
-      }
     }
 
     return {
@@ -252,16 +243,6 @@ export class PromptAssembler {
       const summary = this._truncate(state.designDecisions, budget - used - 200);
       if (summary) {
         const section = `${t("promptAssembler.designDecisions")}\n${summary}`;
-        sections.push(section);
-        used += section.length;
-      }
-    }
-
-    // 킥오프 요약 (보충 맥락)
-    if (state.kickoffSummary && budget - used > 200) {
-      const kickoff = this._truncate(state.kickoffSummary, Math.min(500, budget - used - 100));
-      if (kickoff) {
-        const section = `${t("promptAssembler.kickoffSummary")}\n${kickoff}`;
         sections.push(section);
         used += section.length;
       }
@@ -367,16 +348,6 @@ export class PromptAssembler {
       const summary = this._truncate(state.designDecisions, Math.min(1000, budget - used - 200));
       if (summary) {
         const section = `${t("promptAssembler.designRef")}\n${summary}`;
-        sections.push(section);
-        used += section.length;
-      }
-    }
-
-    // 4. 킥오프 요약 (보충 맥락)
-    if (state.kickoffSummary && budget - used > 200) {
-      const kickoff = this._truncate(state.kickoffSummary, Math.min(500, budget - used - 100));
-      if (kickoff) {
-        const section = `${t("promptAssembler.kickoffSummary")}\n${kickoff}`;
         sections.push(section);
         used += section.length;
       }

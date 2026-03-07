@@ -198,8 +198,7 @@ github:
   # 라벨 색상
   labels:
     meeting-notes: "0075ca"
-    kickoff: "d4c5f9"
-    design: "bfd4f2"
+    planning: "d4c5f9"
     backlog: "e4e669"
     todo: "fbca04"
     in-progress: "0e8a16"
@@ -217,10 +216,8 @@ pipeline:
   max_task_hours: 4
   # 자동 브랜치 생성
   auto_branch: true
-  # 킥오프 미팅 최대 라운드 수
-  max_kickoff_rounds: 2
-  # 기술 설계 미팅 최대 라운드 수
-  max_design_rounds: 3
+  # 미팅 최대 라운드 수
+  max_planning_rounds: 2
   # AI 사고 깊이 (0-100). 페르소나별 오버라이드 가능.
   # CLI별 매핑:
   #   Claude  → --effort (low/medium/high)

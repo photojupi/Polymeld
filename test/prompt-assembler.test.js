@@ -115,43 +115,6 @@ describe("PromptAssembler.forQA", () => {
   });
 });
 
-// ─── kickoffSummary 통합 ─────────────────────────────
-
-describe("kickoffSummary 통합", () => {
-  it("forCoding: kickoffSummary가 systemContext에 포함", () => {
-    const assembler = new PromptAssembler({ maxChars: 6000 });
-    const state = makeState();
-    state.kickoffSummary = "프로젝트 목표: 생산성 도구 개발";
-    const result = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
-    assert.ok(result.systemContext.includes("킥오프 요약"));
-    assert.ok(result.systemContext.includes("생산성 도구"));
-  });
-
-  it("forCoding: kickoffSummary가 빈 문자열이면 섹션 미생성", () => {
-    const assembler = new PromptAssembler({ maxChars: 6000 });
-    const state = makeState();
-    state.kickoffSummary = "";
-    const result = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
-    assert.ok(!result.systemContext.includes("킥오프 요약"));
-  });
-
-  it("forReview: kickoffSummary가 systemContext에 포함", () => {
-    const assembler = new PromptAssembler({ maxChars: 6000 });
-    const state = makeState();
-    state.kickoffSummary = "핵심 우려: 보안";
-    const result = assembler.forReview(state, { taskId: "task-1" });
-    assert.ok(result.systemContext.includes("핵심 우려: 보안"));
-  });
-
-  it("forFix: kickoffSummary가 systemContext에 포함", () => {
-    const assembler = new PromptAssembler({ maxChars: 6000 });
-    const state = makeState();
-    state.kickoffSummary = "MVP 범위 확정";
-    const result = assembler.forFix(state, { agentId: "dev1", taskId: "task-1", feedbackSource: "review" });
-    assert.ok(result.systemContext.includes("MVP 범위 확정"));
-  });
-});
-
 // ─── Phase별 차등 예산 ─────────────────────────────────
 
 describe("Phase별 차등 예산", () => {
@@ -232,26 +195,6 @@ describe("forCoding fix 사이클 분기", () => {
     assert.ok(result.systemContext.includes("변수 네이밍 개선 필요"));
   });
 
-  it("최초 코딩에서는 킥오프 요약 포함, fix 사이클에서는 생략", () => {
-    const assembler = new PromptAssembler({ maxChars: 6000 });
-    const state = makeState();
-    state.kickoffSummary = "킥오프 내용";
-
-    // 최초 코딩: 킥오프 포함
-    const firstResult = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
-    assert.ok(firstResult.systemContext.includes("킥오프 요약"));
-
-    // fix 사이클: 킥오프 생략 (수정 지시가 대신 들어감)
-    state.addMessage({
-      from: "tech_lead",
-      to: "dev1",
-      type: "fix_guidance",
-      content: "수정 필요",
-      taskId: "task-1",
-    });
-    const fixResult = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
-    assert.ok(!fixResult.systemContext.includes("킥오프 요약"));
-  });
 });
 
 // ─── forFix 수정 이력 ────────────────────────────────
