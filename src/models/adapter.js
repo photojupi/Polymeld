@@ -6,6 +6,7 @@ import { spawn, execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { t } from "../i18n/index.js";
 
 /**
  * CLI 실행 오류를 구조화하여 표현하는 커스텀 에러 클래스.
@@ -46,8 +47,8 @@ export class CliError extends Error {
    * 사용자에게 표시할 에러 메시지를 생성한다.
    */
   static _buildMessage(cli, code, stderr, stdout) {
-    const output = (stderr || stdout || "(출력 없음)").substring(0, 500);
-    return `[${cli}] CLI 오류 (exit ${code}): ${output}`;
+    const output = (stderr || stdout || t("adapter.noOutput")).substring(0, 500);
+    return t("adapter.cliError", { cli, code, output });
   }
 
   /**
@@ -96,7 +97,7 @@ export class ModelAdapter {
             if (!proc.killed) proc.kill("SIGKILL");
           }, 5000);
           reject(
-            new CliError(command, -1, `타임아웃 (${timeout / 1000}초 초과)`, stdout.substring(0, 200))
+            new CliError(command, -1, t("adapter.timeout", { seconds: timeout / 1000 }), stdout.substring(0, 200))
           );
         }, timeout);
       }
@@ -109,7 +110,7 @@ export class ModelAdapter {
       proc.stderr.on("data", (d) => (stderr += d.toString()));
       proc.on("error", (err) => {
         if (timer) clearTimeout(timer);
-        reject(new Error(`CLI 실행 실패 (${command}): ${err.message}`));
+        reject(new Error(t("adapter.cliExecFailed", { command, message: err.message })));
       });
       proc.on("close", (code) => {
         if (timer) clearTimeout(timer);
@@ -162,7 +163,7 @@ export class ModelAdapter {
    * (Gemini CLI, Codex CLI용 -- system prompt 플래그 미지원)
    */
   _buildCombinedPrompt(systemPrompt, userMessage) {
-    return `## 시스템 지침\n${systemPrompt}\n\n---\n\n## 요청\n${userMessage}`;
+    return `${t("adapter.systemInstructions")}\n${systemPrompt}\n\n---\n\n${t("adapter.request")}\n${userMessage}`;
   }
 
   /**
@@ -203,7 +204,7 @@ export class ModelAdapter {
   async chat(modelKey, systemPrompt, userMessage, options = {}) {
     const modelConfig = this.config.models[modelKey];
     if (!modelConfig) {
-      throw new Error(`모델 설정을 찾을 수 없습니다: ${modelKey}`);
+      throw new Error(t("adapter.modelNotFound", { key: modelKey }));
     }
 
     const thinkingBudget = options.thinkingBudget;
@@ -217,7 +218,7 @@ export class ModelAdapter {
       case "codex":
         return this._chatCodex(modelConfig.model, systemPrompt, userMessage, thinkingBudget, onData);
       default:
-        throw new Error(`지원하지 않는 CLI: ${modelConfig.cli}`);
+        throw new Error(t("adapter.unsupportedCli", { cli: modelConfig.cli }));
     }
   }
 
@@ -298,7 +299,7 @@ export class ModelAdapter {
    * 코드 생성 특화 호출
    */
   async generateCode(modelKey, systemPrompt, codeRequest, options = {}) {
-    const codePrompt = `${codeRequest}\n\n응답은 반드시 코드만 포함해주세요. 설명이 필요하면 코드 주석으로 작성해주세요.\n마크다운 코드블록(\`\`\`)으로 감싸주세요.`;
+    const codePrompt = `${codeRequest}\n\n${t("adapter.codeOnlyInstruction")}`;
     return this.chat(modelKey, systemPrompt, codePrompt, { ...options });
   }
 
@@ -306,7 +307,7 @@ export class ModelAdapter {
    * 코드 리뷰 특화 호출
    */
   async reviewCode(modelKey, systemPrompt, code, criteria, options = {}) {
-    const reviewPrompt = `다음 코드를 리뷰해주세요.\n\n## 코드\n\`\`\`\n${code}\n\`\`\`\n\n## 수용 기준\n${criteria}\n\n## 리뷰 형식\n- 좋은 점\n- 개선 필요 사항 (구체적 라인/로직 지적)\n- 보안 이슈\n- 성능 이슈\n\n마지막에 다음 JSON 블록을 반드시 추가해주세요:\n\`\`\`json\n{ "verdict": "APPROVED 또는 CHANGES_REQUESTED", "summary": "한줄 요약" }\n\`\`\``;
+    const reviewPrompt = t("adapter.reviewInstruction", { code, criteria });
     return this.chat(modelKey, systemPrompt, reviewPrompt, { ...options });
   }
 
@@ -317,10 +318,10 @@ export class ModelAdapter {
   async generateImage(modelKey, systemPrompt, imageRequest, options = {}) {
     const modelConfig = this.config.models[modelKey];
     if (!modelConfig) {
-      throw new Error(`모델 설정을 찾을 수 없습니다: ${modelKey}`);
+      throw new Error(t("adapter.modelNotFound", { key: modelKey }));
     }
     if (modelConfig.cli !== "gemini") {
-      throw new Error(`이미지 생성은 현재 gemini CLI만 지원합니다. (${modelConfig.cli})`);
+      throw new Error(t("adapter.imageOnlyGemini", { cli: modelConfig.cli }));
     }
 
     const outputDir = options.outputDir || "./output/images";
@@ -431,7 +432,7 @@ export class ModelAdapter {
       status[key] = {
         cli,
         installed: this._isCliAvailable(cli),
-        installCommand: installCommands[cli] || `${cli} 설치 필요`,
+        installCommand: installCommands[cli] || t("adapter.installRequired", { cli }),
       };
     }
     return status;

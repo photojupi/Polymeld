@@ -4,16 +4,17 @@
 
 import inquirer from "inquirer";
 import chalk from "chalk";
+import { t } from "../i18n/index.js";
 
 /**
  * 인터랙션 모드:
- * 
+ *
  * - full-auto:  모든 확인을 자동으로 통과. CI/CD나 배치 실행에 적합.
  *               에러 발생 시에만 멈춤.
- * 
+ *
  * - semi-auto:  Phase 전환 시에만 확인. Phase 내부 세부사항은 자동 통과.
  *               대부분의 사용에 권장.
- * 
+ *
  * - manual:     모든 확인 포인트에서 사용자 입력 대기.
  *               처음 사용하거나 세밀한 제어가 필요할 때.
  */
@@ -36,13 +37,13 @@ export class InteractionManager {
   async confirmPhaseTransition(fromPhase, toPhase) {
     return this._confirm({
       level: "phase",
-      message: `${fromPhase} 완료. ${toPhase}로 진행할까요?`,
+      message: t("config.phaseComplete", { from: fromPhase, to: toPhase }),
       autoIn: ["full-auto"],
       askIn: ["semi-auto", "manual"],
       choices: [
-        { name: "진행", value: "proceed" },
-        { name: "이 Phase 다시 실행", value: "retry" },
-        { name: "파이프라인 중단", value: "abort" },
+        { name: t("config.choice.proceed"), value: "proceed" },
+        { name: t("config.choice.retryPhase"), value: "retry" },
+        { name: t("config.choice.abort"), value: "abort" },
       ],
       default: "proceed",
     });
@@ -61,9 +62,9 @@ export class InteractionManager {
       autoIn: ["full-auto", "semi-auto"],
       askIn: ["manual"],
       choices: options.choices || [
-        { name: "확인", value: "proceed" },
-        { name: "수정", value: "edit" },
-        { name: "건너뛰기", value: "skip" },
+        { name: t("config.choice.confirm"), value: "proceed" },
+        { name: t("config.choice.edit"), value: "edit" },
+        { name: t("config.choice.skip"), value: "skip" },
       ],
       default: "proceed",
     });
@@ -85,10 +86,10 @@ export class InteractionManager {
         ? ["full-auto", "semi-auto", "manual"]
         : ["semi-auto", "manual"],
       choices: [
-        { name: "계속 진행", value: "proceed" },
-        { name: "재시도", value: "retry" },
-        { name: "건너뛰기", value: "skip" },
-        { name: "중단", value: "abort" },
+        { name: t("config.choice.continueProc"), value: "proceed" },
+        { name: t("config.choice.retry"), value: "retry" },
+        { name: t("config.choice.skip"), value: "skip" },
+        { name: t("config.choice.stop"), value: "abort" },
       ],
       default: isError ? "abort" : "proceed",
     });
@@ -104,8 +105,8 @@ export class InteractionManager {
       autoIn: ["full-auto", "semi-auto"],
       askIn: ["manual"],
       choices: [
-        { name: "예", value: true },
-        { name: "아니오", value: false },
+        { name: t("config.choice.yes"), value: true },
+        { name: t("config.choice.no"), value: false },
       ],
       default: true,
     });
@@ -123,13 +124,13 @@ export class InteractionManager {
 
     return this._confirm({
       level: "detail",
-      message: `${currentRound}라운드 완료 (설정: ${maxRounds}). 추가 토론 라운드를 진행할까요?`,
+      message: t("config.additionalRound", { current: currentRound, max: maxRounds }),
       autoIn: ["full-auto", "semi-auto"],
       askIn: ["manual"],
       choices: [
-        { name: "여기서 마무리", value: "proceed" },
-        { name: "1라운드 더", value: "extend" },
-        { name: "2라운드 더", value: "extend2" },
+        { name: t("config.choice.finishHere"), value: "proceed" },
+        { name: t("config.choice.oneMoreRound"), value: "extend" },
+        { name: t("config.choice.twoMoreRounds"), value: "extend2" },
       ],
       default: "proceed",
     });
@@ -156,10 +157,10 @@ export class InteractionManager {
       // 자동 통과 시 표시
       const actionName =
         typeof defaultVal === "boolean"
-          ? defaultVal ? "예" : "아니오"
+          ? defaultVal ? t("config.choice.yes") : t("config.choice.no")
           : choices.find((c) => c.value === defaultVal)?.name || defaultVal;
       console.log(
-        chalk.gray(`  ⏩ [auto] ${message} → ${actionName}`)
+        chalk.gray(`  ${t("config.autoSkip", { message, action: actionName })}`)
       );
 
       this.onSkip(decision);
@@ -204,7 +205,7 @@ export class InteractionManager {
 
   async _confirmWithTimeout(message, choices, defaultVal, decision) {
     console.log(
-      chalk.yellow(`  ⏱️  ${this.timeout}초 후 자동 진행 (기본: ${defaultVal})`)
+      chalk.yellow(`  ${t("config.timeoutLabel", { seconds: this.timeout, default: defaultVal })}`)
     );
 
     return new Promise((resolve) => {
@@ -212,7 +213,7 @@ export class InteractionManager {
         decision.action = defaultVal;
         decision.auto = true;
         this.log.push(decision);
-        console.log(chalk.gray(`  ⏩ [timeout] → ${defaultVal}`));
+        console.log(chalk.gray(`  ${t("config.timeoutAction", { default: defaultVal })}`));
         resolve({ action: defaultVal });
       }, this.timeout * 1000);
 
@@ -221,7 +222,7 @@ export class InteractionManager {
           {
             type: "list",
             name: "answer",
-            message: `${message} (${this.timeout}초 후 자동 진행)`,
+            message: t("config.timeoutPrompt", { message, seconds: this.timeout }),
             choices,
             default: defaultVal,
           },
@@ -239,8 +240,8 @@ export class InteractionManager {
    * 결정 로그를 마크다운으로 출력
    */
   getDecisionLog() {
-    const lines = ["## 🤖 자동화 결정 로그\n"];
-    lines.push("| 시간 | 레벨 | 질문 | 결정 | 자동 |");
+    const lines = [`${t("config.decisionLogHeader")}\n`];
+    lines.push(t("config.decisionLogTable"));
     lines.push("|------|------|------|------|------|");
 
     for (const d of this.log) {
@@ -258,7 +259,7 @@ export class InteractionManager {
    * 모드 변경 (실행 중에도 가능)
    */
   setMode(mode) {
-    console.log(chalk.cyan(`  🔄 인터랙션 모드 변경: ${this.mode} → ${mode}`));
+    console.log(chalk.cyan(`  ${t("config.modeChanged", { from: this.mode, to: mode })}`));
     this.mode = mode;
   }
 }

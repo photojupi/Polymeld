@@ -11,18 +11,21 @@ import { teamCommand } from "./commands/team.js";
 import { contextCommand } from "./commands/context.js";
 import { helpCommand } from "./commands/help.js";
 import { resumeCommand } from "./commands/resume.js";
+import { t } from "../i18n/index.js";
 
-const COMMAND_MENU = [
-  { name: "/resume   — 중단된 파이프라인 재개", value: "/resume" },
-  { name: "/status   — 현재 세션 상태", value: "/status" },
-  { name: "/context  — 파이프라인 컨텍스트 조회", value: "/context" },
-  { name: "/history  — 실행 이력", value: "/history" },
-  { name: "/team     — 팀 구성 확인", value: "/team" },
-  { name: "/save     — 세션 저장", value: "/save" },
-  { name: "/load     — 세션 복원", value: "/load" },
-  { name: "/help     — 도움말", value: "/help" },
-  { name: "/exit     — 종료", value: "/exit" },
-];
+function getCommandMenu() {
+  return [
+    { name: `/resume   — ${t("repl.commandMenu.resume")}`, value: "/resume" },
+    { name: `/status   — ${t("repl.commandMenu.status")}`, value: "/status" },
+    { name: `/context  — ${t("repl.commandMenu.context")}`, value: "/context" },
+    { name: `/history  — ${t("repl.commandMenu.history")}`, value: "/history" },
+    { name: `/team     — ${t("repl.commandMenu.team")}`, value: "/team" },
+    { name: `/save     — ${t("repl.commandMenu.save")}`, value: "/save" },
+    { name: `/load     — ${t("repl.commandMenu.load")}`, value: "/load" },
+    { name: `/help     — ${t("repl.commandMenu.help")}`, value: "/help" },
+    { name: `/exit     — ${t("repl.commandMenu.exit")}`, value: "/exit" },
+  ];
+}
 
 export class CommandRouter {
   constructor(replShell) {
@@ -33,11 +36,6 @@ export class CommandRouter {
     return this.replShell.session;
   }
 
-  /**
-   * 입력을 라우팅
-   * @param {string} input
-   * @returns {Promise<"continue"|"exit">}
-   */
   async route(input) {
     const trimmed = input.trim();
     if (!trimmed) return "continue";
@@ -49,14 +47,14 @@ export class CommandRouter {
   }
 
   async handleSlash(input) {
-    // "/" 만 입력 → 검색 가능한 커맨드 메뉴 표시
     if (input === "/") {
+      const menu = getCommandMenu();
       const cmd = await search({
         message: "/",
         source: (term) => {
-          if (!term) return COMMAND_MENU;
+          if (!term) return menu;
           const lower = term.toLowerCase();
-          return COMMAND_MENU.filter(c =>
+          return menu.filter(c =>
             c.value.includes(lower) || c.name.toLowerCase().includes(lower)
           );
         },
@@ -97,19 +95,19 @@ export class CommandRouter {
       case "/quit":
         return "exit";
       default:
-        console.log(chalk.yellow(`  알 수 없는 커맨드: ${cmd}`));
-        console.log(chalk.gray("  /help 로 사용 가능한 커맨드를 확인하세요."));
+        console.log(chalk.yellow(`  ${t("repl.unknownCommand", { cmd })}`));
+        console.log(chalk.gray(`  ${t("repl.unknownCommandHelp")}`));
     }
     return "continue";
   }
 
   async handleNatural(input) {
-    console.log(chalk.bold.cyan("\n🤖 Agent Team 파이프라인 시작\n"));
+    console.log(chalk.bold.cyan(`\n${t("repl.pipelineStart")}\n`));
 
     try {
       await this.session.runPipeline(input);
     } catch (error) {
-      console.log(chalk.red(`\n❌ 파이프라인 실행 실패: ${error.message}`));
+      console.log(chalk.red(`\n${t("repl.pipelineFailed", { message: error.message })}`));
     }
 
     return "continue";

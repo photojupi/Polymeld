@@ -1,6 +1,8 @@
 // src/state/pipeline-state.js
 // 파이프라인 전체 상태를 관리하는 단일 데이터 객체
 
+import { t } from "../i18n/index.js";
+
 export class PipelineState {
   constructor() {
     // --- 프로젝트 기본 ---
@@ -85,9 +87,9 @@ export class PipelineState {
     let msgs = this.messages;
     if (taskId) msgs = msgs.filter((m) => m.taskId === taskId);
 
-    if (msgs.length === 0) return "(소통 이력 없음)";
+    if (msgs.length === 0) return t("pipelineState.noMessageLog");
 
-    const lines = ["## 메시지 로그\n"];
+    const lines = [t("pipelineState.messageLogHeader")];
     for (const msg of msgs) {
       lines.push(`- **${msg.from}** → **${msg.to}** \`${msg.type}\` (${msg.timestamp})`);
       if (msg.content) {

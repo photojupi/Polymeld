@@ -1,13 +1,14 @@
 import chalk from "chalk";
+import { t } from "../../i18n/index.js";
 
 export function historyCommand(session) {
   const runs = session.runs;
   if (runs.length === 0) {
-    console.log(chalk.gray("  실행 이력이 없습니다."));
+    console.log(chalk.gray(`  ${t("repl.history.noHistory")}`));
     return;
   }
 
-  console.log(chalk.bold("\n  📜 실행 이력\n"));
+  console.log(chalk.bold(`\n  ${t("repl.history.header")}\n`));
   for (let i = 0; i < runs.length; i++) {
     const run = runs[i];
     const icon = run.status === "completed" ? "✅" : run.status === "failed" ? "❌" : "🔄";

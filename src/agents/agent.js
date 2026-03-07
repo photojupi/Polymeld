@@ -3,6 +3,8 @@
 // 각 에이전트는 특정 AI 모델에 의해 구동됩니다
 // contextBundle 패턴: 모든 메서드가 PromptAssembler가 조립한 구조화된 맥락을 받음
 
+import { t } from "../i18n/index.js";
+
 export class Agent {
   constructor(personaConfig, modelAdapter) {
     this.id = personaConfig.id; // e.g., "tech_lead"
@@ -21,26 +23,17 @@ export class Agent {
    * 시스템 프롬프트 생성 - 페르소나 성격/전문성을 주입
    */
   _buildSystemPrompt(context = "") {
-    return `당신은 소프트웨어 개발팀의 ${this.role}인 "${this.name}"입니다.
+    const expertiseStr = this.expertise.map((e) => `- ${e}`).join("\n");
+    const contextSection = context ? `${t("agent.additionalContext")}\n${context}` : "";
 
-## 성격 및 특징
-${this.description}
-
-## 전문 영역
-${this.expertise.map((e) => `- ${e}`).join("\n")}
-
-## 말투 및 스타일
-${this.style}
-
-## 행동 규칙
-- 항상 "${this.name}" (${this.role})의 관점에서 발언합니다
-- 자신의 전문 영역에서는 확신을 가지고 의견을 제시합니다
-- 다른 영역에 대해서는 질문하거나 우려를 표합니다
-- 의견을 제시할 때는 반드시 근거를 함께 제시합니다
-- 반대 의견이 있을 때는 대안을 함께 제시합니다
-- 한국어로 대화합니다
-
-${context ? `## 추가 컨텍스트\n${context}` : ""}`;
+    return t("agent.systemPrompt", {
+      role: this.role,
+      name: this.name,
+      description: this.description,
+      expertise: expertiseStr,
+      style: this.style,
+      context: contextSection,
+    });
   }
 
   /**
@@ -62,20 +55,16 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
 
     const systemPrompt = this._buildSystemPrompt(context);
 
-    let userMessage = `## 현재 논의 주제\n${topic}`;
+    let userMessage = `${t("agent.currentTopic")}\n${topic}`;
     if (previousDiscussion) {
-      userMessage += `\n\n## 이전 논의\n${previousDiscussion}`;
-      userMessage += `\n\n${this.name}(${this.role})로서 의견을 제시해주세요.`;
+      userMessage += `\n\n${t("agent.previousDiscussion")}\n${previousDiscussion}`;
+      userMessage += `\n\n${t("agent.speakWithPrev", { name: this.name, role: this.role })}`;
     } else {
-      userMessage += `\n\n${this.name} (${this.role})로서 이 주제에 대한 의견을 제시해주세요.`;
+      userMessage += `\n\n${t("agent.speakNoPrev", { name: this.name, role: this.role })}`;
     }
 
     if (contextBundle?.allowPass) {
-      userMessage += `\n\n다음 중 하나라도 해당하면 [PASS]로만 응답하세요:
-- 이 주제에서 본인이 직접 맡아 수행할 작업이 없는 경우
-- 이전 논의에서 이미 충분히 다뤄져 새로 추가할 의견이 없는 경우
-- 본인의 이전 발언과 실질적으로 같은 내용을 반복하게 되는 경우
-억지로 내용을 만들지 마세요. 새로운 관점이나 구체적 제안이 있을 때만 발언하세요.`;
+      userMessage += `\n\n${t("agent.passConditions")}`;
     }
 
     const response = await this.adapter.chat(
@@ -105,14 +94,14 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
     const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(contextBundle.systemContext);
 
-    let prompt = `## 개발 태스크\n${contextBundle.taskDescription}\n\n## 수용 기준\n${contextBundle.acceptanceCriteria}`;
+    let prompt = `${t("agent.devTask")}\n${contextBundle.taskDescription}\n\n${t("agent.acceptanceCriteria")}\n${contextBundle.acceptanceCriteria}`;
 
     // 수정 모드: 현재 코드가 있으면 포함
     if (contextBundle.currentCode) {
-      prompt += `\n\n## 현재 코드\n${contextBundle.currentCode}`;
-      prompt += `\n\n위 코드를 수정하여 피드백을 반영해주세요. ${this.name}(${this.role})의 코딩 스타일과 전문성을 반영하여 수정된 전체 코드를 작성합니다.`;
+      prompt += `\n\n${t("agent.currentCode")}\n${contextBundle.currentCode}`;
+      prompt += `\n\n${t("agent.fixCode", { name: this.name, role: this.role })}`;
     } else {
-      prompt += `\n\n위 태스크를 구현해주세요. ${this.name}(${this.role})의 코딩 스타일과 전문성을 반영하여 작성합니다.`;
+      prompt += `\n\n${t("agent.writeCodeNew", { name: this.name, role: this.role })}`;
     }
 
     const response = await this.adapter.generateCode(
@@ -141,7 +130,7 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
   async reviewCode(contextBundle, authorAgent, { modelOverride } = {}) {
     const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(
-      `${authorAgent}가 작성한 코드를 리뷰합니다.\n\n${contextBundle.systemContext}`
+      `${t("agent.reviewContext", { author: authorAgent })}\n\n${contextBundle.systemContext}`
     );
 
     const response = await this.adapter.reviewCode(
@@ -171,32 +160,21 @@ ${context ? `## 추가 컨텍스트\n${context}` : ""}`;
   async runQA(contextBundle, { modelOverride } = {}) {
     const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(
-      `QA 엔지니어로서 코드의 품질과 수용 기준 충족 여부를 검증합니다.\n\n${contextBundle.systemContext}`
+      `${t("agent.qaContext")}\n\n${contextBundle.systemContext}`
     );
 
-    const prompt = `## 검증 대상 코드
+    const prompt = `${t("agent.qaCodeSection")}
 \`\`\`
 ${contextBundle.code}
 \`\`\`
 
-## 태스크 설명
+${t("agent.qaTaskSection")}
 ${contextBundle.taskDescription}
 
-## 수용 기준
+${t("agent.qaCriteriaSection")}
 ${contextBundle.criteria}
 
-위 코드에 대해 QA 검증을 수행해주세요.
-
-응답 형식:
-1. 수용 기준별 검증 결과 (표 형식)
-2. 엣지 케이스 테스트 결과
-3. 발견된 버그/이슈
-4. 종합 판정: PASS / FAIL
-
-마지막에 다음 JSON 블록을 반드시 추가해주세요:
-\`\`\`json
-{ "verdict": "PASS 또는 FAIL", "summary": "한줄 요약" }
-\`\`\``;
+${t("agent.qaInstruction")}`;
 
     const response = await this.adapter.chat(
       modelKey,
@@ -221,50 +199,13 @@ ${contextBundle.criteria}
    */
   async breakdownTasks(contextBundle, { modelOverride } = {}) {
     const modelKey = modelOverride || this.modelKey;
-    const systemPrompt = this._buildSystemPrompt(
-      "프로젝트의 기술 설계가 완료되었습니다. 이를 실행 가능한 태스크로 분해합니다."
-    );
+    const systemPrompt = this._buildSystemPrompt(t("agent.taskBreakdownContext"));
 
-    const prompt = `## 프로젝트 요구사항
-${contextBundle.requirement}
-
-## 기술 설계 결정사항
-${contextBundle.designDecisions}
-
-위 내용을 기반으로 태스크를 분해해주세요.
-
-## 규칙
-- 각 태스크는 1-4시간 분량
-- 각 태스크에 적합한 역할(${contextBundle.availableRoles || 'backend_dev, frontend_dev, devops, qa'}) 명시
-- 수용 기준을 구체적으로 작성
-- **의존성(dependencies)을 보수적으로 명시**:
-  - 선행 태스크의 번호(1-based)를 배열로 기재. 예: [1] = 1번 태스크 완료 후 시작 가능
-  - 파일/모듈 수준의 실제 의존이 있을 때만 추가 (같은 파일을 수정, API 인터페이스 참조 등)
-  - 독립적인 태스크는 dependencies: [] (병렬 실행 대상)
-  - **충돌 위험이 조금이라도 있으면 의존성을 추가하라** (보수적 판단 우선)
-
-## 응답 형식 (JSON)
-\`\`\`json
-{
-  "tasks": [
-    {
-      "title": "태스크 제목",
-      "description": "상세 설명",
-      "suitable_role": "backend_dev",
-      "estimated_hours": 2,
-      "priority": "P0",
-      "dependencies": [],
-      "acceptance_criteria": ["기준1", "기준2"],
-      "category": "backend"
-    }
-  ]
-}
-\`\`\`
-
-## 의존성 예시
-- DB 스키마(1번) → API 구현(2번): dependencies: [1] (스키마가 있어야 API 작성 가능)
-- 프론트 컴포넌트(3번)와 백엔드 API(2번)가 서로 다른 파일: dependencies: [] (독립적)
-- 1번 완료 후 2번, 3번이 병렬 가능: 2번 dependencies: [1], 3번 dependencies: [1]`;
+    const prompt = t("agent.taskBreakdownPrompt", {
+      requirement: contextBundle.requirement,
+      designDecisions: contextBundle.designDecisions,
+      roles: contextBundle.availableRoles || "backend_dev, frontend_dev, devops, qa",
+    });
 
     const response = await this.adapter.chat(
       modelKey,
@@ -297,18 +238,21 @@ ${contextBundle.designDecisions}
    */
   async generateImage(contextBundle) {
     if (!this.imageModelKey) {
-      throw new Error(`${this.name}(${this.role})은 image_model이 설정되지 않아 이미지 생성 불가`);
+      throw new Error(t("agent.imageNotConfigured", { name: this.name, role: this.role }));
     }
 
     const systemPrompt = this._buildSystemPrompt(contextBundle.systemContext);
 
-    const prompt = `## 이미지 생성 요청\n${contextBundle.imagePrompt}\n\n` +
-      `위 설명에 맞는 이미지를 생성해주세요. ${this.name}(${this.role})의 디자인 감각과 전문성을 반영합니다.`;
+    const promptText = t("agent.imagePrompt", {
+      prompt: contextBundle.imagePrompt,
+      name: this.name,
+      role: this.role,
+    });
 
     const result = await this.adapter.generateImage(
       this.imageModelKey,
       systemPrompt,
-      prompt,
+      promptText,
       { outputDir: contextBundle.outputDir || "./output/images" }
     );
 

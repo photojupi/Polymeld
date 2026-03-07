@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { SessionStore } from "../../session/session-store.js";
 import { Session } from "../../session/session.js";
+import { t } from "../../i18n/index.js";
 
 export function loadCommand(session, args, replShell) {
   const store = new SessionStore();
@@ -8,26 +9,26 @@ export function loadCommand(session, args, replShell) {
   if (!args) {
     const sessions = store.list();
     if (sessions.length === 0) {
-      console.log(chalk.gray("  저장된 세션이 없습니다."));
+      console.log(chalk.gray(`  ${t("repl.load.noSessions")}`));
       return;
     }
-    console.log(chalk.bold("\n  💾 저장된 세션 목록\n"));
+    console.log(chalk.bold(`\n  ${t("repl.load.header")}\n`));
     for (const s of sessions) {
-      const current = s.id === session.id ? chalk.cyan(" (현재)") : "";
+      const current = s.id === session.id ? chalk.cyan(t("repl.load.current")) : "";
       console.log(`  ${s.id} - ${s.updatedAt.split("T")[0]}${current}`);
     }
-    console.log(chalk.gray(`\n  복원: /load <세션ID>`));
+    console.log(chalk.gray(`\n  ${t("repl.load.loadHint")}`));
     return;
   }
 
   const data = store.load(args);
   if (!data) {
-    console.log(chalk.red(`  ❌ 세션을 찾을 수 없습니다: ${args}`));
+    console.log(chalk.red(`  ${t("repl.load.notFound", { id: args })}`));
     return;
   }
 
   const restored = Session.fromJSON(data, session.config);
   replShell.session = restored;
-  console.log(chalk.green(`  ✅ 세션 복원됨: ${args}`));
-  console.log(chalk.gray(`  실행 이력: ${restored.runs.length}회`));
+  console.log(chalk.green(`  ${t("repl.load.restored", { id: args })}`));
+  console.log(chalk.gray(`  ${t("repl.load.runHistory", { count: restored.runs.length })}`));
 }

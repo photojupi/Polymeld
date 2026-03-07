@@ -3,6 +3,7 @@
 // PipelineState + PromptAssembler 기반 대화 루프
 
 import { Agent } from "./agent.js";
+import { t } from "../i18n/index.js";
 
 export class Team {
   /**
@@ -72,7 +73,7 @@ export class Team {
 
     const response = await this.adapter.chat(
       this.lead.modelKey,
-      "당신은 프로젝트 제목을 짓는 역할입니다. 주어진 요구사항을 한국어 한 줄 제목(50자 이내)으로 요약하세요. 제목만 출력하세요.",
+      t("agent.generateTitlePrompt"),
       topic,
       { thinkingBudget: 0 }
     );
@@ -139,7 +140,7 @@ export class Team {
             agent: agent.name,
             role: agent.role,
             model: speech.model,
-            content: "(응답 없음)",
+            content: t("agent.noResponse"),
             isEmpty: true,
           });
           continue;
@@ -181,7 +182,7 @@ export class Team {
         });
 
         const checkResponse = await this.lead.speak(
-          `지금까지의 논의를 검토해주세요. 충분히 결론이 도출되었다면 [CONCLUDE]로 시작하여 최종 결론과 액션 아이템을 정리해주세요. 아직 추가 논의가 필요하다면 다음 라운드에서 집중할 포인트를 제시해주세요.`,
+          t("agent.concludeInstruction"),
           checkBundle,
           { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
         );
@@ -195,7 +196,7 @@ export class Team {
             agent: this.lead.name,
             role: this.lead.role,
             model: checkResponse.model,
-            content: "(응답 없음)",
+            content: t("agent.noResponse"),
             isEmpty: true,
           });
         } else if (/^\[CONCLUDE\]/i.test(content)) {
@@ -213,7 +214,7 @@ export class Team {
               agent: this.lead.name,
               role: this.lead.role,
               model: checkResponse.model,
-              content: "(응답 없음)",
+              content: t("agent.noResponse"),
               isEmpty: true,
             });
           }
@@ -236,7 +237,7 @@ export class Team {
         });
 
         const summary = await this.lead.speak(
-          `지금까지의 논의를 종합하여 최종 결론과 액션 아이템을 정리해주세요.`,
+          t("agent.summaryInstruction"),
           summaryBundle,
           { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
         );
@@ -248,7 +249,7 @@ export class Team {
             agent: this.lead.name,
             role: this.lead.role,
             model: summary.model,
-            content: "(응답 없음)",
+            content: t("agent.noResponse"),
             isEmpty: true,
             isSummary: true,
           });
@@ -279,31 +280,33 @@ export class Team {
    * 회의 로그를 마크다운으로 변환
    * meetingLog 구조를 유지하여 호환성 확보
    */
-  formatMeetingAsMarkdown(meetingLog, meetingType = "회의") {
+  formatMeetingAsMarkdown(meetingLog, meetingType = "meeting") {
     const lines = [];
     const typeEmoji = meetingType === "kickoff" ? "\uD83D\uDCCB" : "\uD83C\uDFD7\uFE0F";
-    const typeKor = meetingType === "kickoff" ? "킥오프 미팅" : "기술 설계 미팅";
+    const typeLabel = meetingType === "kickoff"
+      ? t("agent.meetingMarkdown.kickoff")
+      : t("agent.meetingMarkdown.design");
 
-    lines.push(`## ${typeEmoji} ${typeKor} 기록\n`);
-    lines.push(`- **일시**: ${meetingLog.timestamp}`);
-    lines.push(`- **참석자**: ${meetingLog.participants.join(", ")}`);
-    lines.push(`- **안건**: ${meetingLog.topic}\n`);
+    lines.push(`## ${t("agent.meetingMarkdown.record", { emoji: typeEmoji, type: typeLabel })}\n`);
+    lines.push(`- ${t("agent.meetingMarkdown.datetime", { time: meetingLog.timestamp })}`);
+    lines.push(`- ${t("agent.meetingMarkdown.participants", { list: meetingLog.participants.join(", ") })}`);
+    lines.push(`- ${t("agent.meetingMarkdown.agenda", { topic: meetingLog.topic })}\n`);
 
     for (const round of meetingLog.rounds) {
-      lines.push(`### 라운드 ${round.round}\n`);
+      lines.push(`${t("agent.meetingMarkdown.round", { number: round.round })}\n`);
 
       for (const speech of round.speeches) {
         if (speech.isPassed) {
-          lines.push(`#### ${speech.agent} (${speech.role}) — 패스\n`);
+          lines.push(`#### ${speech.agent} (${speech.role}) ${t("agent.meetingMarkdown.passSuffix")}\n`);
           continue;
         }
         if (speech.isEmpty) {
-          lines.push(`#### ${speech.agent} (${speech.role}) — 응답 없음\n`);
+          lines.push(`#### ${speech.agent} (${speech.role}) ${t("agent.meetingMarkdown.emptyResponseSuffix")}\n`);
           continue;
         }
         const modelTag = `\`[${speech.model}]\``;
         if (speech.isSummary) {
-          lines.push(`#### \uD83D\uDCA1 ${speech.agent} (${speech.role}) - 종합 정리 ${modelTag}\n`);
+          lines.push(`#### ${t("agent.meetingMarkdown.summaryLabel", { agent: speech.agent, role: speech.role, model: modelTag })}\n`);
         } else {
           lines.push(`#### ${speech.agent} (${speech.role}) ${modelTag}\n`);
         }
@@ -314,8 +317,8 @@ export class Team {
 
     // 어떤 모델이 어떤 역할을 했는지 요약
     lines.push(`---\n`);
-    lines.push(`### \uD83E\uDD16 모델 배정 현황\n`);
-    lines.push(`| 페르소나 | 역할 | AI 모델 |`);
+    lines.push(`${t("agent.meetingMarkdown.modelAssignment")}\n`);
+    lines.push(t("agent.meetingMarkdown.tableHeader"));
     lines.push(`|---------|------|---------|`);
     for (const agent of this.getActiveAgents()) {
       lines.push(`| ${agent.name} | ${agent.role} | ${agent.modelKey} |`);

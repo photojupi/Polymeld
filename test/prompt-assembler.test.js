@@ -1,7 +1,12 @@
-import { describe, it } from "node:test";
+import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
+import { initI18n } from "../src/i18n/index.js";
 import { PromptAssembler } from "../src/state/prompt-assembler.js";
 import { PipelineState } from "../src/state/pipeline-state.js";
+
+before(async () => {
+  await initI18n("ko");
+});
 
 function makeState() {
   const state = new PipelineState();
