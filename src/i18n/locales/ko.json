@@ -87,6 +87,7 @@
     "speaking": "{{agent}} 발언 중...",
     "passed": "{{agent}} 패스",
     "emptyResponse": "{{agent}} 응답 없음",
+    "linesOmitted": "... ({{count}}줄 생략)",
     "summary": "{{agent}} (정리)",
     "codebaseAnalyzing": "코드베이스 분석 중...",
     "codebaseComplete": "코드베이스 분석 완료 (파일명 {{nameCount}}건, 내용 검색 {{grepCount}}건)",

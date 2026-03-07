@@ -87,6 +87,7 @@
     "speaking": "{{agent}} speaking...",
     "passed": "{{agent}} passed",
     "emptyResponse": "{{agent}} no response",
+    "linesOmitted": "... ({{count}} lines omitted)",
     "summary": "{{agent}} (summary)",
     "codebaseAnalyzing": "Analyzing codebase...",
     "codebaseComplete": "Codebase analysis complete ({{nameCount}} filename matches, {{grepCount}} content searches)",

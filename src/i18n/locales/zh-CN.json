@@ -87,6 +87,7 @@
     "speaking": "{{agent}} 发言中...",
     "passed": "{{agent}} 跳过",
     "emptyResponse": "{{agent}} 无响应",
+    "linesOmitted": "...（已省略{{count}}行）",
     "summary": "{{agent}}（总结）",
     "codebaseAnalyzing": "正在分析代码库...",
     "codebaseComplete": "代码库分析完成（文件名匹配 {{nameCount}} 项，内容搜索 {{grepCount}} 项）",

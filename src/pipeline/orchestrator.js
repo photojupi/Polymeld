@@ -203,10 +203,12 @@ export class PipelineOrchestrator {
       const preview = lines.slice(0, MAX_PREVIEW_LINES);
       const maxLen = cols() - 4;
       preview.forEach((line) => {
-        process.stderr.write(chalk.dim(`  ${line.substring(0, maxLen)}`) + "\n");
+        const truncated = line.length > maxLen ? line.substring(0, maxLen - 1) + "…" : line;
+        process.stderr.write(chalk.dim(`  ${truncated}`) + "\n");
       });
       if (lines.length > MAX_PREVIEW_LINES) {
-        process.stderr.write(chalk.dim("  ...") + "\n");
+        const omitted = lines.length - MAX_PREVIEW_LINES;
+        process.stderr.write(chalk.dim(`  ${t("pipeline.linesOmitted", { count: omitted })}`) + "\n");
       }
       spinner.render();
     };
