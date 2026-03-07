@@ -516,7 +516,9 @@
     "ownerNotFound": "⚠️ GitHubオーナーが見つかりません。プロジェクトボードをスキップします。",
     "projectCreateFailed": "⚠️ プロジェクト作成失敗:",
     "projectScopeHint": "→ トークンに 'project' スコープがあるか確認してください。",
-    "projectLinkFailed": "⚠️ プロジェクト-リポ連携失敗:"
+    "projectLinkFailed": "⚠️ プロジェクト-リポ連携失敗:",
+    "pipelineFieldCreated": "✅ 'Pipeline'フィールド作成完了 — ボードビューのカラムを'Pipeline'に切り替えてください。",
+    "pipelineFieldFailed": "⚠️ Pipelineフィールド設定失敗:"
   },
   "onboarding": {
     "welcome": "🚀 Polymeldへようこそ！",

@@ -227,18 +227,22 @@ export class GitHubClient {
   }
 
   /**
-   * 프로젝트 Status 필드에 파이프라인 단계 옵션을 구성
-   * Backlog → Todo → In Progress → In Review → QA → Done
+   * 커스텀 "Pipeline" SingleSelect 필드를 생성/캐시하여 칸반보드 6단계 컬럼으로 사용
+   * 빌트인 Status 필드는 API로 옵션 추가 불가 → 커스텀 필드로 대체
    */
   async configureProjectStatuses() {
     if (!this.projectId) return;
 
+    const FIELD_NAME = "Pipeline";
+    const DESIRED = ["Backlog", "Todo", "In Progress", "In Review", "QA", "Done"];
+
     try {
+      // 기존 필드 조회
       const { node } = await this.octokit.graphql(`
         query($projectId: ID!) {
           node(id: $projectId) {
             ... on ProjectV2 {
-              fields(first: 20) {
+              fields(first: 30) {
                 nodes {
                   ... on ProjectV2SingleSelectField {
                     id
@@ -252,54 +256,46 @@ export class GitHubClient {
         }
       `, { projectId: this.projectId });
 
-      const statusField = node.fields.nodes.find(f => f.name === "Status");
-      if (!statusField) return;
+      let field = node.fields.nodes.find(f => f.name === FIELD_NAME);
 
-      this.statusFieldId = statusField.id;
-      const desired = ["Backlog", "Todo", "In Progress", "In Review", "QA", "Done"];
-      const existingNames = statusField.options.map(o => o.name);
-
-      // 이미 모든 옵션이 존재하면 ID만 캐시
-      if (desired.every(d => existingNames.includes(d))) {
-        this.statusOptions = {};
-        for (const opt of statusField.options) {
-          if (desired.includes(opt.name)) this.statusOptions[opt.name] = opt.id;
-        }
-        return;
-      }
-
-      // 파이프라인에 맞게 Status 옵션 재구성
-      const { updateProjectV2Field } = await this.octokit.graphql(`
-        mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
-          updateProjectV2Field(input: {
-            id: $fieldId
-            singleSelectOptions: $options
-          }) {
-            projectV2Field {
-              ... on ProjectV2SingleSelectField {
-                options { id name }
+      // Pipeline 필드가 없으면 생성
+      if (!field) {
+        const { createProjectV2Field } = await this.octokit.graphql(`
+          mutation($projectId: ID!, $name: String!, $dataType: ProjectV2CustomFieldType!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+            createProjectV2Field(input: {
+              projectId: $projectId
+              name: $name
+              dataType: $dataType
+              singleSelectOptions: $options
+            }) {
+              projectV2Field {
+                ... on ProjectV2SingleSelectField {
+                  id
+                  name
+                  options { id name }
+                }
               }
             }
           }
-        }
-      `, {
-        fieldId: this.statusFieldId,
-        options: [
-          { name: "Backlog", color: "YELLOW", description: "" },
-          { name: "Todo", color: "ORANGE", description: "" },
-          { name: "In Progress", color: "GREEN", description: "" },
-          { name: "In Review", color: "BLUE", description: "" },
-          { name: "QA", color: "RED", description: "" },
-          { name: "Done", color: "PURPLE", description: "" },
-        ],
-      });
+        `, {
+          projectId: this.projectId,
+          name: FIELD_NAME,
+          dataType: "SINGLE_SELECT",
+          options: DESIRED.map(name => ({ name, color: "GRAY", description: "" })),
+        });
 
+        field = createProjectV2Field.projectV2Field;
+        console.log(t("github.pipelineFieldCreated"));
+      }
+
+      // 필드 ID + 옵션 ID 캐시
+      this.statusFieldId = field.id;
       this.statusOptions = {};
-      for (const opt of updateProjectV2Field.projectV2Field.options) {
-        this.statusOptions[opt.name] = opt.id;
+      for (const opt of field.options) {
+        if (DESIRED.includes(opt.name)) this.statusOptions[opt.name] = opt.id;
       }
     } catch (e) {
-      console.warn("프로젝트 Status 필드 설정 실패:", e.message);
+      console.warn(t("github.pipelineFieldFailed"), e.message);
     }
   }
 

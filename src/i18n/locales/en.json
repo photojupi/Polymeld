@@ -520,7 +520,9 @@
     "ownerNotFound": "⚠️ Cannot find GitHub owner. Skipping project board.",
     "projectCreateFailed": "⚠️ Project creation failed:",
     "projectScopeHint": "→ Check if token has 'project' scope.",
-    "projectLinkFailed": "⚠️ Project-repo linking failed:"
+    "projectLinkFailed": "⚠️ Project-repo linking failed:",
+    "pipelineFieldCreated": "✅ 'Pipeline' field created — switch board view column to 'Pipeline'.",
+    "pipelineFieldFailed": "⚠️ Pipeline field setup failed:"
   },
   "onboarding": {
     "welcome": "🚀 Welcome to Polymeld!",
