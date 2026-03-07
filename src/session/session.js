@@ -151,7 +151,7 @@ export class Session {
     // GitHub 초기화
     if (this.github) {
       await this.github.ensureLabels(this.config.github?.labels || {});
-      await this.github.findOrCreateProject(`${this.github.repo}_autollm`);
+      await this.github.findOrCreateProject(this.config.github?.project_name || `${this.github.repo}_autollm`);
     }
 
     const orchestrator = new PipelineOrchestrator(
@@ -210,7 +210,7 @@ export class Session {
     // GitHub 초기화
     if (this.github) {
       await this.github.ensureLabels(this.config.github?.labels || {});
-      await this.github.findOrCreateProject(`${this.github.repo}_autollm`);
+      await this.github.findOrCreateProject(this.config.github?.project_name || `${this.github.repo}_autollm`);
     }
 
     const orchestrator = new PipelineOrchestrator(

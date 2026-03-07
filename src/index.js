@@ -36,27 +36,25 @@ program
   .option("-c, --config <path>", "설정 파일 경로")
   .option(
     "-m, --mode <mode>",
-    "인터랙션 모드: full-auto | semi-auto | manual",
-    "semi-auto"
+    "인터랙션 모드: full-auto | semi-auto | manual"
   )
   .option(
     "--timeout <seconds>",
-    "자동 진행 전 대기 시간 (0=즉시)",
-    "0"
+    "자동 진행 전 대기 시간 (0=즉시)"
   )
   .option("--no-interactive", "full-auto 모드의 단축 옵션")
   .action(async (requirement, options) => {
     const config = loadConfig(options.config);
     await validateConnections(config);
 
-    // 인터랙션 모드 결정
-    let interactionMode = options.mode;
+    // 인터랙션 모드 결정 (CLI 인자 → config 파일 → 기본값 순)
+    let interactionMode = options.mode || config.pipeline?.interaction_mode || "semi-auto";
     if (options.interactive === false) {
       interactionMode = "full-auto";
     }
 
-    // 타임아웃 설정
-    if (options.timeout) {
+    // 타임아웃 설정 (CLI 인자가 명시된 경우에만 config 덮어쓰기)
+    if (options.timeout != null) {
       config.pipeline = {
         ...config.pipeline,
         auto_timeout: parseInt(options.timeout),
@@ -103,7 +101,7 @@ program
   .argument("<type>", "회의 유형: kickoff | design")
   .argument("<topic>", "회의 주제/요구사항")
   .option("-c, --config <path>", "설정 파일 경로")
-  .option("-r, --rounds <n>", "토론 라운드 수", "2")
+  .option("-r, --rounds <n>", "토론 라운드 수")
   .action(async (type, topic, options) => {
     const config = loadConfig(options.config);
     await validateConnections(config);
@@ -118,7 +116,7 @@ program
     console.log(chalk.bold.cyan(`\n🗣️  ${type} 미팅 시작\n`));
 
     const meetingLog = await team.conductMeeting(topic, "", {
-      rounds: parseInt(options.rounds),
+      rounds: options.rounds ? parseInt(options.rounds) : undefined,
       onSpeak: ({ phase, agent, content }) => {
         if (phase === "spoke") {
           console.log(chalk.bold(`\n[${agent}]`));
@@ -228,18 +226,19 @@ program
   .option("-r, --resume [sessionId]", "이전 세션 이어하기 (ID 생략 시 최근 세션)")
   .option(
     "-m, --mode <mode>",
-    "인터랙션 모드: full-auto | semi-auto | manual",
-    "semi-auto"
+    "인터랙션 모드: full-auto | semi-auto | manual"
   )
   .action(async (options) => {
     const config = loadConfig(options.config);
     await validateConnections(config);
 
-    // 인터랙션 모드 설정
-    config.pipeline = {
-      ...config.pipeline,
-      interaction_mode: options.mode,
-    };
+    // 인터랙션 모드 설정 (CLI 인자가 명시된 경우에만 config 덮어쓰기)
+    if (options.mode) {
+      config.pipeline = {
+        ...config.pipeline,
+        interaction_mode: options.mode,
+      };
+    }
 
     const repl = new ReplShell(config);
 

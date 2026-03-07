@@ -281,6 +281,7 @@ export class ModelAdapter {
       "--skip-git-repo-check",
       "--full-auto",
     ];
+    if (model) args.push("-m", model);
 
     args.push(...this._resolveThinkingArgs("codex", thinkingBudget));
 
