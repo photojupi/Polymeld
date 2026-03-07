@@ -335,7 +335,7 @@ export class PipelineOrchestrator {
     const issue = await this.github.createIssue(
       t("pipeline.kickoffIssueTitle", { title: projectTitle }),
       markdown,
-      ["meeting-notes", "kickoff", "agent-team"]
+      ["meeting-notes", "kickoff", "polymeld"]
     );
     this.state.github.kickoffIssue = issue.number;
     issueSpinner.succeed(t("pipeline.meetingRegistered", { number: issue.number }));
@@ -381,7 +381,7 @@ export class PipelineOrchestrator {
     const issue = await this.github.createIssue(
       t("pipeline.designIssueTitle", { title: projectTitle }),
       markdown,
-      ["meeting-notes", "design", "agent-team"]
+      ["meeting-notes", "design", "polymeld"]
     );
     this.state.github.designIssue = issue.number;
     issueSpinner.succeed(t("pipeline.designRegistered", { number: issue.number }));
@@ -463,7 +463,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       const issue = await this.github.createIssue(
         `\uD83D\uDD27 ${task.title}`,
         body,
-        ["backlog", "agent-team", task.category || "task"]
+        ["backlog", "polymeld", task.category || "task"]
       );
 
       task.issueNumber = issue.number;

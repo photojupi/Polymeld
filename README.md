@@ -1,17 +1,17 @@
-# Agent Team CLI
+🌐 [한국어](README.md) | [English](README.en.md) | [日本語](README.ja.md) | [中文](README.zh-CN.md)
+
+# Polymeld
 
 **멀티 AI 모델 기반 개발팀 시뮬레이션**
 
 Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 회의 → 설계 → 개발 → 리뷰 → QA → PR 생성까지 자동화합니다.
 
-> 🌐 다국어 지원: 한국어, English, 日本語, 中文(简体)
-
 ## 아키텍처
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Agent Team CLI                         │
+│                      Polymeld                         │
 │                  (Node.js 오케스트레이터)                     │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
@@ -59,7 +59,7 @@ Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 ```bash
 # 1. 클론 및 설치
 git clone <this-repo>
-cd agent-team-cli
+cd polymeld
 npm install
 
 # 2. CLI 도구 설치 (미설치 시)
@@ -76,8 +76,8 @@ cp .env.example .env
 
 # 4. (선택) 로컬 워크스페이스 연동
 # 대상 프로젝트 디렉토리에서 실행하면 자동 감지:
-cd ~/projects/my-app && node /path/to/agent-team-cli/src/index.js start
-# 또는 agent-team.config.yaml에 명시:
+cd ~/projects/my-app && node /path/to/polymeld/src/index.js start
+# 또는 polymeld.config.yaml에 명시:
 #   project:
 #     local_path: ~/projects/my-app
 
@@ -119,7 +119,7 @@ GITHUB_REPO=owner/repo            # 대상 리포지터리 (owner/repo 형식)
 
 > 참고: AI CLI 도구의 API 키는 각 CLI가 자체적으로 관리합니다 (각 CLI의 인증 방식을 따르세요).
 
-### agent-team.config.yaml
+### polymeld.config.yaml
 
 #### 프로젝트 설정 (로컬 워크스페이스)
 
@@ -132,7 +132,7 @@ project:
   local_path: ~/projects/my-app
 ```
 
-> **자동 감지**: `project.local_path`를 설정하지 않아도, 대상 프로젝트 디렉토리에서 agent-team을 실행하면 `.git`을 자동 감지하여 워크스페이스로 사용합니다.
+> **자동 감지**: `project.local_path`를 설정하지 않아도, 대상 프로젝트 디렉토리에서 Polymeld를 실행하면 `.git`을 자동 감지하여 워크스페이스로 사용합니다.
 
 #### 모델 정의
 
@@ -364,8 +364,8 @@ node src/index.js init
 
 ### 워크스페이스 감지 우선순위
 
-1. `agent-team.config.yaml`의 `project.local_path` 설정
-2. 현재 디렉토리의 `.git` 자동 감지 (agent-team 자체 레포 제외)
+1. `polymeld.config.yaml`의 `project.local_path` 설정
+2. 현재 디렉토리의 `.git` 자동 감지 (Polymeld 자체 레포 제외)
 3. 미감지 시 `NoOpWorkspace`로 GitHub API 전용 모드
 
 > `local_path` 설정 시 CLI 프로세스가 해당 경로에서 실행되므로, 에이전트가 해당 프로젝트의 파일을 직접 읽고 쓸 수 있습니다.
@@ -570,19 +570,19 @@ test/
 
 ```bash
 # Claude Code 내에서
-node /path/to/agent-team-cli/src/index.js run "요구사항" --no-interactive
+node /path/to/polymeld/src/index.js run "요구사항" --no-interactive
 ```
 
 또는 CLAUDE.md에 등록:
 ```markdown
-## Agent Team
-프로젝트 요구사항이 주어지면 agent-team CLI를 실행하세요:
-`node ./agent-team-cli/src/index.js run "요구사항" --no-interactive`
+## Polymeld
+프로젝트 요구사항이 주어지면 Polymeld CLI를 실행하세요:
+`node ./polymeld/src/index.js run "요구사항" --no-interactive`
 ```
 
 ## 페르소나 커스터마이징
 
-`agent-team.config.yaml`에서 페르소나를 추가/수정할 수 있습니다:
+`polymeld.config.yaml`에서 페르소나를 추가/수정할 수 있습니다:
 
 ```yaml
 personas:

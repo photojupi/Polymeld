@@ -1,11 +1,11 @@
 {
-  "name": "agent-team-cli",
+  "name": "polymeld",
   "version": "0.1.0",
   "description": "멀티 AI 모델 기반 개발팀 시뮬레이션 CLI - Claude Code, Gemini CLI, Codex CLI 협업",
   "type": "module",
   "main": "src/index.js",
   "bin": {
-    "agent-team": "./src/index.js"
+    "polymeld": "./src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",

@@ -1,8 +1,8 @@
-# Agent Team CLI - 3종 CLI 지원 현황 심층 분석 및 구현 계획서
+# Polymeld - 3종 CLI 지원 현황 심층 분석 및 구현 계획서
 
 **작성일**: 2026-03-06
 **작성자**: 시니어 아키텍트
-**대상 파일**: `src/models/adapter.js` (핵심), `src/config/loader.js`, `agent-team.config.yaml`
+**대상 파일**: `src/models/adapter.js` (핵심), `src/config/loader.js`, `polymeld.config.yaml`
 **버전**: v0.1.0 기반 분석
 
 ---
@@ -455,7 +455,7 @@ _spawnCli(command, args, stdinData, options = {}) {
 }
 ```
 
-**설정 추가** (`agent-team.config.yaml`):
+**설정 추가** (`polymeld.config.yaml`):
 ```yaml
 # CLI 호출 설정
 cli:
@@ -666,7 +666,7 @@ async _chatGemini(model, systemPrompt, userMessage) {
 
 #### 4.2.5 설정 스키마 확장
 
-**`agent-team.config.yaml` 추가 섹션**:
+**`polymeld.config.yaml` 추가 섹션**:
 ```yaml
 # CLI 공통 설정
 cli:
@@ -946,8 +946,8 @@ Week 2-3 (P2 아키텍처):
    - 종료 코드별 에러 처리 테스트
 
 3. 수동 검증:
-   - agent-team test-models 명령으로 3종 CLI 연결 확인
-   - agent-team meeting kickoff "테스트 주제"로 실제 파이프라인 검증
+   - polymeld test-models 명령으로 3종 CLI 연결 확인
+   - polymeld meeting kickoff "테스트 주제"로 실제 파이프라인 검증
    - Windows/macOS/Linux 크로스 플랫폼 테스트
 ```
 
@@ -973,7 +973,7 @@ Week 2-3 (P2 아키텍처):
 | `src/models/drivers/*.js` | - | - | O (신규) | CLI별 드라이버 |
 | `src/models/output-normalizer.js` | - | O (신규) | O | 출력 정규화 |
 | `src/config/loader.js` | - | - | O | 버전 검증 추가 |
-| `agent-team.config.yaml` | - | O | O | 설정 스키마 확장 |
+| `polymeld.config.yaml` | - | O | O | 설정 스키마 확장 |
 | `src/agents/agent.js` | - | - | - | 변경 없음 (인터페이스 유지) |
 | `src/agents/team.js` | - | - | - | 변경 없음 |
 | `src/pipeline/orchestrator.js` | - | - | - | 변경 없음 |

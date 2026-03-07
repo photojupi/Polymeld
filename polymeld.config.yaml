@@ -1,4 +1,4 @@
-# Agent Team 설정 파일
+# Polymeld 설정 파일
 # 각 페르소나에게 어떤 AI CLI 도구를 사용할지 지정합니다.
 
 # 사용 가능한 모델: claude, gemini, codex

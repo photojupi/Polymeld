@@ -4,7 +4,7 @@
 import fs from "fs";
 import path from "path";
 
-const SESSIONS_DIR = ".agent-team/sessions";
+const SESSIONS_DIR = ".polymeld/sessions";
 
 export class SessionStore {
   constructor(baseDir = process.cwd()) {
