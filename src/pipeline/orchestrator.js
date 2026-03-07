@@ -585,11 +585,10 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     }
   }
 
-  // ─── Phase 6: 코드 리뷰 (수정 루프 포함) ─────────────
+  // ─── Phase 6: 코드 리뷰 (실패 시 팀장 직접 수정) ─────────────
 
   async phaseCodeReview() {
     const lead = this.team.lead;
-    const maxReviewRetries = this.config.pipeline?.max_review_retries ?? 3;
 
     for (const task of this.state.tasks) {
       if (!task.code) continue;
@@ -600,118 +599,74 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         continue;
       }
 
-      let attempt = 0;
-      let approved = false;
+      // 1) 리뷰 실행
+      console.log(chalk.cyan(`\n${t("pipeline.reviewLabel", { title: task.title })}`));
 
-      while (!approved && attempt < maxReviewRetries) {
-        attempt++;
-        const isRetry = attempt > 1;
-        const label = isRetry
-          ? t("pipeline.reviewRetryLabel", { attempt, max: maxReviewRetries, title: task.title })
-          : t("pipeline.reviewLabel", { title: task.title });
-        console.log(chalk.cyan(`\n${label}`));
+      const spinner = ora(
+        `  ${t("pipeline.reviewSpinner", { agent: lead.name, model: lead.modelKey })}`
+      ).start();
+      const reviewBundle = this.assembler.forReview(this.state, { taskId: task.id });
+      const result = await lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown");
+      spinner.succeed(`  ${t("pipeline.reviewComplete")}`);
 
-        // 1) PromptAssembler로 리뷰 맥락 조립
-        const spinner = ora(
-          `  ${t("pipeline.reviewSpinner", { agent: lead.name, model: lead.modelKey })}`
-        ).start();
-        const reviewBundle = this.assembler.forReview(this.state, { taskId: task.id });
-        const result = await lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown");
-        spinner.succeed(`  ${t("pipeline.reviewComplete")}`);
+      task.review = result.review;
 
-        // 리뷰 결과를 태스크에 저장
-        task.review = result.review;
+      await this.github.addComment(
+        task.issueNumber,
+        t("pipeline.reviewComment", { agent: lead.name, attempt: 1, max: 1, model: lead.modelKey, review: result.review })
+      );
 
-        await this.github.addComment(
-          task.issueNumber,
-          t("pipeline.reviewComment", { agent: lead.name, attempt, max: maxReviewRetries, model: lead.modelKey, review: result.review })
-        );
+      // 2) 결과 판정
+      const needsFix = this._reviewNeedsFix(result.review);
+      task.reviewVerdict = needsFix ? "changes_requested" : "approved";
 
-        // 2) 결과 판정
-        const needsFix = this._reviewNeedsFix(result.review);
+      this.state.addMessage({
+        from: "tech_lead",
+        to: task.assignedAgentId,
+        type: "review_feedback",
+        content: result.review,
+        taskId: task.id,
+      });
 
-        task.reviewVerdict = needsFix ? "changes_requested" : "approved";
-
-        if (!needsFix) {
-          approved = true;
-          console.log(chalk.green(`  ${t("pipeline.reviewApproved")}`));
-
-          this.state.addMessage({
-            from: "tech_lead",
-            to: task.assignedAgentId,
-            type: "review_feedback",
-            content: result.review,
-            taskId: task.id,
-          });
-          break;
-        }
-
-        console.log(
-          chalk.yellow(
-            `  ${t("pipeline.reviewChangesRequested", { attempt, max: maxReviewRetries })}`
-          )
-        );
-
-        this.state.addMessage({
-          from: "tech_lead",
-          to: task.assignedAgentId,
-          type: "review_feedback",
-          content: result.review,
-          taskId: task.id,
-        });
-
-        // 3) 마지막 시도였으면 루프 탈출
-        if (attempt >= maxReviewRetries) {
-          console.log(
-            chalk.red(
-              `  ${t("pipeline.reviewMaxRetries", { max: maxReviewRetries })}`
-            )
-          );
-          await this.github.addComment(
-            task.issueNumber,
-            t("pipeline.reviewMaxRetriesComment", { max: maxReviewRetries })
-          );
-          break;
-        }
-
-        // 4) 팀장이 수정 방향을 개발자에게 전달
-        const fixSpinner = ora(
-          `  ${t("pipeline.fixGuidanceSpinner", { lead: lead.name, dev: task.assignedAgent?.name })}`
-        ).start();
-
-        const fixGuidanceBundle = this.assembler.forReview(this.state, { taskId: task.id });
-        const fixGuidance = await lead.speak(
-          t("agent.reviewFixInstruction", { dev: task.assignedAgent?.name, review: result.review }),
-          fixGuidanceBundle
-        );
-        fixSpinner.succeed(`  ${t("pipeline.fixGuidanceComplete")}`);
-
-        this.state.addMessage({
-          from: "tech_lead",
-          to: task.assignedAgentId,
-          type: "fix_guidance",
-          content: fixGuidance.content,
-          taskId: task.id,
-        });
-
-        await this.github.addComment(
-          task.issueNumber,
-          `\uD83D\uDCAC **${lead.name} \u2192 ${task.assignedAgent?.name}**:\n\n${fixGuidance.content}`
-        );
-
-        // 5) 개발자가 수정
-        await this._applyDevFix(task, {
-          feedbackSource: "review",
-          attempt,
-          labels: {
-            spinnerStart: "pipeline.fixSpinner",
-            commentKey: "pipeline.fixReviewComment",
-            spinnerDone: "pipeline.fixComplete",
-          },
-        });
+      if (!needsFix) {
+        // 통과
+        task.reviewApproved = true;
+        console.log(chalk.green(`  ${t("pipeline.reviewApproved")}`));
+        continue;
       }
 
-      task.reviewApproved = approved;
+      // 3) 수정 필요 → 팀장이 직접 수정
+      console.log(chalk.yellow(`  ${t("pipeline.reviewChangesRequested", { attempt: 1, max: 1 })}`));
+
+      const fixSpinner = ora(
+        `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
+      ).start();
+
+      // 리뷰 결과 + 원본 코드를 팀장에게 전달
+      const leadFixBundle = {
+        systemContext: `${reviewBundle.systemContext}\n\n${t("promptAssembler.reviewFeedback")}\n${result.review}`,
+        taskDescription: task.description || "",
+        acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
+        currentCode: task.code,
+      };
+      const fixResult = await lead.writeCode(leadFixBundle);
+      fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+
+      if (fixResult) {
+        task.code = fixResult.code;
+        await this._recommitCode(
+          task,
+          fixResult.code,
+          `fix: lead direct fix for ${task.title} (#${task.issueNumber})`
+        );
+        await this.github.addComment(
+          task.issueNumber,
+          t("pipeline.leadFixComment", { agent: lead.name, model: lead.modelKey })
+        );
+      }
+
+      task.reviewApproved = true;
+      console.log(chalk.green(`  ${t("pipeline.reviewApproved")}`));
     }
   }
 
