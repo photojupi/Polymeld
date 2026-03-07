@@ -145,6 +145,7 @@
     "leadFixSpinner": "{{agent}} ({{model}}) lead direct fix in progress...",
     "leadFixComplete": "{{agent}} lead direct fix complete",
     "leadFixComment": "🔧 **{{agent}}** (`{{model}}`): Lead direct fix based on review feedback",
+    "qaLeadFixComment": "🔧 **{{agent}}** (`{{model}}`): Lead direct fix based on QA feedback",
     "fixGuidanceSpinner": "{{lead}} → {{dev}}: Sending fix guidance...",
     "fixGuidanceComplete": "Fix guidance written",
     "fixSpinner": "{{agent}} ({{model}}) applying fixes...",
