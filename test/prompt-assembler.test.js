@@ -147,6 +147,155 @@ describe("kickoffSummary 통합", () => {
   });
 });
 
+// ─── Phase별 차등 예산 ─────────────────────────────────
+
+describe("Phase별 차등 예산", () => {
+  it("maxChars 미지정 시 forCoding은 forQA보다 큰 예산 사용", () => {
+    const assembler = new PromptAssembler(); // maxChars 미지정 → Phase별 예산 활성화
+    const state = makeState();
+    state.designDecisions = "A".repeat(15000);
+
+    const codingResult = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
+    const qaResult = assembler.forQA(state, { taskId: "task-1" });
+
+    // coding(12000)은 QA(4000)보다 훨씬 긴 systemContext 허용
+    assert.ok(codingResult.systemContext.length > qaResult.systemContext.length);
+  });
+
+  it("maxChars 지정 시 모든 Phase에 동일 예산 적용 (하위 호환)", () => {
+    const assembler = new PromptAssembler({ maxChars: 3000 });
+    const state = makeState();
+    state.designDecisions = "A".repeat(15000);
+
+    const result = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
+    assert.ok(result.systemContext.length <= 3000);
+  });
+
+  it("메서드 호출 시 maxChars 직접 전달하면 그 값 우선", () => {
+    const assembler = new PromptAssembler(); // Phase별 예산 활성화
+    const state = makeState();
+    state.designDecisions = "A".repeat(15000);
+
+    const result = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1", maxChars: 500 });
+    assert.ok(result.systemContext.length <= 500);
+  });
+});
+
+// ─── forCoding fix 사이클 분기 ─────────────────────────
+
+describe("forCoding fix 사이클 분기", () => {
+  it("fix 사이클에서 수정 지시가 코드베이스보다 앞에 배치", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    state.addMessage({
+      from: "tech_lead",
+      to: "dev1",
+      type: "fix_guidance",
+      content: "에러 핸들링 추가 필요",
+      taskId: "task-1",
+    });
+
+    const result = assembler.forCoding(state, {
+      agentId: "dev1",
+      taskId: "task-1",
+      codebaseContext: "기존 코드 내용...",
+    });
+
+    const fixIdx = result.systemContext.indexOf("팀장 수정 지시");
+    const codebaseIdx = result.systemContext.indexOf("기존 코드베이스");
+
+    // 수정 지시가 코드베이스보다 앞에 나옴
+    assert.ok(fixIdx !== -1, "수정 지시 섹션이 존재해야 함");
+    if (codebaseIdx !== -1) {
+      assert.ok(fixIdx < codebaseIdx, "수정 지시가 코드베이스보다 앞에 위치해야 함");
+    }
+  });
+
+  it("fix 사이클에서 이전 리뷰/QA 결과 포함", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    state.addMessage({
+      from: "tech_lead",
+      to: "dev1",
+      type: "fix_guidance",
+      content: "수정하세요",
+      taskId: "task-1",
+    });
+
+    const result = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
+    assert.ok(result.systemContext.includes("이전 리뷰 결과"));
+    assert.ok(result.systemContext.includes("변수 네이밍 개선 필요"));
+  });
+
+  it("최초 코딩에서는 킥오프 요약 포함, fix 사이클에서는 생략", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    state.kickoffSummary = "킥오프 내용";
+
+    // 최초 코딩: 킥오프 포함
+    const firstResult = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
+    assert.ok(firstResult.systemContext.includes("킥오프 요약"));
+
+    // fix 사이클: 킥오프 생략 (수정 지시가 대신 들어감)
+    state.addMessage({
+      from: "tech_lead",
+      to: "dev1",
+      type: "fix_guidance",
+      content: "수정 필요",
+      taskId: "task-1",
+    });
+    const fixResult = assembler.forCoding(state, { agentId: "dev1", taskId: "task-1" });
+    assert.ok(!fixResult.systemContext.includes("킥오프 요약"));
+  });
+});
+
+// ─── forFix 수정 이력 ────────────────────────────────
+
+describe("forFix 수정 이력", () => {
+  it("최근 2개 수정 지시를 모두 포함", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    for (let i = 1; i <= 3; i++) {
+      state.addMessage({
+        from: "tech_lead",
+        to: "dev1",
+        type: "fix_guidance",
+        content: `수정 지시 ${i}`,
+        taskId: "task-1",
+      });
+    }
+
+    const result = assembler.forFix(state, { agentId: "dev1", taskId: "task-1", feedbackSource: "review" });
+    // 가장 오래된(1번)은 제외, 최근 2개(2, 3)만 포함
+    assert.ok(!result.systemContext.includes("수정 지시 1"));
+    assert.ok(result.systemContext.includes("수정 지시 2"));
+    assert.ok(result.systemContext.includes("수정 지시 3"));
+  });
+
+  it("이전 수정 지시에 '이전' 라벨 표시", () => {
+    const assembler = new PromptAssembler({ maxChars: 6000 });
+    const state = makeState();
+    state.addMessage({
+      from: "tech_lead",
+      to: "dev1",
+      type: "fix_guidance",
+      content: "첫 번째 지시",
+      taskId: "task-1",
+    });
+    state.addMessage({
+      from: "tech_lead",
+      to: "dev1",
+      type: "fix_guidance",
+      content: "두 번째 지시",
+      taskId: "task-1",
+    });
+
+    const result = assembler.forFix(state, { agentId: "dev1", taskId: "task-1", feedbackSource: "review" });
+    assert.ok(result.systemContext.includes("이전 수정 지시"));
+    assert.ok(result.systemContext.includes("현재 수정 지시"));
+  });
+});
+
 // ─── _truncate ────────────────────────────────────────
 
 describe("PromptAssembler._truncate", () => {
