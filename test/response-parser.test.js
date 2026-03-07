@@ -10,8 +10,8 @@ describe("ResponseParser.parseTasks", () => {
 \`\`\`json
 {
   "tasks": [
-    { "title": "API 설계", "suitable_role": "backend_dev" },
-    { "title": "UI 구현", "suitable_role": "frontend_dev" }
+    { "title": "API 설계", "suitable_role": "ace_programmer" },
+    { "title": "UI 구현", "suitable_role": "creative_programmer" }
   ]
 }
 \`\`\``;
@@ -64,7 +64,7 @@ describe("ResponseParser.parseTasks", () => {
   });
 
   it("마크다운 혼합 응답에서 JSON 직접 추출", () => {
-    const raw = '## 태스크 분해\n다음과 같이 분해했습니다.\n\n{"tasks": [{"title": "캐싱 구현", "suitable_role": "backend_dev"}]}\n\n위 태스크를 확인하세요.';
+    const raw = '## 태스크 분해\n다음과 같이 분해했습니다.\n\n{"tasks": [{"title": "캐싱 구현", "suitable_role": "ace_programmer"}]}\n\n위 태스크를 확인하세요.';
     const result = ResponseParser.parseTasks(raw);
     assert.equal(result.success, true);
     assert.equal(result.tasks[0].title, "캐싱 구현");
