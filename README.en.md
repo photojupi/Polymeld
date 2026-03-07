@@ -169,16 +169,28 @@ models:
   claude:
     cli: claude
     model: claude-opus-4-6
+    fallback: gemini               # Model to switch to on rate limit
   gemini:
     cli: gemini
     model: gemini-3.1-pro-preview
+    fallback: claude
   codex:
     cli: codex
     model: gpt-5.4
+    fallback: claude
   gemini_image:
     cli: gemini
     model: gemini-3.1-flash-image    # Nano Banana 2 (specialized for image generation)
 ```
+
+#### fallback (Automatic Rate Limit Switching)
+
+Setting the `fallback` field on a model enables automatic switching to an alternate model when a rate limit is hit:
+
+- **CLI → API → fallback** 3-tier priority chain
+- Automatically switches to API key backend when CLI usage is exceeded
+- Falls back to the `fallback` model if API key also hits rate limit
+- Automatically detects rate limit patterns in stderr (`Rate limit reached`, `Resource exhausted`, `usage limit`, etc.)
 
 #### CLI Execution Settings
 
@@ -253,9 +265,16 @@ personas:
 Per-CLI mapping:
 | CLI | Parameter | Mapping |
 |-----|-----------|---------|
-| Claude | `--effort` | 0-25: low, 26-75: medium, 76-100: high |
+| Claude | `--effort` | 0-33: low, 34-75: medium, 76-100: high |
 | Codex | `-c model_reasoning_effort` | 0-25: low, 26-60: medium, 61-85: high, 86-100: xhigh |
 | Gemini | (No CLI flag support) | Controlled only via settings.json `thinkingConfig` |
+
+API backend mapping:
+| API | Parameter | Mapping |
+|-----|-----------|---------|
+| Claude (Anthropic) | `thinking.budget_tokens` | 0-33: disabled, 34-75: 4096, 76-100: 16384 |
+| Gemini (Google) | `thinkingConfig.thinkingBudget` | 0-33: 1024, 34-75: 8192, 76-100: 24576 |
+| OpenAI | `reasoning_effort` | 0-25: low, 26-60: medium, 61-100: high |
 
 #### parallel_development (Parallel Execution)
 
@@ -467,13 +486,13 @@ Phase 5: Development (Dependency-Based Parallel Execution)
 Phase 6: Code Review
   → Team lead reviews code written by other models
   → ResponseParser extracts APPROVED / CHANGES_REQUESTED verdict
-  → Review → Fix → Re-review cycle (up to 3 iterations)
+  → If changes needed, team lead directly writes fix code and re-commits
   → Review results recorded as Issue Comments
 
 Phase 7: QA
   → QA engineer verifies the code
   → ResponseParser extracts PASS / FAIL verdict
-  → QA failure → Team lead analysis → Fix → Re-verify (up to 3 iterations)
+  → On failure, team lead directly fixes and re-commits
   → Test results recorded as a table in Issue Comments
 
 Phase 8: PR Creation
@@ -567,6 +586,7 @@ src/
 │   ├── repl-shell.js           # REPL loop (status bar + command menu)
 │   ├── command-router.js       # Slash command routing + tab completion
 │   ├── status-bar.js           # Status bar rendering
+│   ├── slash-menu.js           # Inline searchable slash menu (direct stdin handling)
 │   ├── paste-detect-stream.js  # Bracketed Paste Mode (multi-line input)
 │   └── commands/               # Slash command handlers
 │       ├── help.js
@@ -587,6 +607,7 @@ test/
 ├── pipeline-state.test.js      # PipelineState unit tests
 ├── prompt-assembler.test.js    # PromptAssembler unit tests
 ├── paste-detect-stream.test.js # Bracketed Paste Mode tests
+├── slash-menu.test.js          # Slash menu inline search tests
 ├── i18n.test.js                # Translation key sync validation (4-language parity)
 └── team.test.js                # Team persona normalization tests
 ```

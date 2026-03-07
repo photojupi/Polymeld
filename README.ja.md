@@ -170,16 +170,28 @@ models:
   claude:
     cli: claude
     model: claude-opus-4-6
+    fallback: gemini               # rate limit時の切替先モデル
   gemini:
     cli: gemini
     model: gemini-3.1-pro-preview
+    fallback: claude
   codex:
     cli: codex
     model: gpt-5.4
+    fallback: claude
   gemini_image:
     cli: gemini
     model: gemini-3.1-flash-image    # Nano Banana 2（画像生成特化）
 ```
+
+#### fallback（Rate Limit自動切替）
+
+各モデルに`fallback`フィールドを設定すると、rate limit発生時に自動的に代替モデルに切り替わります：
+
+- **CLI → API → fallback** 3段階優先順位チェーン
+- CLI使用量超過時にAPI keyバックエンドへ自動切替
+- API keyもrate limitの場合は`fallback`モデルへ最終切替
+- stderrからrate limitパターンを自動検出（`Rate limit reached`、`Resource exhausted`、`usage limit`等）
 
 #### CLI実行設定
 
@@ -254,9 +266,16 @@ personas:
 CLI別変換：
 | CLI | パラメータ | 変換 |
 |-----|---------|------|
-| Claude | `--effort` | 0-25: low, 26-75: medium, 76-100: high |
+| Claude | `--effort` | 0-33: low, 34-75: medium, 76-100: high |
 | Codex | `-c model_reasoning_effort` | 0-25: low, 26-60: medium, 61-85: high, 86-100: xhigh |
 | Gemini | (CLIフラグ未対応) | settings.json `thinkingConfig`でのみ制御 |
+
+APIバックエンド使用時の変換：
+| API | パラメータ | 変換 |
+|-----|---------|------|
+| Claude (Anthropic) | `thinking.budget_tokens` | 0-33: 無効、34-75: 4096、76-100: 16384 |
+| Gemini (Google) | `thinkingConfig.thinkingBudget` | 0-33: 1024、34-75: 8192、76-100: 24576 |
+| OpenAI | `reasoning_effort` | 0-25: low、26-60: medium、61-100: high |
 
 #### parallel_development（並列実行）
 
@@ -468,13 +487,13 @@ Phase 5: 開発（依存関係ベースの並列実行）
 Phase 6: コードレビュー
   → リーダーが他のモデルが作成したコードをレビュー
   → ResponseParserがAPPROVED / CHANGES_REQUESTED判定を抽出
-  → レビュー → 修正 → 再レビューサイクル（最大3回）
+  → 修正が必要な場合、リーダーが直接修正コードを作成して再コミット
   → レビュー結果がIssue Commentに記録
 
 Phase 7: QA
   → QAがコードを検証
   → ResponseParserがPASS / FAIL判定を抽出
-  → QA失敗 → リーダー分析 → 修正 → 再検証（最大3回）
+  → 失敗時はリーダーが直接修正して再コミット
   → テスト結果がIssue Commentに表形式で記録
 
 Phase 8: PR作成
@@ -568,6 +587,7 @@ src/
 │   ├── repl-shell.js           # REPLループ（ステータスバー + コマンドメニュー）
 │   ├── command-router.js       # スラッシュコマンドルーティング + Tab自動補完
 │   ├── status-bar.js           # ステータスバーレンダリング
+│   ├── slash-menu.js           # インライン検索スラッシュメニュー（stdin直接処理）
 │   ├── paste-detect-stream.js  # Bracketed Paste Mode（マルチライン入力）
 │   └── commands/               # スラッシュコマンドハンドラー
 │       ├── help.js
@@ -588,6 +608,7 @@ test/
 ├── pipeline-state.test.js      # PipelineState単体テスト
 ├── prompt-assembler.test.js    # PromptAssembler単体テスト
 ├── paste-detect-stream.test.js # Bracketed Paste Modeテスト
+├── slash-menu.test.js          # スラッシュメニューインライン検索テスト
 ├── i18n.test.js                # 翻訳キー同期検証（4言語一致）
 └── team.test.js                # Teamペルソナ正規化テスト
 ```
