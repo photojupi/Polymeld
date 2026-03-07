@@ -98,7 +98,7 @@ export class Team {
    * @param {object} options - { rounds: 토론 라운드 수, onSpeak: 콜백, onStream: 실시간 출력 콜백 }
    */
   async conductMeeting(topic, context = "", options = {}) {
-    const rounds = Math.max(1, options.rounds || this.config.pipeline?.max_discussion_rounds || 2);
+    const rounds = Math.max(1, options.rounds || 2);
     const onSpeak = options.onSpeak || (() => {});
     const onStream = options.onStream;
 

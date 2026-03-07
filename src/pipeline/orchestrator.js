@@ -313,7 +313,7 @@ export class PipelineOrchestrator {
       requirement,
       `${t("common.project")}: ${projectTitle}`,
       {
-        rounds: this.config.pipeline?.max_discussion_rounds || 5,
+        rounds: this.config.pipeline?.max_kickoff_rounds || 2,
         ...this._meetingCallbacks(spinner),
       }
     );
@@ -359,7 +359,7 @@ export class PipelineOrchestrator {
     const topic = t("agent.designTopic", { title: projectTitle, requirement, kickoff });
 
     const meetingLog = await this.team.conductMeeting(topic, "", {
-      rounds: this.config.pipeline?.max_discussion_rounds || 3,
+      rounds: this.config.pipeline?.max_design_rounds || 3,
       ...this._meetingCallbacks(spinner),
     });
 
