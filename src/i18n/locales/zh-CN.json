@@ -452,6 +452,8 @@
     "cliError": "[{{cli}}] CLI错误（退出码 {{code}}）: {{output}}",
     "noOutput": "（无输出）",
     "timeout": "超时（超过 {{seconds}} 秒）",
+    "timeoutIdle": "空闲超时（{{seconds}}秒无输出）",
+    "timeoutMax": "最大超时（超过{{seconds}}秒）",
     "cliExecFailed": "CLI执行失败（{{command}}）: {{message}}",
     "systemInstructions": "## 系统指令",
     "request": "## 请求",

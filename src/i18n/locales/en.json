@@ -452,6 +452,8 @@
     "cliError": "[{{cli}}] CLI error (exit {{code}}): {{output}}",
     "noOutput": "(no output)",
     "timeout": "Timeout (exceeded {{seconds}}s)",
+    "timeoutIdle": "Idle timeout (no output for {{seconds}}s)",
+    "timeoutMax": "Max timeout (exceeded {{seconds}}s)",
     "cliExecFailed": "CLI execution failed ({{command}}): {{message}}",
     "systemInstructions": "## System Instructions",
     "request": "## Request",

@@ -2,12 +2,11 @@
 // CLI 기반 멀티 AI 모델 통합 어댑터
 // Claude Code, Gemini CLI, Codex CLI를 서브프로세스로 호출
 
-import { execFileSync } from "child_process";
 import crossSpawn from "cross-spawn";
 import fs from "fs";
 import path from "path";
-import os from "os";
 import { t } from "../i18n/index.js";
+import { isCliInstalled } from "../config/loader.js";
 
 /**
  * CLI 실행 오류를 구조화하여 표현하는 커스텀 에러 클래스.
@@ -70,11 +69,18 @@ export class ModelAdapter {
 
   /**
    * CLI 서브프로세스 실행 (stdin 방식)
-   * options.timeout: 타임아웃 밀리초 (기본 5분, 0이면 무제한)
+   * options.timeout: 숫자(ms, 기존 wall-clock) 또는 { idle, max } 객체
+   *   - 숫자: max만 작동 (하위호환)
+   *   - { idle, max }: idle=무응답 감지(출력 시 리셋), max=절대 상한
+   *   - 0이면 해당 타이머 비활성
    */
   _spawnCli(command, args, stdinData, options = {}) {
-    const timeout =
-      options.timeout || this.config.cli?.timeout || 300000; // 기본 5분
+    const rawTimeout = options.timeout ?? this.config.cli?.timeout ?? 300000;
+
+    // 정규화: 숫자 → max only (하위호환), 객체 → idle + max
+    const tc = typeof rawTimeout === "number"
+      ? { idle: 0, max: rawTimeout }
+      : { idle: rawTimeout.idle || 0, max: rawTimeout.max || 0 };
 
     return new Promise((resolve, reject) => {
       const proc = crossSpawn(command, args, {
@@ -86,35 +92,57 @@ export class ModelAdapter {
       let stdout = "";
       let stderr = "";
       let killed = false;
+      let maxTimer = null;
+      let idleTimer = null;
 
-      // 타임아웃 타이머 (0이면 무제한)
-      let timer = null;
-      if (timeout > 0) {
-        timer = setTimeout(() => {
-          killed = true;
-          proc.kill("SIGTERM");
-          // SIGTERM 후 5초 대기, 여전히 살아있으면 SIGKILL
-          setTimeout(() => {
-            if (!proc.killed) proc.kill("SIGKILL");
-          }, 5000);
-          reject(
-            new CliError(command, -1, t("adapter.timeout", { seconds: timeout / 1000 }), stdout.substring(0, 200))
-          );
-        }, timeout);
+      // kill 헬퍼 — idle/max 양쪽에서 호출, killed 플래그로 중복 방지
+      const killProc = (reason) => {
+        if (killed) return;
+        killed = true;
+        proc.kill("SIGTERM");
+        setTimeout(() => {
+          if (!proc.killed) proc.kill("SIGKILL");
+        }, 5000);
+        if (maxTimer) clearTimeout(maxTimer);
+        if (idleTimer) clearTimeout(idleTimer);
+        reject(new CliError(command, -1, reason, stdout.substring(0, 200)));
+      };
+
+      // max 타이머 (절대 상한, 리셋 없음)
+      if (tc.max > 0) {
+        maxTimer = setTimeout(() => {
+          killProc(t("adapter.timeoutMax", { seconds: tc.max / 1000 }));
+        }, tc.max);
       }
+
+      // idle 타이머 (출력 시 리셋)
+      const resetIdleTimer = () => {
+        if (tc.idle <= 0) return;
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          killProc(t("adapter.timeoutIdle", { seconds: tc.idle / 1000 }));
+        }, tc.idle);
+      };
+      resetIdleTimer();
 
       proc.stdout.on("data", (d) => {
         const chunk = d.toString();
         stdout += chunk;
         if (options.onData) options.onData(chunk);
+        resetIdleTimer();
       });
-      proc.stderr.on("data", (d) => (stderr += d.toString()));
+      proc.stderr.on("data", (d) => {
+        stderr += d.toString();
+        resetIdleTimer();
+      });
       proc.on("error", (err) => {
-        if (timer) clearTimeout(timer);
+        if (maxTimer) clearTimeout(maxTimer);
+        if (idleTimer) clearTimeout(idleTimer);
         reject(new Error(t("adapter.cliExecFailed", { command, message: err.message })));
       });
       proc.on("close", (code) => {
-        if (timer) clearTimeout(timer);
+        if (maxTimer) clearTimeout(maxTimer);
+        if (idleTimer) clearTimeout(idleTimer);
         if (killed) return; // 이미 타임아웃으로 reject됨
         if (code !== 0) {
           reject(new CliError(command, code, stderr, stdout));
@@ -389,19 +417,6 @@ export class ModelAdapter {
   }
 
   /**
-   * CLI 명령어 존재 여부 확인
-   */
-  _isCliAvailable(command) {
-    try {
-      const cmd = os.platform() === "win32" ? "where" : "which";
-      execFileSync(cmd, [command], { stdio: "pipe" });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
    * 사용 가능한 모델 목록 반환 (CLI 설치 여부 기반)
    */
   getAvailableModels() {
@@ -409,7 +424,7 @@ export class ModelAdapter {
 
     const available = [];
     for (const [key, modelConfig] of Object.entries(this.config.models)) {
-      if (this._isCliAvailable(modelConfig.cli)) {
+      if (isCliInstalled(modelConfig.cli)) {
         available.push(key);
       }
     }
@@ -432,7 +447,7 @@ export class ModelAdapter {
       const cli = modelConfig.cli;
       status[key] = {
         cli,
-        installed: this._isCliAvailable(cli),
+        installed: isCliInstalled(cli),
         installCommand: installCommands[cli] || t("adapter.installRequired", { cli }),
       };
     }

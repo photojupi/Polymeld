@@ -452,6 +452,8 @@
     "cliError": "[{{cli}}] CLIエラー（終了コード {{code}}）: {{output}}",
     "noOutput": "（出力なし）",
     "timeout": "タイムアウト（{{seconds}}秒超過）",
+    "timeoutIdle": "アイドルタイムアウト（{{seconds}}秒間出力なし）",
+    "timeoutMax": "最大タイムアウト（{{seconds}}秒超過）",
     "cliExecFailed": "CLI実行失敗（{{command}}）: {{message}}",
     "systemInstructions": "## システム指示",
     "request": "## リクエスト",

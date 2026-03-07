@@ -36,9 +36,9 @@ models:
 cli:
   timeout: 600000          # 기본 타임아웃 10분 (밀리초)
   timeouts:
-    claude: 900000         # Claude 15분 (thinking 100% 대응)
-    gemini: 600000         # Gemini 10분
-    codex: 900000          # Codex 15분 (xhigh 대응)
+    claude: { idle: 300000, max: 1800000 }   # 5분 idle, 30분 max
+    gemini: 600000                            # Gemini 10분 (wall-clock)
+    codex: { idle: 300000, max: 1800000 }     # 5분 idle, 30분 max
   max_turns:
     claude: 10             # Claude 에이전틱 루프 최대 턴 수
 
