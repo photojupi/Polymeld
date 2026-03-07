@@ -339,9 +339,6 @@ export class PipelineOrchestrator {
     );
     this.state.github.kickoffIssue = issue.number;
     issueSpinner.succeed(t("pipeline.meetingRegistered", { number: issue.number, url: this.github.issueUrl(issue.number) }));
-
-    // 프로젝트에 추가
-    await this.github.addIssueToProject(issue.node_id);
   }
 
   // ─── Phase 2: 기술 설계 미팅 ──────────────────────────
@@ -385,7 +382,6 @@ export class PipelineOrchestrator {
     );
     this.state.github.designIssue = issue.number;
     issueSpinner.succeed(t("pipeline.designRegistered", { number: issue.number, url: this.github.issueUrl(issue.number) }));
-    await this.github.addIssueToProject(issue.node_id);
   }
 
   // ─── Phase 3: 태스크 분해 ─────────────────────────────
@@ -469,7 +465,8 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       task.issueNumber = issue.number;
       task.nodeId = issue.node_id;
 
-      await this.github.addIssueToProject(issue.node_id);
+      const projectItem = await this.github.addIssueToProject(issue.node_id, "Backlog");
+      task.projectItemId = projectItem?.id;
       taskSpinner.succeed(t("pipeline.issueCreated", { number: issue.number, title: task.title, url: this.github.issueUrl(issue.number) }));
     }
   }
@@ -491,6 +488,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         ["todo", `assigned:${agent.id}`],
         ["backlog"]
       );
+      await this.github.setProjectItemStatus(task.projectItemId, "Todo");
 
       task.assignedAgent = agent;
       task.assignedAgentId = agent.id;
@@ -690,6 +688,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         ["qa"],
         ["in-review"]
       );
+      await this.github.setProjectItemStatus(task.projectItemId, "QA");
 
       this.state.addMessage({
         from: "orchestrator",
@@ -770,6 +769,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
       // Done 처리
       await this.github.updateLabels(task.issueNumber, ["done"], ["qa"]);
+      await this.github.setProjectItemStatus(task.projectItemId, "Done");
       await this.github.closeIssue(task.issueNumber);
       this.state.completedTasks.push(task);
     }
@@ -1007,6 +1007,7 @@ ${this.team
 
     // GitHub 상태 업데이트
     await this.github.updateLabels(task.issueNumber, ["in-progress"], ["todo"]);
+    await this.github.setProjectItemStatus(task.projectItemId, "In Progress");
     await this.github.addComment(
       task.issueNumber,
       t("pipeline.devStartComment", { agent: agent.name, model: agent.modelKey })
@@ -1133,5 +1134,6 @@ ${this.team
     );
 
     await this.github.updateLabels(task.issueNumber, ["in-review"], ["in-progress"]);
+    await this.github.setProjectItemStatus(task.projectItemId, "In Review");
   }
 }
