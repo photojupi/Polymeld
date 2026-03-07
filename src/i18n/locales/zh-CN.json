@@ -504,6 +504,7 @@
   },
   "workspace": {
     "notGitRepo": "不是Git仓库: {{path}}",
+    "gitInitFailed": "git init失败 — .git未创建: {{path}}",
     "noWorkspace": "（未配置工作区）",
     "truncated": "...（已截断）"
   },

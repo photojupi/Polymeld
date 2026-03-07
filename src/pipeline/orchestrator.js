@@ -866,8 +866,8 @@ ${this.team
   .map((a) => `> - ${a.name} (${a.role}): \`${a.modelKey}\``)
   .join("\n")}`;
 
+      const spinner = ora(t("pipeline.prSpinner", { category })).start();
       try {
-        const spinner = ora(t("pipeline.prSpinner", { category })).start();
         const pr = await this.github.createPR(
           `feat: ${projectTitle} - ${category}`,
           body,
@@ -875,9 +875,7 @@ ${this.team
         );
         spinner.succeed(t("pipeline.prCreated", { number: pr.number, url: this.github.prUrl(pr.number) }));
       } catch (e) {
-        console.log(
-          chalk.yellow(`  ${t("pipeline.prSkipped", { category, message: e.message })}`)
-        );
+        spinner.fail(t("pipeline.prSkipped", { category, message: e.message }));
       }
     }
   }
