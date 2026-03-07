@@ -77,12 +77,13 @@ export class ResponseParser {
     }
 
     // 2차: 키워드 매칭 폴백 (AI가 어떤 언어로 응답하든 매칭하기 위해 모든 언어 키워드 포함)
+    // "개선 필요" / "改善必要" / "需要改进" 제거: 리뷰 형식 헤더와 충돌 가능
     const lower = raw.toLowerCase();
     if (lower.includes("changes requested") || lower.includes("changes_requested") ||
         lower.includes("수정 필요") || lower.includes("수정이 필요") ||
-        lower.includes("변경 요청") || lower.includes("개선 필요") ||
-        lower.includes("修正必要") || lower.includes("変更要求") || lower.includes("改善必要") ||
-        lower.includes("需要修改") || lower.includes("修改请求") || lower.includes("需要改进")) {
+        lower.includes("변경 요청") ||
+        lower.includes("修正必要") || lower.includes("変更要求") ||
+        lower.includes("需要修改") || lower.includes("修改请求")) {
       return { verdict: "CHANGES_REQUESTED", structured: false };
     }
     if (lower.includes("approved") ||
