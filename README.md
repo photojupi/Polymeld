@@ -5,6 +5,8 @@
 Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 회의 → 설계 → 개발 → 리뷰 → QA → PR 생성까지 자동화합니다.
 
+> 🌐 다국어 지원: 한국어, English, 日本語, 中文(简体)
+
 ## 아키텍처
 
 ```
@@ -18,7 +20,7 @@ Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 │  Tab 자동완성, 멀티라인 입력      Phase 체크포인트/재개       │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
-│  validateConnections: CLI 설치 → 인증 프로브 → GitHub 검증   │
+│  validateConnections: CLI 설치 → 인증 → GitHub 검증 + 스코프 │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  PipelineState              PromptAssembler                 │
@@ -85,7 +87,12 @@ node src/index.js test-models
 # 6. 실행!
 node src/index.js run "사용자 인증 기능 구현 (이메일/비밀번호 + OAuth)"
 
-# 7. 테스트
+# 7. 언어 지정 (선택, 미지정 시 OS 로케일 자동 감지)
+node src/index.js run "채팅 기능" --lang en   # English
+node src/index.js run "채팅 기능" --lang ja   # 日本語
+node src/index.js run "채팅 기능" --lang zh-CN # 中文(简体)
+
+# 8. 테스트
 npm test
 ```
 
@@ -101,11 +108,14 @@ cp .env.example .env
 ```
 
 ```bash
-GITHUB_TOKEN=ghp_xxxxx            # GitHub Personal Access Token (repo, project 권한)
+# GitHub Personal Access Token
+# - Classic PAT: repo(필수) + project(선택, Projects 보드용) 스코프
+# - Fine-grained PAT: Issues, Contents, Pull requests 쓰기 권한
+GITHUB_TOKEN=ghp_xxxxx
 GITHUB_REPO=owner/repo            # 대상 리포지터리 (owner/repo 형식)
 ```
 
-> **시작 시 자동 검증**: 실행 시 CLI 설치 → CLI 인증 → GitHub 연동을 순차적으로 확인하고 결과를 표시합니다. GitHub 연동 실패 시 구체적인 원인(토큰 미설정, 인증 실패, 권한 부족 등)을 안내합니다.
+> **시작 시 자동 검증**: CLI 설치 → CLI 인증 → GitHub 연동 + 토큰 스코프를 순차적으로 확인합니다. Classic PAT의 `project` 스코프 누락 시 경고를 표시합니다.
 
 > 참고: AI CLI 도구의 API 키는 각 CLI가 자체적으로 관리합니다 (각 CLI의 인증 방식을 따르세요).
 
@@ -218,6 +228,19 @@ CLI별 변환:
 | Claude | `--effort` | 0-25: low, 26-75: medium, 76-100: high |
 | Codex | `-c model_reasoning_effort` | 0-25: low, 26-60: medium, 61-85: high, 86-100: xhigh |
 | Gemini | (CLI 플래그 미지원) | settings.json `thinkingConfig`으로만 제어 |
+
+#### parallel_development (병렬 실행)
+
+Phase 5(개발)에서 의존성이 없는 태스크들의 LLM 호출을 동시에 실행합니다:
+
+```yaml
+pipeline:
+  parallel_development: true    # 기본값: true
+```
+
+- `true`: 의존성 그래프를 분석하여 독립 태스크를 배치 단위로 병렬 실행
+- `false`: 기존 순차 실행 방식 유지
+- Git 작업(브랜치 생성, 커밋)은 충돌 방지를 위해 항상 직렬 큐로 처리
 
 #### 회의 시스템
 
@@ -360,14 +383,15 @@ node src/index.js init
 워크스페이스가 연동되면 Phase 5(개발)에서:
 - 디렉토리 구조 트리를 캐싱하여 LLM에 제공
 - 태스크별로 키워드 기반 관련 파일을 검색하여 코드 맥락 제공
-- 태스크별 feature 브랜치 자동 생성 (`feature/{issueNumber}-{title}`)
+- 태스크별 feature 브랜치 자동 생성 (`feature/{issueNumber}-{정제된 title}`)
+- 의존성 기반 병렬 실행: 독립 태스크의 LLM 호출을 동시 실행 (Git 작업은 직렬 큐)
 - 생성된 코드를 로컬 파일로 저장 후 `git add` + `git commit`
 - Phase 6(리뷰)/Phase 7(QA) 수정 시에도 로컬 재커밋
 
 ## 파이프라인 상세
 
 ```
-Phase 0: 코드베이스 분석 (수정 모드 시)
+Phase 0: 코드베이스 분석 (수정 모드 + 로컬 워크스페이스 시)
   → 기존 코드베이스 구조 및 패턴 분석
   → 분석 결과를 이후 Phase에서 맥락으로 활용
 
@@ -394,8 +418,9 @@ Phase 4: 작업 분배
   → 이미지 태스크는 image_model 보유 에이전트에게 우선 배정
   → 배정 이유가 Issue Comment로 기록
 
-Phase 5: 개발
-  → 각 페르소나가 자신의 지정 모델로 코드 작성
+Phase 5: 개발 (의존성 기반 병렬 실행)
+  → 태스크 간 의존성을 분석하여 독립 태스크를 병렬 실행
+  → LLM 호출은 병렬, Git 작업은 직렬 큐로 충돌 방지
   → 이미지 태스크: image_model로 이미지 생성 (output/images/ 저장)
   → feature 브랜치에 커밋
   → 진행 상황이 Issue Comment로 업데이트
@@ -428,7 +453,7 @@ Phase 8: PR 생성
 | **PromptAssembler** | 토큰 예산 맥락 조립 | 작업 유형별 필요 정보만 추출하여 LLM 프롬프트 구성 (코드베이스 맥락 포함) |
 | **ResponseParser** | LLM 응답 구조화 파싱 | JSON 추출 + 키워드 폴백으로 판정(verdict) 추출 |
 | **LocalWorkspace** | 로컬 Git 레포 연동 | 파일 탐색/읽기/쓰기 + git 브랜치/커밋/푸시 자동화 |
-| **validateConnections** | 시작 시 연결 검증 | CLI 설치 → 인증 프로브 → GitHub 토큰/권한 확인을 실시간 표시 |
+| **validateConnections** | 시작 시 연결 검증 | CLI 설치 → 인증 → GitHub 토큰/권한/스코프 확인을 실시간 표시 |
 
 ### PipelineState 필드 카탈로그
 
@@ -453,7 +478,7 @@ github.designIssue      - GitHub 설계 Issue 번호
 |-------|--------|------|------|
 | 회의 | `forMeeting()` | 8,000자 | 이전 발언이 많아 균형 조절 |
 | 코딩 | `forCoding()` | 12,000자 | 코드 품질 우선 (최대 예산) |
-| 수정 | `forCoding()` (fix) | 10,000자 | 피드백 + 설계 맥락 |
+| 수정 | `forFix()` | 10,000자 | 피드백 + 설계 맥락 |
 | 리뷰 | `forReview()` | 6,000자 | 코드는 별도 전달 |
 | QA | `forQA()` | 4,000자 | 리뷰 결과만 필요 |
 | 이미지 | `forImageGeneration()` | 6,000자 | 이미지 생성 프롬프트 |
@@ -471,8 +496,16 @@ github.designIssue      - GitHub 설계 Issue 번호
 ```
 src/
 ├── index.js                    # CLI 엔트리포인트 (Commander.js) + dotenv 로드
+├── i18n/
+│   ├── index.js                # i18next 초기화 + t() 번역 함수
+│   ├── detect-locale.js        # OS 로케일 자동 감지 (LC_ALL → LANG → Intl)
+│   └── locales/
+│       ├── en.json             # English
+│       ├── ko.json             # 한국어
+│       ├── ja.json             # 日本語
+│       └── zh-CN.json          # 中文(简体)
 ├── config/
-│   ├── loader.js               # YAML 설정 로더 + CLI/GitHub 연결 검증
+│   ├── loader.js               # YAML 설정 로더 + CLI/GitHub 연결 검증 + 스코프 체크
 │   └── interaction.js          # 인터랙션 모드 관리
 ├── models/
 │   ├── adapter.js              # CLI 추상화 (claude/gemini/codex) + thinking 매핑
@@ -484,7 +517,7 @@ src/
 │   ├── pipeline-state.js       # 단일 상태 저장소 (Phase 체크포인트 포함)
 │   └── prompt-assembler.js     # Phase별 차등 토큰 예산 맥락 조립기
 ├── pipeline/
-│   └── orchestrator.js         # 9-Phase 파이프라인 (Phase 0~8 + 체크포인트/재개)
+│   └── orchestrator.js         # 9-Phase 파이프라인 (Phase 0~8 + 병렬 실행 + 체크포인트)
 ├── workspace/
 │   ├── local-workspace.js      # 로컬 Git 레포 (파일 탐색/읽기/쓰기 + git CLI)
 │   └── noop-workspace.js       # 워크스페이스 미설정 시 No-op 클라이언트
@@ -507,9 +540,11 @@ src/
 └── github/
     └── client.js               # GitHub API (Issues, PRs, Projects) + 빈 레포 자동 초기화
 test/
-├── response-parser.test.js     # ResponseParser 단위 테스트
+├── response-parser.test.js     # ResponseParser 단위 테스트 (다언어 키워드 매칭 포함)
 ├── pipeline-state.test.js      # PipelineState 단위 테스트
 ├── prompt-assembler.test.js    # PromptAssembler 단위 테스트
+├── paste-detect-stream.test.js # Bracketed Paste Mode 테스트
+├── i18n.test.js                # 번역 키 동기화 검증 (4개 언어 일치)
 └── team.test.js                # Team 페르소나 정규화 테스트
 ```
 
@@ -573,6 +608,21 @@ personas:
 ```
 
 > 모든 페르소나는 회의에 참여하되, 관련 없는 주제에서는 `[PASS]`로 자발적으로 패스합니다. 별도의 on_demand 설정은 필요 없습니다.
+
+## 다국어 지원 (i18n)
+
+CLI UI, AI 시스템 프롬프트, GitHub 코멘트 등 모든 텍스트가 4개 언어로 제공됩니다:
+
+| 언어 | 코드 | 설정 방법 |
+|------|------|----------|
+| 한국어 | `ko` | `--lang ko` 또는 OS 로케일 |
+| English | `en` | `--lang en` 또는 OS 로케일 |
+| 日本語 | `ja` | `--lang ja` 또는 OS 로케일 |
+| 中文(简体) | `zh-CN` | `--lang zh-CN` 또는 OS 로케일 |
+
+**로케일 감지 우선순위**: `--lang` 플래그 → 환경변수 (`LC_ALL`, `LC_MESSAGES`, `LANG`) → `Intl` API → `en` (기본값)
+
+AI 응답 파싱도 다국어 대응: 코드 리뷰 판정(`APPROVED`/`승인`/`承認`/`批准`), QA 판정(`PASS`/`합격`/`合格`/`通过`) 등을 언어에 무관하게 인식합니다.
 
 ## 라이선스
 
