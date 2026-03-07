@@ -6,12 +6,14 @@ import chalk from "chalk";
 import { Session } from "../session/session.js";
 import { SessionStore } from "../session/session-store.js";
 import { CommandRouter } from "./command-router.js";
+import { StatusBar } from "./status-bar.js";
 
 export class ReplShell {
   constructor(config) {
     this.config = config;
     this.session = new Session(config);
     this.router = new CommandRouter(this);
+    this.statusBar = new StatusBar(this);
     this.rl = null;
     this._running = false;
     this._exiting = false;
@@ -98,6 +100,8 @@ export class ReplShell {
       ? chalk.gray(`[${lastTitle.substring(0, 20)}] `)
       : "";
     const promptStr = `${prefix}${chalk.bold.green(">")} `;
+
+    this.statusBar.print();
 
     return new Promise((resolve) => {
       let timer = null;
