@@ -28,10 +28,10 @@ export function loadConfig(configPath) {
 
 function findConfigFile() {
   const candidates = [
-    "agent-team.config.yaml",
-    "agent-team.config.yml",
-    ".agent-team.yaml",
-    ".agent-team.yml",
+    "polymeld.config.yaml",
+    "polymeld.config.yml",
+    ".polymeld.yaml",
+    ".polymeld.yml",
   ];
 
   for (const name of candidates) {
@@ -42,7 +42,7 @@ function findConfigFile() {
 }
 
 function getDefaultConfigPath() {
-  return path.resolve(process.cwd(), "agent-team.config.yaml");
+  return path.resolve(process.cwd(), "polymeld.config.yaml");
 }
 
 /**
@@ -122,7 +122,7 @@ async function checkGitHub() {
   if (!token) return { ok: false, reason: t("config.tokenMissing") };
   if (!repo) return { ok: false, reason: t("config.repoMissing") };
 
-  const headers = { Authorization: `Bearer ${token}`, "User-Agent": "agent-team-cli" };
+  const headers = { Authorization: `Bearer ${token}`, "User-Agent": "polymeld" };
 
   try {
     // 1) 토큰 인증 확인

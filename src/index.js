@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // src/index.js
-// Agent Team CLI - 멀티 AI 모델 개발팀 시뮬레이션
+// Polymeld - 멀티 AI 모델 개발팀 시뮬레이션
 // PipelineState + PromptAssembler 기반 아키텍처
 
 import "dotenv/config";
@@ -25,7 +25,7 @@ import { Session } from "./session/session.js";
 const program = new Command();
 
 program
-  .name("agent-team")
+  .name("polymeld")
   .description(t("cli.description"))
   .version("0.1.0");
 
@@ -63,7 +63,7 @@ program
       };
     }
 
-    console.log(chalk.bold.cyan("\n🤖 Agent Team CLI\n"));
+    console.log(chalk.bold.cyan("\n🤖 Polymeld\n"));
     console.log(chalk.gray(t("cli.run.interactionMode", { mode: interactionMode })));
     if (interactionMode === "full-auto") {
       console.log(
@@ -137,7 +137,7 @@ program
       const issue = await github.createIssue(
         t("cli.meeting.meetingIssueTitle", { emoji, type, title }),
         markdown,
-        ["meeting-notes", type, "agent-team"]
+        ["meeting-notes", type, "polymeld"]
       );
       console.log(chalk.green(`\n${t("cli.meeting.meetingRegistered", { number: issue.number })}`));
     }

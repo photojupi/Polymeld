@@ -74,10 +74,10 @@ export class Session {
     // 2순위: cwd 자동감지 (.git 존재 + 자기 자신이 아닌 경우)
     const cwd = process.cwd();
     if (fs.existsSync(path.join(cwd, ".git"))) {
-      // agent-team 자체 레포에서 실행하는 경우 자동감지 건너뜀
+      // polymeld 자체 레포에서 실행하는 경우 자동감지 건너뜀
       try {
         const pkg = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
-        if (pkg.name === "agent-team-cli" || pkg.name === "agent-team") {
+        if (pkg.name === "polymeld") {
           this.workspace = new NoOpWorkspace();
           return;
         }
@@ -141,7 +141,7 @@ export class Session {
     await this.github.ensureInitialCommit();
     await this.github.ensureLabels(this.config.github?.labels || {});
     await this.github.findOrCreateProject(
-      this.config.github?.project_name || `${this.github.repo}_autollm`
+      this.config.github?.project_name || `${this.github.repo}_polymeld`
     );
   }
 
@@ -257,7 +257,7 @@ export class Session {
         const pkgPath = path.join(this.workspace.repoPath, "package.json");
         if (fs.existsSync(pkgPath)) {
           const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-          if (pkg.name && pkg.name !== "agent-team-cli" && pkg.name !== "agent-team") {
+          if (pkg.name && pkg.name !== "polymeld") {
             return pkg.name;
           }
         }
