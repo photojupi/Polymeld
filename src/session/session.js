@@ -56,6 +56,10 @@ export class Session {
           ? configPath.replace("~", process.env.HOME || "")
           : configPath;
         const ws = new LocalWorkspace(resolved, { autoInit: true });
+        const envRepo = process.env.GITHUB_REPO;
+        if (envRepo && !ws.getRemoteRepo()) {
+          ws.addRemote("origin", `https://github.com/${envRepo}.git`);
+        }
         if (this._validateWorkspaceRemote(ws)) {
           this.workspace = ws;
           console.log(chalk.green(`  📂 워크스페이스: ${ws.repoPath}`));
