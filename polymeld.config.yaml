@@ -215,7 +215,7 @@ pipeline:
   #   Claude  → --effort (low/medium/high)
   #   Codex   → -c model_reasoning_effort (low/medium/high/xhigh)
   #   Gemini  → CLI 플래그 미지원 (settings.json thinkingConfig으로만 제어)
-  thinking_budget: 70
+  thinking_budget: 50
 
   # ─── 병렬 실행 설정 ───────────────────────────────
   # Phase 5(개발) 시 의존성 기반 병렬 실행 활성화
