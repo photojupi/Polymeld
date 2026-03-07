@@ -520,7 +520,9 @@
     "ownerNotFound": "⚠️ GitHub owner를 찾을 수 없습니다. 프로젝트 보드를 건너뜁니다.",
     "projectCreateFailed": "⚠️ 프로젝트 생성 실패:",
     "projectScopeHint": "→ 토큰에 'project' scope가 있는지 확인하세요.",
-    "projectLinkFailed": "⚠️ 프로젝트-레포 연결 실패:"
+    "projectLinkFailed": "⚠️ 프로젝트-레포 연결 실패:",
+    "pipelineFieldCreated": "✅ 프로젝트에 'Pipeline' 필드 생성 완료 — 보드 뷰에서 컬럼 필드를 'Pipeline'으로 변경하세요.",
+    "pipelineFieldFailed": "⚠️ Pipeline 필드 설정 실패:"
   },
   "onboarding": {
     "welcome": "🚀 Polymeld에 오신 것을 환영합니다!",

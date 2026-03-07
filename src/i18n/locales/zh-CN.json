@@ -516,7 +516,9 @@
     "ownerNotFound": "⚠️ 无法找到GitHub所有者。跳过项目看板。",
     "projectCreateFailed": "⚠️ 项目创建失败:",
     "projectScopeHint": "→ 请检查令牌是否有 'project' 权限。",
-    "projectLinkFailed": "⚠️ 项目-仓库关联失败:"
+    "projectLinkFailed": "⚠️ 项目-仓库关联失败:",
+    "pipelineFieldCreated": "✅ 'Pipeline'字段已创建 — 请在看板视图中将列字段切换为'Pipeline'。",
+    "pipelineFieldFailed": "⚠️ Pipeline字段设置失败:"
   },
   "onboarding": {
     "welcome": "🚀 欢迎使用 Polymeld！",
