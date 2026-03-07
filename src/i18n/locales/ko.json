@@ -451,6 +451,8 @@
     "unsupportedCli": "지원하지 않는 CLI: {{cli}}",
     "cliError": "[{{cli}}] CLI 오류 (exit {{code}}): {{output}}",
     "noOutput": "(출력 없음)",
+    "rateLimitFallback": "⚠️ {{from}} 사용량 한도 초과 → {{to}}(으)로 전환합니다",
+    "rateLimitNoFallback": "⚠️ {{from}} 사용량 한도 초과 — fallback 모델 \"{{fallback}}\"이 설정에 없습니다",
     "timeout": "타임아웃 ({{seconds}}초 초과)",
     "timeoutIdle": "유휴 타임아웃 ({{seconds}}초간 출력 없음)",
     "timeoutMax": "최대 타임아웃 ({{seconds}}초 초과)",

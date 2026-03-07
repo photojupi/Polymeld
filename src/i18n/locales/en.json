@@ -451,6 +451,8 @@
     "unsupportedCli": "Unsupported CLI: {{cli}}",
     "cliError": "[{{cli}}] CLI error (exit {{code}}): {{output}}",
     "noOutput": "(no output)",
+    "rateLimitFallback": "⚠️ {{from}} rate limit reached → falling back to {{to}}",
+    "rateLimitNoFallback": "⚠️ {{from}} rate limit reached — fallback model \"{{fallback}}\" not found in config",
     "timeout": "Timeout (exceeded {{seconds}}s)",
     "timeoutIdle": "Idle timeout (no output for {{seconds}}s)",
     "timeoutMax": "Max timeout (exceeded {{seconds}}s)",

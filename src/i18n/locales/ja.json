@@ -451,6 +451,8 @@
     "unsupportedCli": "サポートされていないCLI: {{cli}}",
     "cliError": "[{{cli}}] CLIエラー（終了コード {{code}}）: {{output}}",
     "noOutput": "（出力なし）",
+    "rateLimitFallback": "⚠️ {{from}} 使用量制限超過 → {{to}} に切り替えます",
+    "rateLimitNoFallback": "⚠️ {{from}} 使用量制限超過 — フォールバックモデル \"{{fallback}}\" が設定に見つかりません",
     "timeout": "タイムアウト（{{seconds}}秒超過）",
     "timeoutIdle": "アイドルタイムアウト（{{seconds}}秒間出力なし）",
     "timeoutMax": "最大タイムアウト（{{seconds}}秒超過）",
