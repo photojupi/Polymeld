@@ -9,7 +9,6 @@ export class PipelineState {
     this.project = { requirement: "", title: "" };
 
     // --- Phase 결과물 ---
-    this.kickoffSummary = "";
     this.designDecisions = "";
     this.techStack = "";
 
@@ -28,10 +27,10 @@ export class PipelineState {
     this.codebaseAnalysis = null;
 
     // --- GitHub 메타 ---
-    this.github = { kickoffIssue: null, designIssue: null };
+    this.github = { planningIssue: null };
 
     // --- Phase 체크포인트 ---
-    /** @type {string[]} 완료된 Phase ID 목록 (e.g., ["kickoff", "design"]) */
+    /** @type {string[]} 완료된 Phase ID 목록 (e.g., ["planning", "taskBreakdown"]) */
     this.completedPhases = [];
   }
 
@@ -142,7 +141,6 @@ export class PipelineState {
     return {
       version: 1,
       project: this.project,
-      kickoffSummary: this.kickoffSummary,
       designDecisions: this.designDecisions,
       techStack: this.techStack,
       codebaseAnalysis: this.codebaseAnalysis,
@@ -160,7 +158,6 @@ export class PipelineState {
 
     if (data.version === 1) {
       state.project = data.project || { requirement: "", title: "" };
-      state.kickoffSummary = data.kickoffSummary || "";
       state.designDecisions = data.designDecisions || "";
       state.techStack = data.techStack || "";
       state.codebaseAnalysis = data.codebaseAnalysis || null;
@@ -168,7 +165,7 @@ export class PipelineState {
       state.completedTasks = data.completedTasks || [];
       state.messages = data.messages || [];
       state._nextMsgId = data.nextMsgId || 1;
-      state.github = data.github || { kickoffIssue: null, designIssue: null };
+      state.github = data.github || { planningIssue: null };
       state.completedPhases = data.completedPhases || [];
     }
 

@@ -59,28 +59,25 @@ export class PipelineOrchestrator {
       await this._phase(t("pipeline.phase.codebaseAnalysis"), () => this.phaseCodebaseAnalysis(requirement), { phaseId: "codebaseAnalysis" });
     }
 
-    // Phase 1: 킥오프 미팅
-    await this._phase(t("pipeline.phase.kickoff"), () => this.phaseKickoff(), { phaseId: "kickoff" });
+    // Phase 1: 미팅
+    await this._phase(t("pipeline.phase.planning"), () => this.phasePlanning(), { phaseId: "planning" });
 
-    // Phase 2: 기술 설계 미팅
-    await this._phase(t("pipeline.phase.design"), () => this.phaseDesign(), { phaseId: "design" });
-
-    // Phase 3: 태스크 분해
+    // Phase 2: 태스크 분해
     await this._phase(t("pipeline.phase.taskBreakdown"), () => this.phaseTaskBreakdown(), { phaseId: "taskBreakdown" });
 
-    // Phase 4: 작업 분배
+    // Phase 3: 작업 분배
     await this._phase(t("pipeline.phase.assignment"), () => this.phaseAssignment(), { phaseId: "assignment" });
 
-    // Phase 5: 개발
+    // Phase 4: 개발
     await this._phase(t("pipeline.phase.development"), () => this.phaseDevelopment(), { phaseId: "development" });
 
-    // Phase 6: 코드 리뷰
+    // Phase 5: 코드 리뷰
     await this._phase(t("pipeline.phase.codeReview"), () => this.phaseCodeReview(), { phaseId: "codeReview" });
 
-    // Phase 7: QA
+    // Phase 6: QA
     await this._phase(t("pipeline.phase.qa"), () => this.phaseQA(), { phaseId: "qa" });
 
-    // Phase 8: PR 생성
+    // Phase 7: PR 생성
     await this._phase(t("pipeline.phase.pr"), () => this.phasePR(), { phaseId: "pr" });
 
     console.log(chalk.bold.green(`\n${t("pipeline.completed")}\n`));
@@ -90,9 +87,9 @@ export class PipelineOrchestrator {
     console.log(chalk.gray(decisionLog));
 
     // 결정 로그를 GitHub에 기록
-    if (this.state.github.kickoffIssue && process.env.GITHUB_TOKEN) {
+    if (this.state.github.planningIssue && process.env.GITHUB_TOKEN) {
       await this.github.addComment(
-        this.state.github.kickoffIssue,
+        this.state.github.planningIssue,
         t("pipeline.pipelineCompleteComment", { mode: this.interaction.mode, log: decisionLog })
       );
     }
@@ -301,90 +298,47 @@ export class PipelineOrchestrator {
     console.log(chalk.gray(`  ${t("pipeline.codebaseSize", { size: analysis.length })}`));
   }
 
-  // ─── Phase 1: 킥오프 미팅 ─────────────────────────────
+  // ─── Phase 1: 미팅 ──────────────────────────────────
 
-  async phaseKickoff() {
-    const spinner = ora(t("pipeline.kickoffSpinner")).start();
-
-    const requirement = this.state.project.requirement;
-    const projectTitle = this.state.project.title;
-
-    const meetingLog = await this.team.conductMeeting(
-      requirement,
-      `${t("common.project")}: ${projectTitle}`,
-      {
-        rounds: this.config.pipeline?.max_kickoff_rounds || 2,
-        ...this._meetingCallbacks(spinner),
-      }
-    );
-
-    spinner.succeed(t("pipeline.kickoffComplete"));
-
-    // 킥오프 요약 저장
-    const lastRound = meetingLog.rounds[meetingLog.rounds.length - 1];
-    const summary = lastRound.speeches.find((s) => s.isSummary && !s.isEmpty);
-    this.state.kickoffSummary = summary?.content || "";
-
-    // 마크다운 생성
-    const markdown = this.team.formatMeetingAsMarkdown(meetingLog, "kickoff");
-    console.log(chalk.gray(`\n${t("pipeline.meetingPreview")}`));
-    console.log(markdown.substring(0, 500) + "...\n");
-
-    // GitHub Issue 등록
-    const issueSpinner = ora(t("pipeline.githubRegistering")).start();
-    const issue = await this.github.createIssue(
-      t("pipeline.kickoffIssueTitle", { title: projectTitle }),
-      markdown,
-      ["meeting-notes", "kickoff", "polymeld"]
-    );
-    this.state.github.kickoffIssue = issue.number;
-    issueSpinner.succeed(t("pipeline.meetingRegistered", { number: issue.number, url: this.github.issueUrl(issue.number) }));
-  }
-
-  // ─── Phase 2: 기술 설계 미팅 ──────────────────────────
-
-  async phaseDesign() {
-    const spinner = ora(t("pipeline.designSpinner")).start();
+  async phasePlanning() {
+    const spinner = ora(t("pipeline.planningSpinner")).start();
 
     const requirement = this.state.project.requirement;
     const projectTitle = this.state.project.title;
 
-    const kickoff = this.state.kickoffSummary
-      ? t("agent.kickoffConclusion", { summary: this.state.kickoffSummary.substring(0, 500) })
-      : "";
-
-    const topic = t("agent.designTopic", { title: projectTitle, requirement, kickoff });
+    const topic = t("agent.planningTopic", { title: projectTitle, requirement });
 
     const meetingLog = await this.team.conductMeeting(topic, "", {
-      rounds: this.config.pipeline?.max_design_rounds || 3,
+      rounds: this.config.pipeline?.max_planning_rounds || 2,
       ...this._meetingCallbacks(spinner),
     });
 
-    spinner.succeed(t("pipeline.designComplete"));
+    spinner.succeed(t("pipeline.planningComplete"));
 
-    const markdown = this.team.formatMeetingAsMarkdown(meetingLog, "design");
+    const markdown = this.team.formatMeetingAsMarkdown(meetingLog);
 
     // 팀장의 마지막 정리를 설계 결정사항으로 저장
     const lastRound = meetingLog.rounds[meetingLog.rounds.length - 1];
     const summary = lastRound.speeches.find((s) => s.isSummary && !s.isEmpty);
     this.state.designDecisions = summary?.content || markdown;
 
-    console.log(chalk.gray(`\n${t("pipeline.designPreview")}`));
+    console.log(chalk.gray(`\n${t("pipeline.meetingPreview")}`));
     console.log(
       (summary?.content || "").substring(0, 500) + "...\n"
     );
 
-    const issueSpinner = ora(t("pipeline.designRegistering")).start();
+    // GitHub Issue 등록
+    const issueSpinner = ora(t("pipeline.githubRegistering")).start();
     const issue = await this.github.createIssue(
-      t("pipeline.designIssueTitle", { title: projectTitle }),
+      t("pipeline.planningIssueTitle", { title: projectTitle }),
       markdown,
-      ["meeting-notes", "design", "polymeld"]
+      ["meeting-notes", "planning", "polymeld"]
     );
-    this.state.github.designIssue = issue.number;
-    issueSpinner.succeed(t("pipeline.designRegistered", { number: issue.number, url: this.github.issueUrl(issue.number) }));
+    this.state.github.planningIssue = issue.number;
+    issueSpinner.succeed(t("pipeline.meetingRegistered", { number: issue.number, url: this.github.issueUrl(issue.number) }));
   }
 
-  // ─── Phase 3: 태스크 분해 ─────────────────────────────
+  // ─── Phase 2: 태스크 분해 ─────────────────────────────
 
   async phaseTaskBreakdown() {
     const spinner = ora(t("pipeline.taskBreakdownSpinner")).start();
@@ -454,7 +408,7 @@ ${t("pipeline.taskBody.acceptanceCriteria")}
 ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
 ---
-> ${t("pipeline.taskBody.autoGenerated")} | ${t("pipeline.prBody.kickoffMeeting")}: #${this.state.github.kickoffIssue} | ${t("pipeline.prBody.designMeeting")}: #${this.state.github.designIssue}`;
+> ${t("pipeline.taskBody.autoGenerated")} | ${t("pipeline.prBody.planningMeeting")}: #${this.state.github.planningIssue}`;
 
       const issue = await this.github.createIssue(
         `\uD83D\uDD27 ${task.title}`,
@@ -471,7 +425,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     }
   }
 
-  // ─── Phase 4: 작업 분배 ───────────────────────────────
+  // ─── Phase 3: 작업 분배 ───────────────────────────────
 
   async phaseAssignment() {
     console.log(chalk.cyan(`\n${t("pipeline.assignmentHeader")}\n`));
@@ -507,7 +461,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     }
   }
 
-  // ─── Phase 5: 개발 ───────────────────────────────────
+  // ─── Phase 4: 개발 ───────────────────────────────────
 
   async phaseDevelopment() {
     const parallelEnabled = this.config.pipeline?.parallel_development !== false;
@@ -583,7 +537,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     }
   }
 
-  // ─── Phase 6: 코드 리뷰 (실패 시 팀장 직접 수정) ─────────────
+  // ─── Phase 5: 코드 리뷰 (실패 시 팀장 직접 수정) ─────────────
 
   async phaseCodeReview() {
     const lead = this.team.lead;
@@ -668,7 +622,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     }
   }
 
-  // ─── Phase 7: QA (실패 시 팀장 직접 수정) ─────────────────────
+  // ─── Phase 6: QA (실패 시 팀장 직접 수정) ─────────────────────
 
   async phaseQA() {
     const qaAgent = this.team.qa;
@@ -788,7 +742,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     return ResponseParser.parseQAVerdict(qaResult).verdict === "FAIL";
   }
 
-  // ─── Phase 8: PR 생성 ────────────────────────────────
+  // ─── Phase 7: PR 생성 ────────────────────────────────
 
   async phasePR() {
     const projectTitle = this.state.project.title || "";
@@ -851,8 +805,7 @@ ${tasks
   .join("\n")}
 
 ${t("pipeline.prBody.meetingRecords")}
-- ${t("pipeline.prBody.kickoffMeeting")}: #${this.state.github.kickoffIssue}
-- ${t("pipeline.prBody.designMeeting")}: #${this.state.github.designIssue}
+- ${t("pipeline.prBody.planningMeeting")}: #${this.state.github.planningIssue}
 
 ${t("pipeline.prBody.communicationLog")}
 ${communicationLog}
@@ -947,7 +900,7 @@ ${this.team
 
   /**
    * 수정된 코드를 워크스페이스에 재기록 + 재커밋
-   * Phase 6(리뷰)/Phase 7(QA) 수정 루프에서 공통 사용
+   * Phase 5(리뷰)/Phase 6(QA) 수정 루프에서 공통 사용
    */
   async _recommitCode(task, rawCode, commitMessage) {
     if (!this.workspace?.isLocal || !task.filePath) return;

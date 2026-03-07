@@ -73,22 +73,20 @@ describe("PipelineState 직렬화", () => {
   it("toJSON → fromJSON 라운드트립", () => {
     const state = new PipelineState();
     state.project = { requirement: "앱 만들기", title: "MyApp" };
-    state.kickoffSummary = "요약";
     state.designDecisions = "React + Node.js";
     state.tasks = [{ id: "t1", title: "초기 설정" }];
     state.addMessage({ from: "a", to: "b", type: "test", content: "hello" });
-    state.github = { kickoffIssue: 1, designIssue: 2 };
+    state.github = { planningIssue: 1 };
 
     const json = state.toJSON();
     const restored = PipelineState.fromJSON(json);
 
     assert.deepEqual(restored.project, state.project);
-    assert.equal(restored.kickoffSummary, "요약");
     assert.equal(restored.designDecisions, "React + Node.js");
     assert.equal(restored.tasks.length, 1);
     assert.equal(restored.messages.length, 1);
     assert.equal(restored.messages[0].content, "hello");
-    assert.deepEqual(restored.github, { kickoffIssue: 1, designIssue: 2 });
+    assert.deepEqual(restored.github, { planningIssue: 1 });
   });
 
   it("toJSON: assignedAgent 인스턴스가 직렬화에서 제외되고 assignedAgentId는 보존", () => {

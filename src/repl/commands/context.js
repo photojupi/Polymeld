@@ -7,7 +7,6 @@ export function contextCommand(session) {
   const fields = [
     ["project.title", state.project.title],
     ["project.requirement", state.project.requirement],
-    ["kickoffSummary", state.kickoffSummary],
     ["designDecisions", state.designDecisions],
     ["techStack", state.techStack],
     ["tasks", `${state.tasks.length}`],
