@@ -178,7 +178,7 @@ export class Team {
 
       // 중간 라운드: 팀장 결론 확인 (결론 시 조기 종료)
       let shouldBreak = false;
-      if (round > 0 && !isLastRound) {
+      if (!isLastRound) {
         shouldBreak = await this._checkMidRoundConclusion({ topic, roundLog, onSpeak, onStream });
       }
 
