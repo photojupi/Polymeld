@@ -335,9 +335,10 @@ export class LocalWorkspace {
 
   gitCommit(message) {
     try {
+      const staged = this._git(["diff", "--cached", "--name-only"]);
+      if (!staged) return; // 스테이징된 변경 없음 → 커밋 불필요
       this._git(["commit", "-m", message]);
     } catch (e) {
-      // nothing to commit인 경우 무시
       if (e.message?.includes("nothing to commit")) return;
       throw e;
     }
