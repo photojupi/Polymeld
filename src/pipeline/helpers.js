@@ -11,7 +11,7 @@ import { t } from "../i18n/index.js";
  * 태스크가 이미지 생성 관련인지 판단
  */
 export function isImageTask(task) {
-  if (task.category === "art") return true;
+  if (task.category === "art" || task.category === "asset") return true;
   const keywords = ["이미지", "image", "디자인", "design", "목업", "mockup",
     "아이콘", "icon", "일러스트", "illustrat", "배너", "banner",
     "로고", "logo", "와이어프레임", "wireframe",
