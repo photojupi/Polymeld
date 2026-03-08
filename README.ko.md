@@ -70,6 +70,49 @@ Phase 7  PR 생성               모든 이력이 링크된 PR 자동 생성
 
 > **체크포인트**: 각 Phase 완료 시 저장되어, `/resume`으로 해당 Phase부터 재개 가능.
 
+## 📌 GitHub Issue & 칸반 보드
+
+Polymeld는 **GitHub Issues**와 **GitHub Projects V2** 칸반 보드를 활용하여 파이프라인 전 과정을 자동 추적합니다.
+
+### 이슈 자동 생성
+
+| Phase | 생성되는 이슈 | 라벨 |
+|-------|-------------|------|
+| Phase 1 | 📝 **Planning Issue** — 회의 결과 기록 | `meeting-notes`, `planning`, `polymeld` |
+| Phase 2 | 🔧 **Task Issue** — 분해된 각 태스크별 1개 | `backlog`, `polymeld`, `{{category}}` |
+
+### 칸반 6단계 칼럼
+
+파이프라인 진행에 따라 이슈가 칸반 보드의 칼럼을 자동 이동합니다:
+
+```
+Backlog → Todo → In Progress → In Review → QA → Done
+```
+
+| 칼럼 | 전환 시점 | 라벨 변경 |
+|------|----------|----------|
+| **Backlog** | Phase 2: 태스크 분해 후 | `backlog` |
+| **Todo** | Phase 3: 페르소나에 배정 | `todo`, `assigned:{{agent}}` |
+| **In Progress** | Phase 4: 개발 시작 | `in-progress` |
+| **In Review** | Phase 5: 코드 리뷰 진행 | `in-review` |
+| **QA** | Phase 6: QA 진행 | `qa` |
+| **Done** | Phase 6: QA 통과 → Issue 자동 종료 | `done` |
+
+### 자동 코멘트
+
+각 Phase 전환 시 이슈에 코멘트가 자동 추가되어 전체 이력을 추적합니다:
+
+- 🧑‍💼 **작업 배정** — 담당자, 배정 사유
+- 🚀 **개발 시작/완료** — 에이전트명, 모델, 코드 미리보기
+- 🔍 **코드 리뷰** — 리뷰 결과 (시도 횟수 포함)
+- 🧪 **QA 결과** — 검증 결과, 피드백 기반 수정 이력
+
+### PR과 Issue 연결
+
+Phase 7에서 생성되는 PR은 완료된 모든 Task Issue를 `Closes #N`으로 참조하여, PR 머지 시 관련 이슈가 자동 종료됩니다.
+
+> GitHub 토큰 없이도 파이프라인 실행은 가능합니다. GitHub 기능만 비활성화됩니다.
+
 ## 👥 기본 팀 구성
 
 | 페르소나 | 역할 | 모델 | 이미지 |

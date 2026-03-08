@@ -70,6 +70,49 @@ Phase 7  PR 创建             自动创建包含所有记录链接的 PR
 
 > **检查点**：每个 Phase 完成时保存。使用 `/resume` 从任意 Phase 恢复。
 
+## 📌 GitHub Issue & 看板
+
+Polymeld 使用 **GitHub Issues** 和 **GitHub Projects V2** 看板自动追踪整个流水线过程。
+
+### 自动创建 Issue
+
+| Phase | 创建的 Issue | 标签 |
+|-------|-------------|------|
+| Phase 1 | 📝 **Planning Issue** — 会议结果记录 | `meeting-notes`, `planning`, `polymeld` |
+| Phase 2 | 🔧 **Task Issue** — 每个分解任务各一个 | `backlog`, `polymeld`, `{{category}}` |
+
+### 看板 6 列
+
+随着流水线推进，Issue 自动在看板列之间移动：
+
+```
+Backlog → Todo → In Progress → In Review → QA → Done
+```
+
+| 列 | 转换时机 | 标签变更 |
+|----|---------|---------|
+| **Backlog** | Phase 2：任务分解后 | `backlog` |
+| **Todo** | Phase 3：分配给角色 | `todo`, `assigned:{{agent}}` |
+| **In Progress** | Phase 4：开发开始 | `in-progress` |
+| **In Review** | Phase 5：代码评审中 | `in-review` |
+| **QA** | Phase 6：QA 进行中 | `qa` |
+| **Done** | Phase 6：QA 通过 → Issue 自动关闭 | `done` |
+
+### 自动评论
+
+每次 Phase 转换时，Issue 自动添加评论以完整追踪历史：
+
+- 🧑‍💼 **任务分配** — 负责人、分配原因
+- 🚀 **开发开始/完成** — 代理名称、模型、代码预览
+- 🔍 **代码评审** — 评审结果（含尝试次数）
+- 🧪 **QA 结果** — 验证结果、基于反馈的修复历史
+
+### PR 与 Issue 关联
+
+Phase 7 创建的 PR 通过 `Closes #N` 引用所有已完成的 Task Issue，合并 PR 时相关 Issue 自动关闭。
+
+> 没有 GitHub Token 也可以运行流水线，仅 GitHub 功能会被禁用。
+
 ## 👥 默认团队
 
 | 角色 | 职责 | 模型 | 图像 |

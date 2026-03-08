@@ -70,6 +70,49 @@ Phase 7  PR作成               全履歴がリンクされたPRを自動作成
 
 > **チェックポイント**: 各Phase完了時に保存。`/resume`で該当Phaseから再開可能。
 
+## 📌 GitHub Issue & カンバンボード
+
+Polymeldは**GitHub Issues**と**GitHub Projects V2**のカンバンボードを活用して、パイプライン全工程を自動追跡します。
+
+### Issue自動作成
+
+| Phase | 作成されるIssue | ラベル |
+|-------|----------------|--------|
+| Phase 1 | 📝 **Planning Issue** — 会議結果の記録 | `meeting-notes`, `planning`, `polymeld` |
+| Phase 2 | 🔧 **Task Issue** — 分解された各タスクごとに1つ | `backlog`, `polymeld`, `{{category}}` |
+
+### カンバン6段階カラム
+
+パイプラインの進行に応じて、Issueがカンバンボードのカラムを自動移動します：
+
+```
+Backlog → Todo → In Progress → In Review → QA → Done
+```
+
+| カラム | 遷移タイミング | ラベル変更 |
+|--------|--------------|-----------|
+| **Backlog** | Phase 2: タスク分解後 | `backlog` |
+| **Todo** | Phase 3: ペルソナに割り当て | `todo`, `assigned:{{agent}}` |
+| **In Progress** | Phase 4: 開発開始 | `in-progress` |
+| **In Review** | Phase 5: コードレビュー進行中 | `in-review` |
+| **QA** | Phase 6: QA進行中 | `qa` |
+| **Done** | Phase 6: QA通過 → Issue自動クローズ | `done` |
+
+### 自動コメント
+
+各Phase遷移時にIssueへコメントが自動追加され、全履歴を追跡できます：
+
+- 🧑‍💼 **作業割り当て** — 担当者、割り当て理由
+- 🚀 **開発開始/完了** — エージェント名、モデル、コードプレビュー
+- 🔍 **コードレビュー** — レビュー結果（試行回数を含む）
+- 🧪 **QA結果** — 検証結果、フィードバックに基づく修正履歴
+
+### PRとIssueの連携
+
+Phase 7で作成されるPRは、完了した全Task Issueを`Closes #N`で参照し、PRマージ時に関連Issueが自動クローズされます。
+
+> GitHubトークンなしでもパイプライン実行は可能です。GitHub機能のみ無効化されます。
+
 ## 👥 デフォルトチーム
 
 | ペルソナ | 役割 | モデル | 画像 |

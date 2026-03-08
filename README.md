@@ -70,6 +70,49 @@ Phase 7  PR Creation           Auto-create PR linking all artifacts
 
 > **Checkpoints**: Each phase saves a checkpoint. Use `/resume` to restart from any phase.
 
+## 📌 GitHub Issues & Kanban Board
+
+Polymeld uses **GitHub Issues** and **GitHub Projects V2** Kanban boards to automatically track the entire pipeline.
+
+### Auto-Created Issues
+
+| Phase | Issue Created | Labels |
+|-------|--------------|--------|
+| Phase 1 | 📝 **Planning Issue** — Meeting notes & decisions | `meeting-notes`, `planning`, `polymeld` |
+| Phase 2 | 🔧 **Task Issue** — One per decomposed task | `backlog`, `polymeld`, `{{category}}` |
+
+### 6-Column Kanban
+
+Issues automatically move across the Kanban board as the pipeline progresses:
+
+```
+Backlog → Todo → In Progress → In Review → QA → Done
+```
+
+| Column | Transition Point | Label Change |
+|--------|-----------------|--------------|
+| **Backlog** | Phase 2: After task breakdown | `backlog` |
+| **Todo** | Phase 3: Assigned to persona | `todo`, `assigned:{{agent}}` |
+| **In Progress** | Phase 4: Development starts | `in-progress` |
+| **In Review** | Phase 5: Code review in progress | `in-review` |
+| **QA** | Phase 6: QA in progress | `qa` |
+| **Done** | Phase 6: QA passed → Issue auto-closed | `done` |
+
+### Auto-Comments
+
+Comments are automatically added to issues at each phase transition for full traceability:
+
+- 🧑‍💼 **Assignment** — Assignee, reasoning
+- 🚀 **Dev start/complete** — Agent name, model, code preview
+- 🔍 **Code review** — Review result (with attempt count)
+- 🧪 **QA result** — Verification result, fix history
+
+### PR ↔ Issue Linking
+
+The PR created in Phase 7 references all completed Task Issues with `Closes #N`, so merging the PR automatically closes related issues.
+
+> The pipeline runs without a GitHub token too — only GitHub features are disabled.
+
 ## 👥 Default Team
 
 | Persona | Role | Model | Image |
