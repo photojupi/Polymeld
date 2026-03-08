@@ -241,7 +241,8 @@ export class LocalWorkspace {
       }).trim();
     } catch (e) {
       const stderr = e.stderr?.toString?.() || "";
-      throw new Error(`git ${args.join(" ")} failed (cwd: ${this.repoPath}): ${stderr || e.message}`);
+      const stdout = e.stdout?.toString?.() || "";
+      throw new Error(`git ${args.join(" ")} failed (cwd: ${this.repoPath}): ${stderr || stdout || e.message}`);
     }
   }
 
@@ -306,7 +307,7 @@ export class LocalWorkspace {
       this._git(["commit", "-m", message]);
     } catch (e) {
       // nothing to commit인 경우 무시
-      if (e.stderr?.includes("nothing to commit")) return;
+      if (e.message?.includes("nothing to commit")) return;
       throw e;
     }
   }
