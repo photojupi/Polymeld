@@ -16,6 +16,7 @@ Assign Claude Code, Gemini CLI, and Codex CLI to individual personas — automat
 - **📂 Local Workspace** — Reads existing code, writes files directly, manages git branches/commits
 - **🔁 Auto-Fix Loop** — Failed reviews/QA trigger automatic fix → re-review cycles
 - **💬 AI Meetings** — Real-time multi-model discussions with `[PASS]`/`[CONCLUDE]` self-regulation
+- **📊 Token Usage Tracking** — See backend (CLI/API), model name, and token count after every action
 - **🔀 3-Tier Rate Limit Fallback** — CLI → API key → fallback model — automatic switching on rate limit
 - **🌐 4-Language i18n** — Full support for English, 한국어, 日本語, 中文
 - **📌 Full GitHub Traceability** — Every step recorded as Issues, Comments, Commits, and PRs

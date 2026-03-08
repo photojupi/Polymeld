@@ -16,6 +16,7 @@
 - **📂 本地工作区** — 读取现有代码、直接创建文件、自动管理 git 分支/提交
 - **🔁 自动修复循环** — 评审/QA 失败时自动修复 → 重新验证
 - **💬 AI 会议** — 实时多模型讨论，通过 `[PASS]`/`[CONCLUDE]` 自主调节
+- **📊 Token 用量追踪** — 每个操作后显示后端（CLI/API）、模型名称和 Token 数量
 - **🔀 3 级 Rate Limit 回退** — CLI → API key → 备用模型 — rate limit 时自动切换
 - **🌐 4 语言 i18n** — 完整支持 English、한국어、日本語、中文
 - **📌 GitHub 完整可追溯** — 全过程记录为 Issues、Comments、Commits 和 PR
