@@ -341,6 +341,9 @@ export class GitHubClient {
       }
 
       // 빌트인 Status 필드 캐시 (칸반보드 기본 뷰용)
+      const allFieldNames = node.fields.nodes.map(f => f.name).filter(Boolean);
+      console.log(`[DEBUG] 프로젝트 필드 목록 (${node.fields.nodes.length}개): ${allFieldNames.join(", ")}`);
+
       const builtinStatus = node.fields.nodes.find(f => f.name === "Status");
       if (builtinStatus) {
         this.builtinStatusFieldId = builtinStatus.id;
@@ -348,6 +351,9 @@ export class GitHubClient {
         for (const opt of builtinStatus.options) {
           this.builtinStatusOptions[opt.name] = opt.id;
         }
+        console.log(`[DEBUG] 빌트인 Status 캐시 완료: fieldId=${builtinStatus.id}, options=${JSON.stringify(this.builtinStatusOptions)}`);
+      } else {
+        console.warn(`[DEBUG] 빌트인 Status 필드를 찾지 못함! 전체 필드: ${JSON.stringify(node.fields.nodes.map(f => ({ name: f.name, id: f.id })))}`);
       }
     } catch (e) {
       console.warn(t("github.pipelineFieldFailed"), e.message);
@@ -386,8 +392,12 @@ export class GitHubClient {
 
     // 빌트인 Status 필드 동기화 (칸반보드 기본 뷰 반영)
     const mappedStatus = PIPELINE_TO_STATUS[statusName];
+    console.log(`[DEBUG] setProjectItemStatus: statusName="${statusName}" → mappedStatus="${mappedStatus}", builtinFieldId=${this.builtinStatusFieldId || "없음"}, builtinOptions=${JSON.stringify(this.builtinStatusOptions || null)}`);
+
     if (mappedStatus && this.builtinStatusFieldId && this.builtinStatusOptions) {
       const builtinOptionId = this.builtinStatusOptions[mappedStatus];
+      console.log(`[DEBUG] 빌트인 Status 동기화 시도: mappedStatus="${mappedStatus}" → optionId=${builtinOptionId || "없음"}, itemId=${itemId}`);
+
       if (builtinOptionId) {
         try {
           await this.octokit.graphql(`
@@ -407,10 +417,15 @@ export class GitHubClient {
             fieldId: this.builtinStatusFieldId,
             optionId: builtinOptionId,
           });
+          console.log(`[DEBUG] 빌트인 Status 동기화 성공: "${mappedStatus}"`);
         } catch (e) {
-          console.warn("빌트인 Status 동기화 실패:", e.message);
+          console.warn(`[DEBUG] 빌트인 Status 동기화 실패:`, e.message);
         }
+      } else {
+        console.warn(`[DEBUG] 빌트인 Status optionId를 찾지 못함: mappedStatus="${mappedStatus}", 사용 가능 옵션=${JSON.stringify(this.builtinStatusOptions)}`);
       }
+    } else {
+      console.warn(`[DEBUG] 빌트인 Status 동기화 건너뜀: mappedStatus=${mappedStatus || "없음"}, builtinFieldId=${!!this.builtinStatusFieldId}, builtinOptions=${!!this.builtinStatusOptions}`);
     }
   }
 

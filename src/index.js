@@ -117,7 +117,7 @@ program
     console.log(chalk.bold.cyan(`\n${t("cli.meeting.meetingStart")}\n`));
 
     const meetingLog = await team.conductMeeting(topic, "", {
-      rounds: options.rounds ? parseInt(options.rounds) : (config.pipeline?.max_planning_rounds || 2),
+      rounds: options.rounds ? parseInt(options.rounds) : (config.pipeline?.max_planning_rounds || 3),
       onSpeak: ({ phase, agent, content }) => {
         if (phase === "spoke") {
           console.log(chalk.bold(`\n[${agent}]`));

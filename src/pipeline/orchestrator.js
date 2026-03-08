@@ -312,7 +312,7 @@ export class PipelineOrchestrator {
     const topic = t("agent.planningTopic", { title: projectTitle, requirement });
 
     const meetingLog = await this.team.conductMeeting(topic, "", {
-      rounds: this.config.pipeline?.max_planning_rounds || 2,
+      rounds: this.config.pipeline?.max_planning_rounds || 3,
       ...this._meetingCallbacks(spinner),
     });
 

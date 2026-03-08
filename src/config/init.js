@@ -209,7 +209,7 @@ pipeline:
   # Auto branch creation
   auto_branch: true
   # Max meeting rounds
-  max_planning_rounds: 2
+  max_planning_rounds: 3
   # AI thinking depth (0-100). Per-persona override available.
   thinking_budget: 70
   # Enable dependency-based parallel execution in Development phase
