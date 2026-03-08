@@ -818,8 +818,9 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
       // Done 처리
       await this.github.updateLabels(task.issueNumber, ["done"], ["qa"]);
-      await this.github.setProjectItemStatus(task.projectItemId, "Done");
       await this.github.closeIssue(task.issueNumber);
+      // closeIssue 후 builtin Status 설정 — GitHub "Item closed" 워크플로우의 덮어쓰기 방지
+      await this.github.setProjectItemStatus(task.projectItemId, "Done");
       this.state.completedTasks.push(task);
     }
   }
@@ -913,6 +914,13 @@ ${this.team
         branchName
       );
       spinner.succeed(t("pipeline.prCreated", { number: pr.number, url: this.github.prUrl(pr.number) }));
+
+      // PR 생성 후 Done 상태 재설정 — GitHub project-automation이 PR 링크 시 Status를 덮어쓰는 것 방지
+      for (const task of tasks) {
+        if (task.projectItemId) {
+          await this.github.setProjectItemStatus(task.projectItemId, "Done");
+        }
+      }
     } catch (e) {
       spinner.fail(t("pipeline.prSkipped", { category: projectTitle, message: e.message }));
     }
