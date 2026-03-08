@@ -36,11 +36,12 @@
 │  │ Code CLI │    │ CLI      │    │ CLI      │              │
 │  └────┬─────┘    └────┬─────┘    └────┬─────┘              │
 │       │               │               │                     │
-│  ┌────┴────┐   ┌──────┴──────┐  ┌─────┴─────┐             │
-│  │ 김아키   │   │ 류창작      │  │ 한코딩    │              │
-│  │ (팀장)   │   │ 강기획      │  │ (에이스)  │              │
-│  │ 안보안   │   │ 윤경험*     │  │ 정테스트  │              │
-│  └─────────┘   │ 그림솔*     │  └──────────┘              │
+│  ┌────┴─────┐  ┌────┴─────┐   ┌────┴─────┐               │
+│  │ 林架构    │  │ 刘创新   │   │ 韩码杰   │               │
+│  │ (组长)    │  │ 姜策远   │   │ (王牌)   │               │
+│  │ 安盾强    │  │ 尹悦然*  │   │ 郑测安   │               │
+│  └──────────┘  │ 画灵秀*  │   └──────────┘               │
+│                └──────────┘                                │
 │                └─────────────┘                              │
 │  * 生成图像时使用 Nano Banana 2                             │
 │  会议中通过 [PASS] 自主控制参与                             │
@@ -219,25 +220,25 @@ cli:
 ```yaml
 personas:
   tech_lead:
-    name: 김아키
+    name: 林架构
     model: claude
     thinking_budget: 100      # 按角色覆盖（0-100）
 
   ace_programmer:
-    name: 한코딩
+    name: 韩码杰
     model: codex
 
   creative_programmer:
-    name: 류창작
+    name: 刘创新
     model: gemini
 
   qa:
-    name: 정테스트
+    name: 郑测安
     model: codex
     thinking_budget: 100
 
   designer:
-    name: 윤경험
+    name: 尹悦然
     model: gemini             # 对话/设计时使用 Gemini 3.1 Pro
     image_model: gemini_image # 图像生成时使用 Nano Banana 2
 ```
@@ -295,8 +296,8 @@ pipeline:
 **实时发言预览**：会议中实时在 spinner 上显示各 AI 响应的生成过程，完成后永久输出内容：
 
 ```
-⠇ 한코딩 发言中... 这部分可以用 O(n log n) 解决
-✓ 한코딩: 这部分可以用 O(n log n) 解决。使用分治法...
+⠇ 韩码杰 发言中... 这部分可以用 O(n log n) 解决
+✓ 韩码杰: 这部分可以用 O(n log n) 解决。使用分治法...
 ```
 
 **自主跳过 (`[PASS]`)**：角色在相关话题无贡献内容时通过 `[PASS]` 自动跳过。会议记录中会保留跳过记录。
@@ -311,14 +312,14 @@ pipeline:
 
 | 角色 | 职责 | 模型 | 图像模型 | thinking |
 |---------|------|------|-----------|----------|
-| 김아키 | Tech Lead（组长） | Claude Opus 4.6 | - | 100 |
-| 한코딩 | Ace Programmer | GPT-5.4 | - | - |
-| 류창작 | Creative Programmer | Gemini 3.1 Pro | - | - |
-| 정테스트 | QA Engineer | GPT-5.4 | - | 100 |
-| 강기획 | Ace Planner | Gemini 3.1 Pro | - | - |
-| 안보안 | Security Expert | Claude Opus 4.6 | - | - |
-| 윤경험 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
-| 그림솔 | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | - |
+| 林架构 | Tech Lead（组长） | Claude Opus 4.6 | - | 100 |
+| 韩码杰 | Ace Programmer | GPT-5.4 | - | - |
+| 刘创新 | Creative Programmer | Gemini 3.1 Pro | - | - |
+| 郑测安 | QA Engineer | GPT-5.4 | - | 100 |
+| 姜策远 | Ace Planner | Gemini 3.1 Pro | - | - |
+| 安盾强 | Security Expert | Claude Opus 4.6 | - | - |
+| 尹悦然 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
+| 画灵秀 | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | - |
 
 > 所有角色都参与会议。在不相关的话题中通过 `[PASS]` 自主跳过，组长可通过 `[CONCLUDE]` 提前结束会议。
 

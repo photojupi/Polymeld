@@ -432,6 +432,16 @@
     "imagePrompt": "## 画像生成リクエスト\n{{prompt}}\n\n上記の説明に合った画像を生成してください。{{name}}（{{role}}）のデザインセンスと専門性を反映してください。",
     "generateTitlePrompt": "あなたはプロジェクトのタイトルを付ける役割です。与えられた要件を日本語の一行タイトル（50文字以内）で要約してください。タイトルのみ出力してください。",
     "noResponse": "（応答なし）",
+    "personas": {
+      "tech_lead": "設楽 匠",
+      "ace_programmer": "源 鋭太",
+      "creative_programmer": "新堂 創",
+      "qa": "検見 守",
+      "designer": "美濃 花",
+      "ace_planner": "計良 望",
+      "security_expert": "守山 盾",
+      "illustrator": "彩川 いろは"
+    },
     "concludeInstruction": "これまでの議論を検討してください。十分に結論が出ている場合は [CONCLUDE] で始めて最終結論とアクションアイテムをまとめてください。さらに議論が必要な場合は次のラウンドで重点的に議論すべきポイントを提示してください。",
     "summaryInstruction": "これまでの議論を総合して最終結論とアクションアイテムをまとめてください。",
     "meetingMarkdown": {

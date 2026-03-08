@@ -398,13 +398,14 @@ export async function validateConnections(config) {
     const blocked = [];
     const apiOnly = [];
 
-    for (const [, persona] of Object.entries(config.personas)) {
+    for (const [id, persona] of Object.entries(config.personas)) {
       const modelConfig = config.models[persona.model];
+      const name = t(`agent.personas.${id}`, { defaultValue: persona.name });
       if (modelConfig && missingClis.includes(modelConfig.cli)) {
         if (hasApiKey(modelConfig.cli)) {
-          apiOnly.push(`   - ${persona.name} (${persona.role}) → ${t("config.apiModeLabel")}`);
+          apiOnly.push(`   - ${name} (${persona.role}) → ${t("config.apiModeLabel")}`);
         } else {
-          blocked.push(`   - ${persona.name} (${persona.role}) → ${modelConfig.cli} (${t("config.installRequired", { cli: modelConfig.cli })})`);
+          blocked.push(`   - ${name} (${persona.role}) → ${modelConfig.cli} (${t("config.installRequired", { cli: modelConfig.cli })})`);
         }
       }
     }

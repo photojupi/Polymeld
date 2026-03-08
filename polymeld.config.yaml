@@ -19,8 +19,8 @@
 # 프로젝트 설정 (선택사항)
 # 프로젝트 폴더에서 실행하면 워크스페이스와 GITHUB_REPO가 자동 감지됩니다.
 # 다른 폴더의 프로젝트를 타겟으로 하려면 아래 주석을 해제하세요:
-# project:
-#   local_path: ~/Repos/your-project
+project:
+  local_path: /Users/jupi/Repos/girltest
 
 models:
   claude:
@@ -57,7 +57,7 @@ cli:
 personas:
   # ─── 핵심 페르소나 ──────────────────────────────────
   tech_lead:
-    name: 김아키
+    name: Archie Stone
     role: Tech Lead (팀장)
     model: claude          # Claude가 아키텍처/오케스트레이션에 강점
     thinking_budget: 100   # 팀장은 최대 깊이로 사고
@@ -74,7 +74,7 @@ personas:
       "트레이드오프를 생각해보면..."
 
   ace_programmer:
-    name: 한코딩
+    name: Cody Sharp
     role: Ace Programmer
     model: codex           # GPT-5.3-Codex - 최고 수준의 코딩 능력
     description: |
@@ -91,7 +91,7 @@ personas:
       "여기 병목이 있네요, 이렇게 바꾸면 10배 빨라집니다"
 
   creative_programmer:
-    name: 류창작
+    name: Nova Cruz
     role: Creative Programmer
     model: gemini          # Gemini 3.1 Pro - 창의적 문제 해결에 강점
     description: |
@@ -108,7 +108,7 @@ personas:
       "기존 방식 대신 이런 접근은 어때요? 훨씬 재밌어질 겁니다"
 
   qa:
-    name: 정테스트
+    name: Tess Hunter
     role: QA Engineer
     model: codex           # Codex를 QA에 배정
     thinking_budget: 70    # QA는 깊게 사고
@@ -125,7 +125,7 @@ personas:
       "테스트 커버리지가 충분한지 확인해봐야 합니다"
 
   designer:
-    name: 윤경험
+    name: Eve Fielding
     role: UX/Visual Designer
     model: gemini          # Gemini 3.1 Pro - 대화/분석/설계
     image_model: gemini_image  # Nano Banana 2 - 이미지 생성 시에만 사용
@@ -143,7 +143,7 @@ personas:
       "정보 구조를 먼저 잡고, 그 위에 비주얼을 입히죠"
 
   ace_planner:
-    name: 강기획
+    name: Max Planner
     role: Ace Planner
     model: gemini          # Gemini 3.1 Pro - 기획/분석에 강점
     description: |
@@ -159,7 +159,7 @@ personas:
       "이 기능의 MVP 스코프는 여기까지로 잡는 게 현실적입니다"
 
   security_expert:
-    name: 안보안
+    name: Sam Shield
     role: Security Expert
     model: claude          # Claude - 보안 분석/위협 모델링에 강점
     description: |
@@ -176,7 +176,7 @@ personas:
       "인증 플로우에서 이 시나리오를 고려해야 합니다"
 
   illustrator:
-    name: 그림솔
+    name: Iris Bloom
     role: Illustrator
     model: gemini          # Gemini 3.1 Pro - 대화/컨셉 논의
     image_model: gemini_image  # Nano Banana 2 - 이미지 생성 시에만 사용
