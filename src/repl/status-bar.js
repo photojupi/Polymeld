@@ -26,10 +26,13 @@ export class StatusBar {
 
     // Phase 진행 상태
     const completed = session.state.completedPhases.length;
+    // Phase 0(코드베이스 분석)은 수정 모드 + 로컬 워크스페이스에서만 실행됨
+    const hasCodebasePhase = session.state.completedPhases.includes("codebaseAnalysis");
+    const total = hasCodebasePhase ? 8 : 7;
     if (completed === 0) {
       parts.push(chalk.gray(t("repl.statusBar.waiting")));
     } else {
-      parts.push(chalk.cyan(t("repl.statusBar.phase", { completed })));
+      parts.push(chalk.cyan(t("repl.statusBar.phase", { completed, total })));
     }
 
     // 팀 인원

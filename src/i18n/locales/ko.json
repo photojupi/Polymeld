@@ -404,7 +404,7 @@
     },
     "statusBar": {
       "waiting": "대기",
-      "phase": "{{completed}}/8 Phase",
+      "phase": "{{completed}}/{{total}} Phase",
       "team": "팀 {{count}}명",
       "runs": "실행 {{count}}회"
     }

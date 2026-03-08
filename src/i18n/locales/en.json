@@ -37,7 +37,6 @@
       "globalSetupTitle": "🔧 Polymeld Global Setup",
       "globalExists": "Global config already exists: {{path}}",
       "globalCreated": "✅ Global config created: {{path}}",
-
       "globalComplete": "✅ Global setup complete!",
       "nextStep": "Run polymeld from your GitHub project folder.",
       "projectExists": "Project config already exists: {{path}}",
@@ -405,7 +404,7 @@
     },
     "statusBar": {
       "waiting": "Idle",
-      "phase": "{{completed}}/8 Phases",
+      "phase": "{{completed}}/{{total}} Phases",
       "team": "Team {{count}}",
       "runs": "{{count}} runs"
     }

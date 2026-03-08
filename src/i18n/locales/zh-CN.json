@@ -37,7 +37,6 @@
       "globalSetupTitle": "🔧 Polymeld 全局设置",
       "globalExists": "全局配置已存在: {{path}}",
       "globalCreated": "✅ 全局配置已创建: {{path}}",
-
       "globalComplete": "✅ 全局设置完成！",
       "nextStep": "在GitHub项目文件夹中运行 polymeld。",
       "projectExists": "项目配置已存在: {{path}}",
@@ -405,7 +404,7 @@
     },
     "statusBar": {
       "waiting": "等待中",
-      "phase": "{{completed}}/8 阶段",
+      "phase": "{{completed}}/{{total}} 阶段",
       "team": "团队 {{count}}人",
       "runs": "运行 {{count}}次"
     }

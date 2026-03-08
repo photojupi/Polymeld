@@ -37,7 +37,6 @@
       "globalSetupTitle": "🔧 Polymeld グローバル設定",
       "globalExists": "グローバル設定は既に存在します: {{path}}",
       "globalCreated": "✅ グローバル設定を作成しました: {{path}}",
-
       "globalComplete": "✅ グローバル設定完了！",
       "nextStep": "GitHubプロジェクトフォルダで polymeld を実行してください。",
       "projectExists": "プロジェクト設定は既に存在します: {{path}}",
@@ -405,7 +404,7 @@
     },
     "statusBar": {
       "waiting": "待機中",
-      "phase": "{{completed}}/8 フェーズ",
+      "phase": "{{completed}}/{{total}} フェーズ",
       "team": "チーム {{count}}名",
       "runs": "実行 {{count}}回"
     }
