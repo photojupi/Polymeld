@@ -234,7 +234,7 @@ personas:
   qa:
     name: Tess Hunter
     model: codex
-    thinking_budget: 100
+    thinking_budget: 70
 
   designer:
     name: Eve Fielding
@@ -279,7 +279,7 @@ API backend mapping:
 
 #### parallel_development (Parallel Execution)
 
-Runs LLM calls concurrently for tasks without dependencies during Phase 5 (Development):
+Runs LLM calls concurrently for tasks without dependencies during Phase 4 (Development):
 
 ```yaml
 pipeline:
@@ -289,6 +289,16 @@ pipeline:
 - `true`: Analyzes the dependency graph and runs independent tasks in parallel batches
 - `false`: Maintains the existing sequential execution mode
 - Git operations (branch creation, commits) are always serialized via a queue to prevent conflicts
+
+#### Fix Loop Settings
+
+Configure the maximum number of automatic retries when Code Review or QA fails:
+
+```yaml
+pipeline:
+  max_review_retries: 3    # Max review → fix → re-review cycles
+  max_qa_retries: 3        # Max QA failure → fix → re-verify cycles
+```
 
 #### Meeting System
 
@@ -314,7 +324,7 @@ pipeline:
 | Archie Stone | Tech Lead (Team Lead) | Claude Opus 4.6 | - | 100 |
 | Cody Sharp | Ace Programmer | GPT-5.4 | - | - |
 | Nova Cruz | Creative Programmer | Gemini 3.1 Pro | - | - |
-| Tess Hunter | QA Engineer | GPT-5.4 | - | 100 |
+| Tess Hunter | QA Engineer | GPT-5.4 | - | 70 |
 | Max Planner | Ace Planner | Gemini 3.1 Pro | - | - |
 | Sam Shield | Security Expert | Claude Opus 4.6 | - | - |
 | Eve Fielding | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
@@ -385,6 +395,7 @@ Session context (PipelineState, execution history) is preserved across runs.
 | `/history` | Show pipeline execution history |
 | `/context` | Inspect PipelineState |
 | `/team` | Show team composition |
+| `/mode` | Change interaction mode (full-auto/semi-auto/manual) |
 | `/resume` | Resume an interrupted pipeline (from phase checkpoint) |
 | `/save` | Save session |
 | `/load [id]` | Restore a session |
@@ -439,13 +450,13 @@ No manual initialization required -- it just works out of the box.
 
 ### Behavior During Development Phase
 
-When a workspace is linked, Phase 5 (Development) will:
+When a workspace is linked, Phase 4 (Development) will:
 - Cache the directory structure tree and provide it to the LLM
 - Search for relevant files per task using keyword-based matching to provide code context
 - Auto-create feature branches per task (`feature/{issueNumber}-{sanitized-title}`)
 - Dependency-based parallel execution: Run LLM calls for independent tasks concurrently (Git operations serialized via queue)
 - Save generated code as local files, then `git add` + `git commit`
-- Re-commit locally during Phase 6 (Review) / Phase 7 (QA) fixes
+- Re-commit locally during Phase 5 (Review) / Phase 6 (QA) fixes
 
 ## Pipeline Details
 
@@ -454,49 +465,42 @@ Phase 0: Codebase Analysis (modification mode + local workspace)
   → Analyze existing codebase structure and patterns
   → Analysis results used as context in subsequent phases
 
-Phase 1: Kickoff Meeting
+Phase 1: Planning Meeting
   → Personas share opinions using their respective AI models
   → Unrelated personas voluntarily pass with [PASS]
   → Team lead can end meeting early with [CONCLUDE] after sufficient discussion
-  → Issue title auto-generated as a one-line summary by the team lead AI
+  → Design decisions (designDecisions) injected into subsequent agent prompts
   → Meeting minutes automatically posted as a GitHub Issue
-  → Kickoff summary (kickoffSummary) injected into subsequent agent prompts
 
-Phase 2: Technical Design Meeting
-  → Simulates disagreements and consensus among personas
-  → Different models debate from different perspectives
-  → [PASS] / [CONCLUDE] apply the same way
-  → Design decision document posted as a GitHub Issue
-
-Phase 3: Task Decomposition
+Phase 2: Task Breakdown
   → Team lead breaks work into 1-4 hour tasks
   → Each task created as a GitHub Issue (backlog label)
 
-Phase 4: Task Assignment
+Phase 3: Assignment
   → Team lead assigns each task to the most suitable persona
   → Image tasks are preferentially assigned to agents with image_model
   → Assignment rationale recorded as an Issue Comment
 
-Phase 5: Development (Dependency-Based Parallel Execution)
+Phase 4: Development (Dependency-Based Parallel Execution)
   → Analyzes inter-task dependencies and runs independent tasks in parallel
   → LLM calls run in parallel; Git operations serialized via queue to prevent conflicts
   → Image tasks: Generate images using image_model (saved to output/images/)
   → Committed to feature branches
   → Progress updated via Issue Comments
 
-Phase 6: Code Review
+Phase 5: Code Review (up to max_review_retries retries)
   → Team lead reviews code written by other models
   → ResponseParser extracts APPROVED / CHANGES_REQUESTED verdict
   → If changes needed, team lead directly writes fix code and re-commits
   → Review results recorded as Issue Comments
 
-Phase 7: QA
+Phase 6: QA (up to max_qa_retries retries)
   → QA engineer verifies the code
   → ResponseParser extracts PASS / FAIL verdict
   → On failure, team lead directly fixes and re-commits
   → Test results recorded as a table in Issue Comments
 
-Phase 8: PR Creation
+Phase 7: PR Creation
   → Auto-creates a PR linking all artifacts (meeting minutes, reviews, QA results)
 ```
 
@@ -519,16 +523,14 @@ Phase 8: PR Creation
 ```
 project.requirement     - Original requirement text
 project.title           - Project title (auto-derived from workspace)
-kickoffSummary          - Kickoff meeting summary (injected into subsequent agent prompts)
-designDecisions         - Design decisions
+designDecisions         - Design decisions (injected into subsequent agent prompts)
 techStack               - Technology stack
 tasks[]                 - Decomposed task list (includes code/review/QA results)
 completedTasks[]        - Completed tasks
 messages[]              - All inter-agent messages
 codebaseAnalysis        - Phase 0 codebase analysis results
 completedPhases[]       - Completed phase checkpoints (used for resumption)
-github.kickoffIssue     - GitHub kickoff Issue number
-github.designIssue      - GitHub design Issue number
+github.planningIssue    - GitHub planning Issue number
 ```
 
 ### PromptAssembler -- Per-Phase Token Budget
@@ -546,9 +548,9 @@ github.designIssue      - GitHub design Issue number
 
 | Method | Purpose | Returns |
 |--------|---------|---------|
-| `parseTasks()` | Phase 3 task decomposition | Structured task array |
-| `parseReviewVerdict()` | Phase 6 code review | APPROVED / CHANGES_REQUESTED |
-| `parseQAVerdict()` | Phase 7 QA | PASS / FAIL |
+| `parseTasks()` | Phase 2 task breakdown | Structured task array |
+| `parseReviewVerdict()` | Phase 5 code review | APPROVED / CHANGES_REQUESTED |
+| `parseQAVerdict()` | Phase 6 QA | PASS / FAIL |
 
 ### Project Structure
 
@@ -579,7 +581,7 @@ src/
 │   ├── pipeline-state.js       # Single state store (with phase checkpoints)
 │   └── prompt-assembler.js     # Per-phase token budget context assembler
 ├── pipeline/
-│   └── orchestrator.js         # 9-Phase pipeline (Phase 0~8 + parallel execution + checkpoints)
+│   └── orchestrator.js         # 8-Phase pipeline (Phase 0~7 + parallel execution + checkpoints)
 ├── workspace/
 │   ├── local-workspace.js      # Local Git repo (file browse/read/write + git CLI)
 │   └── noop-workspace.js       # No-op client when workspace is not configured
@@ -595,6 +597,7 @@ src/
 │       ├── history.js
 │       ├── context.js
 │       ├── team.js
+│       ├── mode.js
 │       ├── resume.js
 │       ├── save.js
 │       └── load.js

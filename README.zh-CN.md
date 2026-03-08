@@ -235,7 +235,7 @@ personas:
   qa:
     name: 郑测安
     model: codex
-    thinking_budget: 100
+    thinking_budget: 70
 
   designer:
     name: 尹悦然
@@ -280,7 +280,7 @@ API 后端使用时的转换：
 
 #### parallel_development（并行执行）
 
-在 Phase 5（开发）中，对没有依赖关系的任务同时执行 LLM 调用：
+在 Phase 4（开发）中，对没有依赖关系的任务同时执行 LLM 调用：
 
 ```yaml
 pipeline:
@@ -290,6 +290,16 @@ pipeline:
 - `true`：分析依赖关系图，按批次并行执行独立任务
 - `false`：保持现有顺序执行方式
 - Git 操作（分支创建、提交）为防止冲突始终通过串行队列处理
+
+#### 修复循环设置
+
+配置代码评审和 QA 失败时的自动重试次数：
+
+```yaml
+pipeline:
+  max_review_retries: 3    # 评审 → 修复 → 重新评审最大循环次数
+  max_qa_retries: 3        # QA 失败 → 修复 → 重新验证最大循环次数
+```
 
 #### 会议系统
 
@@ -315,7 +325,7 @@ pipeline:
 | 林架构 | Tech Lead（组长） | Claude Opus 4.6 | - | 100 |
 | 韩码杰 | Ace Programmer | GPT-5.4 | - | - |
 | 刘创新 | Creative Programmer | Gemini 3.1 Pro | - | - |
-| 郑测安 | QA Engineer | GPT-5.4 | - | 100 |
+| 郑测安 | QA Engineer | GPT-5.4 | - | 70 |
 | 姜策远 | Ace Planner | Gemini 3.1 Pro | - | - |
 | 安盾强 | Security Expert | Claude Opus 4.6 | - | - |
 | 尹悦然 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
@@ -386,6 +396,7 @@ polymeld start --mode full-auto
 | `/history` | 流水线执行历史 |
 | `/context` | PipelineState 状态查看 |
 | `/team` | 团队配置查看 |
+| `/mode` | 切换交互模式（full-auto/semi-auto/manual） |
 | `/resume` | 恢复中断的流水线（基于 Phase 检查点） |
 | `/save` | 保存会话 |
 | `/load [id]` | 恢复会话 |
@@ -440,13 +451,13 @@ polymeld auth --show
 
 ### 开发 Phase 中的行为
 
-关联工作区后，在 Phase 5（开发）中：
+关联工作区后，在 Phase 4（开发）中：
 - 缓存目录结构树并提供给 LLM
 - 按任务基于关键词搜索相关文件，提供代码上下文
 - 按任务自动创建 feature 分支（`feature/{issueNumber}-{精简title}`）
 - 基于依赖关系并行执行：独立任务的 LLM 调用同时执行（Git 操作通过串行队列）
 - 将生成的代码保存为本地文件后执行 `git add` + `git commit`
-- Phase 6（评审）/ Phase 7（QA）修改时也在本地重新提交
+- Phase 5（评审）/ Phase 6（QA）修改时也在本地重新提交
 
 ## 流水线详情
 
@@ -455,49 +466,42 @@ Phase 0: 代码库分析（修改模式 + 本地工作区时）
   → 分析现有代码库结构和模式
   → 分析结果在后续 Phase 中作为上下文使用
 
-Phase 1: 启动会议
+Phase 1: 规划会议
   → 各角色使用各自的 AI 模型发表意见
   → 不相关的角色通过 [PASS] 自主跳过
   → 组长可通过 [CONCLUDE] 在充分讨论后提前结束
-  → Issue 标题由组长 AI 生成一行摘要
+  → 设计决策（designDecisions）注入后续代理提示
   → 会议记录自动注册到 GitHub Issue
-  → 启动摘要（kickoffSummary）注入后续代理提示
 
-Phase 2: 技术设计会议
-  → 模拟角色间意见冲突/共识
-  → 不同模型从不同角度进行讨论
-  → [PASS] / [CONCLUDE] 同样适用
-  → 设计决策文档注册到 GitHub Issue
-
-Phase 3: 任务分解
+Phase 2: 任务分解
   → 组长将任务分解为 1-4 小时的单元
   → 每个任务创建为 GitHub Issue（backlog 标签）
 
-Phase 4: 任务分配
+Phase 3: 任务分配
   → 组长将每个任务分配给合适的角色
   → 图像任务优先分配给拥有 image_model 的代理
   → 分配理由记录为 Issue Comment
 
-Phase 5: 开发（基于依赖关系的并行执行）
+Phase 4: 开发（基于依赖关系的并行执行）
   → 分析任务间依赖关系，并行执行独立任务
   → LLM 调用并行执行，Git 操作通过串行队列防止冲突
   → 图像任务：使用 image_model 生成图像（保存到 output/images/）
   → 提交到 feature 分支
   → 进度以 Issue Comment 形式更新
 
-Phase 6: 代码评审
+Phase 5: 代码评审（最多 max_review_retries 次重试）
   → 组长评审其他模型编写的代码
   → ResponseParser 提取 APPROVED / CHANGES_REQUESTED 判定
   → 需要修改时，组长直接编写修复代码并重新提交
   → 评审结果记录为 Issue Comment
 
-Phase 7: QA
+Phase 6: QA（最多 max_qa_retries 次重试）
   → QA 验证代码
   → ResponseParser 提取 PASS / FAIL 判定
   → 失败时组长直接修复并重新提交
   → 测试结果以表格形式记录在 Issue Comment 中
 
-Phase 8: PR 创建
+Phase 7: PR 创建
   → 自动创建包含所有历史记录（会议记录、评审、QA）链接的 PR
 ```
 
@@ -520,16 +524,14 @@ Phase 8: PR 创建
 ```
 project.requirement     - 原始需求文本
 project.title           - 项目标题（从工作区自动派生）
-kickoffSummary          - 启动会议摘要（注入后续代理提示）
-designDecisions         - 设计决策事项
+designDecisions         - 设计决策事项（注入后续代理提示）
 techStack               - 技术栈
 tasks[]                 - 分解的任务列表（包含代码/评审/QA 结果）
 completedTasks[]        - 已完成的任务
 messages[]              - 代理间全部消息
 codebaseAnalysis        - Phase 0 代码库分析结果
 completedPhases[]       - 已完成的 Phase 检查点（恢复时使用）
-github.kickoffIssue     - GitHub 启动 Issue 编号
-github.designIssue      - GitHub 设计 Issue 编号
+github.planningIssue    - GitHub 规划 Issue 编号
 ```
 
 ### PromptAssembler — 按 Phase 差异化令牌预算
@@ -547,9 +549,9 @@ github.designIssue      - GitHub 设计 Issue 编号
 
 | 方法 | 用途 | 返回值 |
 |--------|------|------|
-| `parseTasks()` | Phase 3 任务分解 | 结构化任务数组 |
-| `parseReviewVerdict()` | Phase 6 代码评审 | APPROVED / CHANGES_REQUESTED |
-| `parseQAVerdict()` | Phase 7 QA | PASS / FAIL |
+| `parseTasks()` | Phase 2 任务分解 | 结构化任务数组 |
+| `parseReviewVerdict()` | Phase 5 代码评审 | APPROVED / CHANGES_REQUESTED |
+| `parseQAVerdict()` | Phase 6 QA | PASS / FAIL |
 
 ### 项目结构
 
@@ -580,7 +582,7 @@ src/
 │   ├── pipeline-state.js       # 单一状态存储（包含 Phase 检查点）
 │   └── prompt-assembler.js     # 按 Phase 差异化令牌预算上下文组装器
 ├── pipeline/
-│   └── orchestrator.js         # 9-Phase 流水线（Phase 0~8 + 并行执行 + 检查点）
+│   └── orchestrator.js         # 8-Phase 流水线（Phase 0~7 + 并行执行 + 检查点）
 ├── workspace/
 │   ├── local-workspace.js      # 本地 Git 仓库（文件浏览/读取/写入 + git CLI）
 │   └── noop-workspace.js       # 未设置工作区时的 No-op 客户端
@@ -596,6 +598,7 @@ src/
 │       ├── history.js
 │       ├── context.js
 │       ├── team.js
+│       ├── mode.js
 │       ├── resume.js
 │       ├── save.js
 │       └── load.js
