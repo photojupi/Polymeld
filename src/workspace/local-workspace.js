@@ -224,7 +224,16 @@ export class LocalWorkspace {
   }
 
   writeFile(relativePath, content) {
+    if (!relativePath || relativePath === "." || relativePath === "/") {
+      throw new Error(`Invalid file path: "${relativePath}"`);
+    }
+    if (!path.extname(relativePath)) {
+      throw new Error(`Path has no file extension: "${relativePath}"`);
+    }
     const fullPath = path.join(this.repoPath, relativePath);
+    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+      throw new Error(`Cannot write to directory: ${fullPath}`);
+    }
     const dir = path.dirname(fullPath);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(fullPath, content, "utf-8");

@@ -74,18 +74,22 @@ export function getReadyTasks(tasks, completedIds, failedIds) {
 export function parseFilePathsFromResponse(responseText) {
   if (!responseText) return [];
   const paths = new Set();
-  const FILE_EXT = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|sh|bash|zsh|md|json|yaml|yml|toml|css|scss|html|vue|svelte|c|cpp|h|hpp|cs|swift|kt)$/i;
+  const FILE_EXT = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|sh|bash|zsh|md|json|yaml|yml|toml|css|scss|html|vue|svelte|c|cpp|h|hpp|cs|swift|kt|gd|gdshader|tscn|tres)$/i;
+
+  const addIfValid = (p) => {
+    if (!p || p.startsWith("/") || p.endsWith("/")) return;
+    // 인식 가능한 파일 확장자가 있는 경로만 허용
+    if (!FILE_EXT.test(p)) return;
+    paths.add(p);
+  };
+
   // 패턴 1: ```lang filepath (예: ```javascript src/utils/helper.js)
   for (const m of responseText.matchAll(/```\w*\s+([\w./-]+)/g)) {
-    if (m[1].includes("/") || FILE_EXT.test(m[1])) {
-      paths.add(m[1]);
-    }
+    addIfValid(m[1]);
   }
   // 패턴 2: 코드블록 내 첫 줄 주석 (// path/file.ext 또는 # path/file.ext)
   for (const m of responseText.matchAll(/```\w*\n\s*(?:\/\/|#)\s*([\w./-]+)/g)) {
-    if (m[1].includes("/") || FILE_EXT.test(m[1])) {
-      paths.add(m[1]);
-    }
+    addIfValid(m[1]);
   }
   return [...paths];
 }
