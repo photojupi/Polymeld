@@ -1,33 +1,32 @@
-🌐 [한국어](README.md) | [English](README.en.md) | [日本語](README.ja.md) | [中文](README.zh-CN.md)
+🌐 [한국어](README.ko.md) | [English](README.md) | [日本語](README.ja.md) | [中文](README.zh-CN.md)
 
 # Polymeld
 
-**멀티 AI 모델 기반 개발팀 시뮬레이션**
+**Multi-AI Model Development Team Simulation**
 
-Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
-회의 → 설계 → 개발 → 리뷰 → QA → PR 생성까지 자동화합니다.
+Assign Claude Code, Gemini CLI, and Codex CLI to individual personas, and automate the entire workflow from meetings to design, development, review, QA, and PR creation.
 
-## 아키텍처
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Polymeld                         │
-│                  (Node.js 오케스트레이터)                     │
+│                      Polymeld                               │
+│                  (Node.js Orchestrator)                      │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  REPL Shell (Interactive)   ←→   Session (Context 유지)     │
-│  상태 바, 커맨드 메뉴,           SessionStore (디스크 저장)  │
-│  Tab 자동완성, 멀티라인 입력      Phase 체크포인트/재개       │
+│  REPL Shell (Interactive)   ←→   Session (Context Mgmt)     │
+│  Status bar, Command menu,       SessionStore (Disk Save)   │
+│  Tab completion, Multi-line      Phase Checkpoint/Resume    │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
-│  validateConnections: CLI 설치 → 인증 → GitHub 검증 + 스코프 │
+│  validateConnections: CLI Install → Auth → GitHub + Scopes  │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  PipelineState              PromptAssembler                 │
-│  (단일 상태 저장소)          (Phase별 차등 토큰 예산)         │
+│  (Single State Store)       (Per-Phase Token Budget)        │
 │                                                             │
 │  ResponseParser             ModelAdapter                    │
-│  (LLM 응답 구조화 파싱)     (CLI 추상화 + thinking 매핑)     │
+│  (LLM Response Parsing)    (CLI Abstraction + Thinking Map) │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
@@ -38,132 +37,139 @@ Claude Code, Gemini CLI, Codex CLI를 각 페르소나에 배정하고,
 │       │               │               │                     │
 │  ┌────┴────┐   ┌──────┴──────┐  ┌─────┴─────┐             │
 │  │ 김아키   │   │ 류창작      │  │ 한코딩    │              │
-│  │ (팀장)   │   │ 강기획      │  │ (에이스)  │              │
+│  │ (Lead)   │   │ 강기획      │  │ (Ace)     │              │
 │  │ 안보안   │   │ 윤경험*     │  │ 정테스트  │              │
 │  └─────────┘   │ 그림솔*     │  └──────────┘              │
 │                └─────────────┘                              │
-│  * 이미지 생성 시 Nano Banana 2 사용                        │
-│  회의 중 [PASS]로 자발적 참여 조절                           │
+│  * Uses Nano Banana 2 for image generation                  │
+│  Voluntary [PASS] during meetings for self-regulation       │
 │                                                             │
 ├──────────────────────────┬──────────────────────────────────┤
 │   LocalWorkspace         │       GitHub Integration         │
-│   (로컬 Git 레포 연동)    │  Issues │ Comments │ Projects   │
-│   파일 탐색/읽기/쓰기     │  Branches │ PRs │ Commits      │
-│   git branch/commit/push │  빈 레포 자동 초기화              │
+│   (Local Git Repo Link)  │  Issues │ Comments │ Projects   │
+│   File browse/read/write │  Branches │ PRs │ Commits      │
+│   git branch/commit/push │  Auto-init for empty repos      │
 └──────────────────────────┴──────────────────────────────────┘
 ```
 
-## 설치
+## Installation
 
 ```bash
 npm install -g polymeld
 ```
 
-## 빠른 시작
+## Quick Start
 
 ```bash
-# 1. CLI 도구 설치 (사용할 모델만 설치하면 됩니다)
+# 1. Install CLI tools (if not already installed)
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 2. 첫 실행 — 온보딩 위저드가 자동으로 시작됩니다
+# 3. Initial setup (interactive wizard)
+polymeld init --global      # Global config + credentials setup
+# Or run without arguments to start the onboarding wizard automatically:
 polymeld
-# → 모델 선택 → GitHub 토큰 생성 안내 + 입력 → 완료!
-# → GITHUB_REPO는 입력하지 않아도 프로젝트 폴더에서 자동 감지됩니다
 
-# 3. GitHub 프로젝트 폴더에서 실행!
-cd ~/projects/my-app
-polymeld run "사용자 인증 기능 구현 (이메일/비밀번호 + OAuth)"
+# 4. (Optional) Local workspace integration
+# Run from your target project directory for auto-detection:
+cd ~/projects/my-app && polymeld start
+# Or specify in your config file:
+#   project:
+#     local_path: ~/projects/my-app
+
+# 5. Verify configuration (CLI auth + GitHub integration auto-validated)
+polymeld test-models
+
+# 6. Run!
+polymeld run "Implement user authentication (email/password + OAuth)"
+
+# 7. Specify language (optional; auto-detects OS locale if not set)
+polymeld run "chat feature" --lang en   # English
+polymeld run "chat feature" --lang ja   # 日本語
+polymeld run "chat feature" --lang zh-CN # 中文(简体)
+
 ```
 
-> **GITHUB_REPO 자동 감지**: GitHub 프로젝트 폴더에서 실행하면, `git remote`에서 `owner/repo`를 자동 추출합니다. `GITHUB_TOKEN`만 설정하면 어떤 프로젝트에서든 바로 사용할 수 있습니다.
+> **First-run onboarding**: Running `polymeld` without arguments will launch the onboarding wizard (model selection → credential input) if no global config exists, then automatically enter REPL mode.
 
-> **첫 실행 시 온보딩**: `polymeld`를 인수 없이 실행하면, 글로벌 설정이 없는 경우 온보딩 위저드(모델 선택 → GitHub 토큰 생성 안내 → 자격 증명 입력)를 안내한 후 REPL 모드로 자동 진입합니다.
+## Configuration
 
-## 설정
+### Environment Variables (.env file)
 
-### 환경 변수 (.env 파일)
-
-프로젝트 루트에 `.env` 파일을 생성하여 설정합니다 (`dotenv` 자동 로드):
+Create a `.env` file in the project root to configure settings (auto-loaded via `dotenv`):
 
 ```bash
-# .env.example을 복사하여 사용
+# Copy from .env.example
 cp .env.example .env
 ```
 
 ```bash
-# GitHub Personal Access Token (필수)
-# - Classic PAT: repo(필수) + project(선택, Projects 보드용) 스코프
-# - Fine-grained PAT: Issues, Contents, Pull requests 쓰기 권한
-# - 생성: https://github.com/settings/tokens → 'Generate new token'
+# GitHub Personal Access Token
+# - Classic PAT: repo (required) + project (optional, for Projects board) scopes
+# - Fine-grained PAT: Issues, Contents, Pull requests write permissions
 GITHUB_TOKEN=ghp_xxxxx
-
-# 대상 리포지터리 (선택 — 미설정 시 cwd의 git remote에서 자동 감지)
-# 특정 repo를 고정하고 싶을 때만 설정하세요
-# GITHUB_REPO=owner/repo
+GITHUB_REPO=owner/repo            # Target repository (owner/repo format)
 ```
 
-> **GITHUB_REPO 자동 감지**: 프로젝트 폴더에서 실행하면 `git remote get-url origin`에서 `owner/repo`를 자동 추출합니다. `GITHUB_TOKEN`만 설정하면 어떤 프로젝트에서든 바로 사용 가능합니다.
+> **Auto-validated on startup**: CLI installation, CLI authentication, GitHub integration, and token scopes are checked sequentially. A warning is shown if the Classic PAT is missing the `project` scope.
 
-> **시작 시 자동 검증**: CLI 설치 → CLI 인증 → GitHub 연동 + 토큰 스코프를 순차적으로 확인합니다. Classic PAT의 `project` 스코프 누락 시 경고를 표시합니다.
+> Note: API keys for AI CLI tools are managed by each CLI independently (follow each CLI's authentication method).
 
-> 참고: AI CLI 도구의 API 키는 각 CLI가 자체적으로 관리합니다 (각 CLI의 인증 방식을 따르세요).
+### Config File Load Order
 
-### 설정 파일 로드 순서
+Configuration is merged hierarchically (lower layers override upper layers):
 
-설정은 계층적으로 병합됩니다 (하위 레이어가 상위를 덮어씀):
+| Priority | Path | Purpose |
+|----------|------|---------|
+| 1 (highest) | `-c` flag | Uses only the specified file |
+| 2 | `~/.polymeld/config.yaml` | Global settings (shared across all projects) |
+| 3 | `.polymeld/config.yaml` | Project shared settings (git-committed) |
+| 4 | `.polymeld/config.local.yaml` | Project local settings (personal, .gitignore) |
+| 5 | `polymeld.config.yaml` | Legacy compatibility |
 
-| 우선순위 | 경로 | 용도 |
-|---------|------|------|
-| 1 (최상위) | `-c` 플래그 | 명시적 경로 지정 시 해당 파일만 사용 |
-| 2 | `~/.polymeld/config.yaml` | 글로벌 설정 (모든 프로젝트 공통) |
-| 3 | `.polymeld/config.yaml` | 프로젝트 공유 설정 (git 커밋 대상) |
-| 4 | `.polymeld/config.local.yaml` | 프로젝트 로컬 설정 (개인용, .gitignore) |
-| 5 | `polymeld.config.yaml` | 레거시 호환 |
+### Credentials Management
 
-### 자격 증명 관리
-
-자격 증명은 `~/.polymeld/credentials.yaml`에 안전하게 저장됩니다 (파일 권한 `0600`):
+Credentials are stored securely in `~/.polymeld/credentials.yaml` (file permissions `0600`):
 
 ```yaml
 # ~/.polymeld/credentials.yaml
 GITHUB_TOKEN: ghp_xxxxx
-# GITHUB_REPO: owner/repo  # 선택 — 미설정 시 프로젝트 폴더에서 자동 감지
+GITHUB_REPO: owner/repo
 ANTHROPIC_API_KEY: sk-...
 GOOGLE_API_KEY: AIzaSy...
 OPENAI_API_KEY: sk-...
 ```
 
-**로드 우선순위**: 환경 변수 (`process.env`) → `.env` (dotenv) → `~/.polymeld/credentials.yaml` → **cwd git remote 자동 감지** (GITHUB_REPO만)
+**Load priority**: `.env` (dotenv) → `~/.polymeld/credentials.yaml` → environment variables (`process.env` takes precedence)
 
-> `polymeld auth`로 대화형으로 입력하거나, `polymeld auth --show`로 현재 설정 상태를 확인할 수 있습니다. GitHub 토큰 생성 URL과 필요 권한이 안내됩니다.
+> Use `polymeld auth` to input credentials interactively, or `polymeld auth --show` to check current credential status.
 
-### config.yaml 설정 항목
+### config.yaml Options
 
-#### 프로젝트 설정 (로컬 워크스페이스)
+#### Project Settings (Local Workspace)
 
-**프로젝트 폴더에서 실행하면 워크스페이스와 GITHUB_REPO가 자동 감지됩니다.** 별도 설정이 필요 없습니다.
-
-cwd가 아닌 다른 폴더의 프로젝트를 타겟으로 하려면:
+Configure agents to reference existing code and save generated code directly to local files:
 
 ```yaml
-# 프로젝트 폴더에서 실행하면 자동 감지되므로 대부분 설정 불필요.
-# 다른 폴더의 프로젝트를 타겟으로 할 때만 설정:
+# Specify a local Git repo path so agents can reference existing code during development.
+# If not set, the .git in the current directory is auto-detected.
 project:
   local_path: ~/projects/my-app
 ```
 
-#### 모델 정의
+> **Auto-detection**: Even without setting `project.local_path`, running Polymeld from the target project directory will auto-detect `.git` and use it as the workspace.
 
-사용할 AI 모델과 CLI 매핑을 정의합니다:
+#### Model Definitions
+
+Define the AI models and their CLI mappings:
 
 ```yaml
 models:
   claude:
     cli: claude
     model: claude-opus-4-6
-    fallback: gemini               # rate limit 시 전환할 모델
+    fallback: gemini               # Model to switch to on rate limit
   gemini:
     cli: gemini
     model: gemini-3.1-pro-preview
@@ -174,47 +180,47 @@ models:
     fallback: claude
   gemini_image:
     cli: gemini
-    model: gemini-3.1-flash-image    # Nano Banana 2 (이미지 생성 특화)
+    model: gemini-3.1-flash-image    # Nano Banana 2 (specialized for image generation)
 ```
 
-#### fallback (Rate Limit 자동 전환)
+#### fallback (Automatic Rate Limit Switching)
 
-각 모델에 `fallback` 필드를 설정하면, rate limit 발생 시 자동으로 대체 모델로 전환합니다:
+Setting the `fallback` field on a model enables automatic switching to an alternate model when a rate limit is hit:
 
-- **CLI → API → fallback** 3단계 우선순위 체인
-- CLI 사용량 초과 시 API key 백엔드로 자동 전환
-- API key도 rate limit이면 `fallback` 모델로 최종 전환
-- stderr에서 rate limit 패턴을 자동 감지 (`Rate limit reached`, `Resource exhausted`, `usage limit` 등)
+- **CLI → API → fallback** 3-tier priority chain
+- Automatically switches to API key backend when CLI usage is exceeded
+- Falls back to the `fallback` model if API key also hits rate limit
+- Automatically detects rate limit patterns in stderr (`Rate limit reached`, `Resource exhausted`, `usage limit`, etc.)
 
-#### CLI 실행 설정
+#### CLI Execution Settings
 
 ```yaml
 cli:
-  timeout: 600000          # 기본 타임아웃 10분 (밀리초)
+  timeout: 600000          # Default timeout 10 min (milliseconds)
   timeouts:
-    claude:                # 이중 타임아웃 (idle + max)
-      idle: 300000         #   5분: 마지막 출력 이후 무응답 시 종료 (출력 있으면 리셋)
-      max: 1800000         #   30분: 절대 상한 (무한 루프 방지)
-    gemini: 600000         # 단일 타임아웃도 지원 (10분)
+    claude:                # Dual timeout (idle + max)
+      idle: 300000         #   5 min: terminate if no output since last activity (resets on output)
+      max: 1800000         #   30 min: absolute upper limit (prevents infinite loops)
+    gemini: 600000         # Single timeout also supported (10 min)
     codex:
       idle: 300000
       max: 1800000
   max_turns:
-    claude: 10             # Claude 에이전틱 루프 최대 턴 수
+    claude: 10             # Max agentic loop turns for Claude
 ```
 
-> **이중 타임아웃**: `idle`은 출력이 있을 때마다 리셋되어 활발한 프로세스를 조기 종료하지 않고, `max`는 절대 상한으로 무한 루프를 방지합니다. 단일 숫자 값도 호환됩니다.
+> **Dual timeout**: `idle` resets whenever output is detected, preventing premature termination of active processes. `max` is an absolute upper limit to prevent infinite loops. Single numeric values are also supported for backward compatibility.
 
-#### 페르소나 배정
+#### Persona Assignment
 
-각 페르소나에 모델을 배정합니다. 모든 페르소나가 회의에 참여하되, 기여할 내용이 없으면 `[PASS]`로 자발적으로 패스합니다:
+Assign a model to each persona. All personas participate in meetings, but voluntarily pass with `[PASS]` when they have nothing to contribute:
 
 ```yaml
 personas:
   tech_lead:
     name: 김아키
     model: claude
-    thinking_budget: 100      # 페르소나별 오버라이드 (0-100)
+    thinking_budget: 100      # Per-persona override (0-100)
 
   ace_programmer:
     name: 한코딩
@@ -231,362 +237,358 @@ personas:
 
   designer:
     name: 윤경험
-    model: gemini             # 대화/설계 시 Gemini 3.1 Pro
-    image_model: gemini_image # 이미지 생성 시 Nano Banana 2
+    model: gemini             # Gemini 3.1 Pro for conversation/design
+    image_model: gemini_image # Nano Banana 2 for image generation
 ```
 
-#### image_model (이미지 생성)
+#### image_model (Image Generation)
 
-`image_model` 필드를 설정하면 해당 페르소나가 이미지 생성 태스크를 수행할 수 있습니다:
-- **대화/설계/리뷰**: 기본 `model` 사용 (예: Gemini 3.1 Pro)
-- **이미지 생성**: `image_model` 사용 (예: Nano Banana 2)
-- 이미지 태스크 자동 감지: 태스크 제목/설명에 디자인, 목업, 아이콘, 일러스트 등 키워드 포함 시
-- `image_model`은 선택적 — 미설정 시 텍스트 전용 에이전트로 동작
+Setting the `image_model` field enables a persona to perform image generation tasks:
+- **Conversation/Design/Review**: Uses the default `model` (e.g., Gemini 3.1 Pro)
+- **Image Generation**: Uses `image_model` (e.g., Nano Banana 2)
+- Auto-detection of image tasks: Triggered by keywords like design, mockup, icon, illustration in the task title/description
+- `image_model` is optional -- without it, the agent operates as text-only
 
-#### thinking_budget (AI 사고 깊이)
+#### thinking_budget (AI Reasoning Depth)
 
-AI 모델의 추론 깊이를 0-100 스케일로 제어합니다:
+Controls the reasoning depth of AI models on a 0-100 scale:
 
 ```yaml
 pipeline:
-  thinking_budget: 70         # 전역 기본값 (0-100)
+  thinking_budget: 70         # Global default (0-100)
 
 personas:
   tech_lead:
-    thinking_budget: 100      # 페르소나별 오버라이드
+    thinking_budget: 100      # Per-persona override
 ```
 
-CLI별 변환:
-| CLI | 파라미터 | 변환 |
-|-----|---------|------|
+Per-CLI mapping:
+| CLI | Parameter | Mapping |
+|-----|-----------|---------|
 | Claude | `--effort` | 0-33: low, 34-75: medium, 76-100: high |
 | Codex | `-c model_reasoning_effort` | 0-25: low, 26-60: medium, 61-85: high, 86-100: xhigh |
-| Gemini | (CLI 플래그 미지원) | settings.json `thinkingConfig`으로만 제어 |
+| Gemini | (No CLI flag support) | Controlled only via settings.json `thinkingConfig` |
 
-API 백엔드 사용 시 변환:
-| API | 파라미터 | 변환 |
-|-----|---------|------|
-| Claude (Anthropic) | `thinking.budget_tokens` | 0-33: 비활성, 34-75: 4096, 76-100: 16384 |
+API backend mapping:
+| API | Parameter | Mapping |
+|-----|-----------|---------|
+| Claude (Anthropic) | `thinking.budget_tokens` | 0-33: disabled, 34-75: 4096, 76-100: 16384 |
 | Gemini (Google) | `thinkingConfig.thinkingBudget` | 0-33: 1024, 34-75: 8192, 76-100: 24576 |
 | OpenAI | `reasoning_effort` | 0-25: low, 26-60: medium, 61-100: high |
 
-#### parallel_development (병렬 실행)
+#### parallel_development (Parallel Execution)
 
-Phase 5(개발)에서 의존성이 없는 태스크들의 LLM 호출을 동시에 실행합니다:
-
-```yaml
-pipeline:
-  parallel_development: true    # 기본값: true
-```
-
-- `true`: 의존성 그래프를 분석하여 독립 태스크를 배치 단위로 병렬 실행
-- `false`: 기존 순차 실행 방식 유지
-- Git 작업(브랜치 생성, 커밋)은 충돌 방지를 위해 항상 직렬 큐로 처리
-
-#### 수정 루프 설정
-
-코드 리뷰 및 QA에서 실패 시 자동 재시도 횟수를 설정합니다:
+Runs LLM calls concurrently for tasks without dependencies during Phase 5 (Development):
 
 ```yaml
 pipeline:
-  max_review_retries: 3    # 리뷰 → 수정 → 재리뷰 최대 반복 수
-  max_qa_retries: 3        # QA 실패 → 수정 → 재검증 최대 반복 수
+  parallel_development: true    # Default: true
 ```
 
-#### 회의 시스템
+- `true`: Analyzes the dependency graph and runs independent tasks in parallel batches
+- `false`: Maintains the existing sequential execution mode
+- Git operations (branch creation, commits) are always serialized via a queue to prevent conflicts
 
-**실시간 발언 미리보기**: 회의 중 각 AI의 응답이 생성되는 과정을 spinner에 실시간으로 표시하고, 완료 후 내용을 영구 출력합니다:
+#### Meeting System
+
+**Real-time speech preview**: During meetings, each AI's response is shown in real time via a spinner as it is generated, then permanently displayed upon completion:
 
 ```
-⠇ 한코딩 발언 중... 이 부분은 O(n log n)으로 풀 수 있습니다
-✓ 한코딩: 이 부분은 O(n log n)으로 풀 수 있습니다. 분할 정복으로...
+⠇ 한코딩 speaking... This can be solved in O(n log n)
+✓ 한코딩: This can be solved in O(n log n). Using divide and conquer...
 ```
 
-**자발적 패스 (`[PASS]`)**: 페르소나가 해당 주제에 기여할 내용이 없으면 `[PASS]`로 자동 건너뜁니다. 회의록에 패스 기록이 남습니다.
+**Voluntary pass (`[PASS]`)**: When a persona has nothing to contribute on a topic, they automatically skip with `[PASS]`. The pass is recorded in the meeting minutes.
 
-**조기 종료 (`[CONCLUDE]`)**: 팀장이 충분한 논의가 이루어졌다고 판단하면 `[CONCLUDE]`로 남은 라운드를 건너뛰고 회의를 종료합니다.
+**Early termination (`[CONCLUDE]`)**: When the team lead determines that sufficient discussion has taken place, they can end the meeting early with `[CONCLUDE]`, skipping the remaining rounds.
 
-**라운드 표시**: 회의 라운드 전환 시 라운드 번호가 표시됩니다.
+**Round display**: The round number is displayed at each meeting round transition.
 
-**이슈 제목 자동 생성**: 회의록 GitHub Issue의 제목을 팀장 AI가 한 줄 요약으로 생성합니다.
+**Auto-generated issue title**: The team lead AI generates a one-line summary as the title for the meeting minutes GitHub Issue.
 
-### 페르소나 구성 (기본값)
+### Persona Overview (Defaults)
 
-| 페르소나 | 역할 | 모델 | 이미지 모델 | thinking |
-|---------|------|------|-----------|----------|
-| 김아키 | Tech Lead (팀장) | Claude Opus 4.6 | - | 100 |
+| Persona | Role | Model | Image Model | thinking |
+|---------|------|-------|-------------|----------|
+| 김아키 | Tech Lead (Team Lead) | Claude Opus 4.6 | - | 100 |
 | 한코딩 | Ace Programmer | GPT-5.4 | - | - |
 | 류창작 | Creative Programmer | Gemini 3.1 Pro | - | - |
-| 정테스트 | QA Engineer | GPT-5.4 | - | 70 |
+| 정테스트 | QA Engineer | GPT-5.4 | - | 100 |
 | 강기획 | Ace Planner | Gemini 3.1 Pro | - | - |
 | 안보안 | Security Expert | Claude Opus 4.6 | - | - |
 | 윤경험 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
 | 그림솔 | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | - |
 
-> 모든 페르소나가 회의에 참여합니다. 관련 없는 주제에서는 `[PASS]`로 자발적으로 패스하고, 팀장은 `[CONCLUDE]`로 회의를 조기 종료할 수 있습니다.
+> All personas participate in meetings. On unrelated topics, they voluntarily pass with `[PASS]`, and the team lead can end a meeting early with `[CONCLUDE]`.
 
-## 사용법
+## Usage
 
-### 전체 파이프라인 실행
+### Full Pipeline Execution
 ```bash
-# 전자동 모드 (기본값) — 모든 Phase 자동 진행
-polymeld run "실시간 채팅 기능 구현"
+# Full-auto mode (default) — all phases run automatically
+polymeld run "Implement real-time chat feature"
 
-# 인터랙션 모드 지정
-polymeld run "채팅 기능" --mode full-auto   # 기본값
-polymeld run "채팅 기능" --mode semi-auto   # Phase마다 확인
-polymeld run "채팅 기능" --mode manual      # 수동 제어
+# Specify interaction mode
+polymeld run "chat feature" --mode full-auto   # Default
+polymeld run "chat feature" --mode semi-auto   # Confirm at each phase
+polymeld run "chat feature" --mode manual      # Manual control
 ```
 
-> 프로젝트 제목은 워크스페이스 이름에서 자동 파생됩니다.
+> The project title is automatically derived from the workspace name.
 
-### 회의만 진행
+### Run Meetings Only
 ```bash
-# 킥오프 미팅
-polymeld meeting kickoff "사용자 인증 기능 구현"
+# Kickoff meeting
+polymeld meeting kickoff "Implement user authentication"
 
-# 기술 설계 미팅 (3라운드 토론)
-polymeld meeting design "마이크로서비스 아키텍처 전환" --rounds 3
+# Technical design meeting (3-round discussion)
+polymeld meeting design "Migrate to microservices architecture" --rounds 3
 ```
 
-### 모델 연결 테스트
+### Test Model Connections
 ```bash
 polymeld test-models
 ```
 
-### 인터랙티브 REPL 모드
+### Interactive REPL Mode
 ```bash
-# REPL 시작
+# Start REPL
 polymeld start
 
-# 이전 세션 이어하기 (가장 최근 세션)
+# Resume previous session (most recent)
 polymeld start --resume
 
-# 특정 세션 복원
+# Resume a specific session
 polymeld start --resume <sessionId>
 
-# 인터랙션 모드 지정
+# Specify interaction mode
 polymeld start --mode full-auto
 ```
 
-REPL 모드에서는 프롬프트에서 자연어로 요구사항을 입력하면 전체 파이프라인이 실행됩니다.
-실행이 끝나면 다시 프롬프트로 돌아와 새로운 명령을 내릴 수 있습니다.
-세션 컨텍스트(PipelineState, 실행 이력)가 유지됩니다.
+In REPL mode, enter your requirements in natural language at the prompt to run the full pipeline.
+After execution completes, you return to the prompt to issue new commands.
+Session context (PipelineState, execution history) is preserved across runs.
 
-**REPL 기능:**
-- **상태 바**: 프롬프트에 현재 세션 상태를 실시간 표시
-- **커맨드 메뉴**: `/` 입력 시 검색 가능한 커맨드 메뉴 표시 (inquirer)
-- **Tab 자동완성**: 슬래시 명령어 자동완성
-- **멀티라인 입력**: Bracketed Paste Mode로 여러 줄 붙여넣기 지원
+**REPL Features:**
+- **Status bar**: Displays current session state in real time at the prompt
+- **Command menu**: Type `/` to show a searchable command menu (inquirer)
+- **Tab completion**: Auto-complete for slash commands
+- **Multi-line input**: Supports pasting multiple lines via Bracketed Paste Mode
 
-**슬래시 명령어:**
+**Slash Commands:**
 
-| 명령어 | 설명 |
-|--------|------|
-| `/help` | 사용 가능한 명령어 목록 |
-| `/status` | 현재 세션 상태 |
-| `/history` | 파이프라인 실행 이력 |
-| `/context` | PipelineState 상태 확인 |
-| `/team` | 팀 구성 확인 |
-| `/resume` | 중단된 파이프라인 재개 (Phase 체크포인트 기반) |
-| `/save` | 세션 저장 |
-| `/load [id]` | 세션 복원 |
-| `/exit` | REPL 종료 |
+| Command | Description |
+|---------|-------------|
+| `/help` | List available commands |
+| `/status` | Show current session state |
+| `/history` | Show pipeline execution history |
+| `/context` | Inspect PipelineState |
+| `/team` | Show team composition |
+| `/resume` | Resume an interrupted pipeline (from phase checkpoint) |
+| `/save` | Save session |
+| `/load [id]` | Restore a session |
+| `/exit` | Exit REPL |
 
-### 설정 초기화
+### Initialize Configuration
 ```bash
-# 글로벌 설정 초기화 (~/.polymeld/ 에 config.yaml + credentials.yaml)
+# Initialize global config (~/.polymeld/ with config.yaml + credentials.yaml)
 polymeld init --global
 
-# 프로젝트 설정 초기화 (.polymeld/config.yaml)
+# Initialize project config (.polymeld/config.yaml)
 polymeld init
 ```
 
-### 자격 증명 관리
+### Credentials Management
 ```bash
-# 대화형으로 토큰/API 키 입력
+# Input tokens/API keys interactively
 polymeld auth
 
-# 현재 설정된 자격 증명 상태 확인 (마스킹됨)
+# Check current credential status (masked)
 polymeld auth --show
 ```
 
-## 로컬 워크스페이스 연동
+## Local Workspace Integration
 
-로컬 Git 레포지토리를 워크스페이스로 지정하면, 에이전트가 **기존 코드를 읽고 참고하여 개발**하고, 생성된 코드를 **로컬 파일 시스템에 직접 저장**합니다.
+When you designate a local Git repository as the workspace, agents **read and reference existing code** for development and **save generated code directly to the local file system**.
 
-### 동작 방식
+### How It Works
 
-| 기능 | 워크스페이스 설정 시 | 미설정 시 |
-|------|---------------------|----------|
-| 코드 참조 | 기존 파일 구조/내용을 LLM 프롬프트에 포함 | 설계 문서만 참고 |
-| 코드 저장 | 로컬 파일로 직접 저장 + `git commit` | GitHub API로 커밋 |
-| 브랜치 관리 | 로컬 `git checkout -b` | GitHub API로 브랜치 생성 |
-| PR 생성 | 로컬 `git push` → GitHub PR | GitHub API 전용 |
+| Feature | With Workspace | Without Workspace |
+|---------|---------------|-------------------|
+| Code reference | Existing file structure/content included in LLM prompts | Only design docs referenced |
+| Code saving | Saved directly as local files + `git commit` | Committed via GitHub API |
+| Branch management | Local `git checkout -b` | Branches created via GitHub API |
+| PR creation | Local `git push` then GitHub PR | GitHub API only |
 
-### 워크스페이스 감지 우선순위
+### Workspace Detection Priority
 
-| 우선순위 | 감지 방법 | 설명 |
-|---------|----------|------|
-| 1 | `project.local_path` | 설정 파일에 명시된 경로 |
-| 2 | cwd `.git` 자동 감지 | 프로젝트 폴더에서 실행 시 (Polymeld 자체 레포 제외) |
-| 3 | `NoOpWorkspace` | 미감지 시 GitHub API 전용 모드 |
+1. `project.local_path` setting in config file
+2. Auto-detection of `.git` in the current directory (excluding Polymeld's own repo)
+3. If not detected, falls back to `NoOpWorkspace` (GitHub API only mode)
 
-**GITHUB_REPO도 동일한 원리로 자동 감지됩니다**: cwd의 `git remote get-url origin`에서 `owner/repo`를 추출합니다.
+> When `local_path` is set, the CLI process runs from that path, allowing agents to directly read and write files in that project.
 
-### 빈 GitHub 레포 자동 초기화
+### Auto-Initialization for Empty GitHub Repos
 
-`GITHUB_REPO`로 지정(또는 자동 감지)된 레포가 비어있는 경우 자동으로:
-1. Initial Commit을 생성하고
-2. `GITHUB_REPO` 값으로 origin remote를 설정합니다
+If the repo specified by `GITHUB_REPO` is empty, it will automatically:
+1. Create an Initial Commit
+2. Set the origin remote using the `GITHUB_REPO` value
 
-별도의 수동 초기화 없이 바로 사용할 수 있습니다.
+No manual initialization required -- it just works out of the box.
 
-### 개발 Phase에서의 동작
+### Behavior During Development Phase
 
-워크스페이스가 연동되면 Phase 5(개발)에서:
-- 디렉토리 구조 트리를 캐싱하여 LLM에 제공
-- 태스크별로 키워드 기반 관련 파일을 검색하여 코드 맥락 제공
-- 태스크별 feature 브랜치 자동 생성 (`feature/{issueNumber}-{정제된 title}`)
-- 의존성 기반 병렬 실행: 독립 태스크의 LLM 호출을 동시 실행 (Git 작업은 직렬 큐)
-- 생성된 코드를 로컬 파일로 저장 후 `git add` + `git commit`
-- Phase 6(리뷰)/Phase 7(QA) 수정 시에도 로컬 재커밋
+When a workspace is linked, Phase 5 (Development) will:
+- Cache the directory structure tree and provide it to the LLM
+- Search for relevant files per task using keyword-based matching to provide code context
+- Auto-create feature branches per task (`feature/{issueNumber}-{sanitized-title}`)
+- Dependency-based parallel execution: Run LLM calls for independent tasks concurrently (Git operations serialized via queue)
+- Save generated code as local files, then `git add` + `git commit`
+- Re-commit locally during Phase 6 (Review) / Phase 7 (QA) fixes
 
-## 파이프라인 상세
+## Pipeline Details
 
 ```
-Phase 0: 코드베이스 분석 (수정 모드 + 로컬 워크스페이스 시)
-  → 기존 코드베이스 구조 및 패턴 분석
-  → 분석 결과를 이후 Phase에서 맥락으로 활용
+Phase 0: Codebase Analysis (modification mode + local workspace)
+  → Analyze existing codebase structure and patterns
+  → Analysis results used as context in subsequent phases
 
-Phase 1: 미팅
-  → 페르소나들이 각자의 AI 모델로 의견 제시
-  → 관련 없는 페르소나는 [PASS]로 자발적 패스
-  → 팀장이 [CONCLUDE]로 충분한 논의 후 조기 종료 가능
-  → 이슈 제목은 팀장 AI가 한 줄 요약으로 자동 생성
-  → 회의록이 GitHub Issue에 자동 등록
-  → 팀장의 최종 정리가 설계 결정사항(designDecisions)으로 저장
+Phase 1: Kickoff Meeting
+  → Personas share opinions using their respective AI models
+  → Unrelated personas voluntarily pass with [PASS]
+  → Team lead can end meeting early with [CONCLUDE] after sufficient discussion
+  → Issue title auto-generated as a one-line summary by the team lead AI
+  → Meeting minutes automatically posted as a GitHub Issue
+  → Kickoff summary (kickoffSummary) injected into subsequent agent prompts
 
-Phase 2: 태스크 분해
-  → 팀장이 1-4시간 단위로 태스크 분해
-  → 각 태스크가 GitHub Issue로 생성 (backlog 라벨)
+Phase 2: Technical Design Meeting
+  → Simulates disagreements and consensus among personas
+  → Different models debate from different perspectives
+  → [PASS] / [CONCLUDE] apply the same way
+  → Design decision document posted as a GitHub Issue
 
-Phase 3: 작업 분배
-  → 팀장이 각 태스크를 적합한 페르소나에게 배정
-  → 이미지 태스크는 image_model 보유 에이전트에게 우선 배정
-  → 배정 이유가 Issue Comment로 기록
+Phase 3: Task Decomposition
+  → Team lead breaks work into 1-4 hour tasks
+  → Each task created as a GitHub Issue (backlog label)
 
-Phase 4: 개발 (의존성 기반 병렬 실행)
-  → 태스크 간 의존성을 분석하여 독립 태스크를 병렬 실행
-  → LLM 호출은 병렬, Git 작업은 직렬 큐로 충돌 방지
-  → 이미지 태스크: image_model로 이미지 생성 (output/images/ 저장)
-  → feature 브랜치에 커밋
-  → 진행 상황이 Issue Comment로 업데이트
+Phase 4: Task Assignment
+  → Team lead assigns each task to the most suitable persona
+  → Image tasks are preferentially assigned to agents with image_model
+  → Assignment rationale recorded as an Issue Comment
 
-Phase 5: 코드 리뷰 (최대 max_review_retries회 재시도)
-  → 팀장이 다른 모델이 작성한 코드를 리뷰
-  → ResponseParser가 APPROVED / CHANGES_REQUESTED 판정 추출
-  → 수정 필요 시 팀장이 직접 수정 코드 작성 후 재커밋
-  → 리뷰 결과가 Issue Comment로 기록
+Phase 5: Development (Dependency-Based Parallel Execution)
+  → Analyzes inter-task dependencies and runs independent tasks in parallel
+  → LLM calls run in parallel; Git operations serialized via queue to prevent conflicts
+  → Image tasks: Generate images using image_model (saved to output/images/)
+  → Committed to feature branches
+  → Progress updated via Issue Comments
 
-Phase 6: QA (최대 max_qa_retries회 재시도)
-  → QA가 코드 검증
-  → ResponseParser가 PASS / FAIL 판정 추출
-  → 실패 시 팀장이 직접 수정 후 재커밋
-  → 테스트 결과가 Issue Comment에 표 형태로 기록
+Phase 6: Code Review
+  → Team lead reviews code written by other models
+  → ResponseParser extracts APPROVED / CHANGES_REQUESTED verdict
+  → If changes needed, team lead directly writes fix code and re-commits
+  → Review results recorded as Issue Comments
 
-Phase 7: PR 생성
-  → 모든 이력(회의록, 리뷰, QA)이 링크된 PR 자동 생성
+Phase 7: QA
+  → QA engineer verifies the code
+  → ResponseParser extracts PASS / FAIL verdict
+  → On failure, team lead directly fixes and re-commits
+  → Test results recorded as a table in Issue Comments
+
+Phase 8: PR Creation
+  → Auto-creates a PR linking all artifacts (meeting minutes, reviews, QA results)
 ```
 
-> **Phase 체크포인트**: 각 Phase 완료 시 체크포인트가 저장되어, 중단 시 `/resume`으로 해당 Phase부터 재개할 수 있습니다.
+> **Phase Checkpoints**: A checkpoint is saved upon each phase completion. If interrupted, use `/resume` to restart from that phase.
 
-## 내부 아키텍처
+## Internal Architecture
 
-### 핵심 구성요소
+### Core Components
 
-| 구성요소 | 역할 | 설명 |
-|---------|------|------|
-| **PipelineState** | 단일 상태 저장소 | 프로젝트/태스크/메시지/소집 기록을 명시적 필드로 관리 |
-| **PromptAssembler** | 토큰 예산 맥락 조립 | 작업 유형별 필요 정보만 추출하여 LLM 프롬프트 구성 (코드베이스 맥락 포함) |
-| **ResponseParser** | LLM 응답 구조화 파싱 | JSON 추출 + 키워드 폴백으로 판정(verdict) 추출 |
-| **LocalWorkspace** | 로컬 Git 레포 연동 | 파일 탐색/읽기/쓰기 + git 브랜치/커밋/푸시 자동화 |
-| **validateConnections** | 시작 시 연결 검증 | CLI 설치 → 인증 → GitHub 토큰/권한/스코프 확인을 실시간 표시 |
+| Component | Role | Description |
+|-----------|------|-------------|
+| **PipelineState** | Single State Store | Manages project/task/message/convocation records as explicit fields |
+| **PromptAssembler** | Token Budget Context Assembly | Extracts only the necessary information per task type for LLM prompts (including codebase context) |
+| **ResponseParser** | LLM Response Structured Parsing | JSON extraction + keyword fallback for verdict extraction |
+| **LocalWorkspace** | Local Git Repo Integration | File browse/read/write + git branch/commit/push automation |
+| **validateConnections** | Startup Connection Validation | Real-time display of CLI install → auth → GitHub token/permissions/scopes checks |
 
-### PipelineState 필드 카탈로그
+### PipelineState Field Catalog
 
 ```
-project.requirement     - 원본 요구사항 텍스트
-project.title           - 프로젝트 제목 (워크스페이스에서 자동 파생)
-designDecisions         - 설계 결정 사항 (미팅 팀장 최종 정리)
-techStack               - 기술 스택
-tasks[]                 - 분해된 태스크 목록 (코드/리뷰/QA 결과 포함)
-completedTasks[]        - 완료된 태스크
-messages[]              - 에이전트 간 전체 메시지
-codebaseAnalysis        - Phase 0 코드베이스 분석 결과
-completedPhases[]       - 완료된 Phase 체크포인트 (재개 시 활용)
-github.planningIssue    - GitHub 미팅 Issue 번호
+project.requirement     - Original requirement text
+project.title           - Project title (auto-derived from workspace)
+kickoffSummary          - Kickoff meeting summary (injected into subsequent agent prompts)
+designDecisions         - Design decisions
+techStack               - Technology stack
+tasks[]                 - Decomposed task list (includes code/review/QA results)
+completedTasks[]        - Completed tasks
+messages[]              - All inter-agent messages
+codebaseAnalysis        - Phase 0 codebase analysis results
+completedPhases[]       - Completed phase checkpoints (used for resumption)
+github.kickoffIssue     - GitHub kickoff Issue number
+github.designIssue      - GitHub design Issue number
 ```
 
-### PromptAssembler — Phase별 차등 토큰 예산
+### PromptAssembler -- Per-Phase Token Budget
 
-| Phase | 메서드 | 예산 | 이유 |
-|-------|--------|------|------|
-| 회의 | `forMeeting()` | 8,000자 | 이전 발언이 많아 균형 조절 |
-| 코딩 | `forCoding()` | 12,000자 | 코드 품질 우선 (최대 예산) |
-| 수정 | `forFix()` | 10,000자 | 피드백 + 설계 맥락 |
-| 리뷰 | `forReview()` | 6,000자 | 코드는 별도 전달 |
-| QA | `forQA()` | 4,000자 | 리뷰 결과만 필요 |
-| 이미지 | `forImageGeneration()` | 6,000자 | 이미지 생성 프롬프트 |
+| Phase | Method | Budget | Rationale |
+|-------|--------|--------|-----------|
+| Meeting | `forMeeting()` | 8,000 chars | Balance needed due to extensive prior remarks |
+| Coding | `forCoding()` | 12,000 chars | Code quality first (maximum budget) |
+| Fix | `forFix()` | 10,000 chars | Feedback + design context |
+| Review | `forReview()` | 6,000 chars | Code delivered separately |
+| QA | `forQA()` | 4,000 chars | Only review results needed |
+| Image | `forImageGeneration()` | 6,000 chars | Image generation prompt |
 
-### ResponseParser — LLM 응답 파싱
+### ResponseParser -- LLM Response Parsing
 
-| 메서드 | 용도 | 반환 |
-|--------|------|------|
-| `parseTasks()` | Phase 3 태스크 분해 | 구조화된 태스크 배열 |
-| `parseReviewVerdict()` | Phase 6 코드 리뷰 | APPROVED / CHANGES_REQUESTED |
+| Method | Purpose | Returns |
+|--------|---------|---------|
+| `parseTasks()` | Phase 3 task decomposition | Structured task array |
+| `parseReviewVerdict()` | Phase 6 code review | APPROVED / CHANGES_REQUESTED |
 | `parseQAVerdict()` | Phase 7 QA | PASS / FAIL |
 
-### 프로젝트 구조
+### Project Structure
 
 ```
 src/
-├── index.js                    # CLI 엔트리포인트 (Commander.js) + dotenv 로드
+├── index.js                    # CLI entry point (Commander.js) + dotenv loading
 ├── i18n/
-│   ├── index.js                # i18next 초기화 + t() 번역 함수
-│   ├── detect-locale.js        # OS 로케일 자동 감지 (LC_ALL → LANG → Intl)
+│   ├── index.js                # i18next initialization + t() translation function
+│   ├── detect-locale.js        # OS locale auto-detection (LC_ALL → LANG → Intl)
 │   └── locales/
 │       ├── en.json             # English
 │       ├── ko.json             # 한국어
 │       ├── ja.json             # 日本語
 │       └── zh-CN.json          # 中文(简体)
 ├── config/
-│   ├── loader.js               # YAML 설정 로더 (계층적 병합) + CLI/GitHub 연결 검증
-│   ├── init.js                 # 대화형 설정 초기화 위저드 (글로벌/프로젝트)
-│   ├── credentials.js          # 자격 증명 관리 (~/.polymeld/credentials.yaml)
-│   ├── paths.js                # 크로스 플랫폼 경로 유틸리티
-│   └── interaction.js          # 인터랙션 모드 관리
+│   ├── loader.js               # YAML config loader (hierarchical merge) + CLI/GitHub validation
+│   ├── init.js                 # Interactive setup wizard (global/project)
+│   ├── credentials.js          # Credentials management (~/.polymeld/credentials.yaml)
+│   ├── paths.js                # Cross-platform path utilities
+│   └── interaction.js          # Interaction mode management
 ├── models/
-│   ├── adapter.js              # CLI 추상화 (claude/gemini/codex) + thinking 매핑
-│   └── response-parser.js      # LLM 응답 구조화 파싱
+│   ├── adapter.js              # CLI abstraction (claude/gemini/codex) + thinking mapping
+│   └── response-parser.js      # LLM response structured parsing
 ├── agents/
-│   ├── agent.js                # 개별 에이전트 (페르소나)
-│   └── team.js                 # 팀 관리자 ([PASS] 기반 자율 참여)
+│   ├── agent.js                # Individual agent (persona)
+│   └── team.js                 # Team manager ([PASS]-based autonomous participation)
 ├── state/
-│   ├── pipeline-state.js       # 단일 상태 저장소 (Phase 체크포인트 포함)
-│   └── prompt-assembler.js     # Phase별 차등 토큰 예산 맥락 조립기
+│   ├── pipeline-state.js       # Single state store (with phase checkpoints)
+│   └── prompt-assembler.js     # Per-phase token budget context assembler
 ├── pipeline/
-│   └── orchestrator.js         # 8-Phase 파이프라인 (Phase 0~7 + 병렬 실행 + 체크포인트)
+│   └── orchestrator.js         # 9-Phase pipeline (Phase 0~8 + parallel execution + checkpoints)
 ├── workspace/
-│   ├── local-workspace.js      # 로컬 Git 레포 (파일 탐색/읽기/쓰기 + git CLI)
-│   └── noop-workspace.js       # 워크스페이스 미설정 시 No-op 클라이언트
+│   ├── local-workspace.js      # Local Git repo (file browse/read/write + git CLI)
+│   └── noop-workspace.js       # No-op client when workspace is not configured
 ├── repl/
-│   ├── repl-shell.js           # REPL 루프 (상태 바 + 커맨드 메뉴)
-│   ├── command-router.js       # 슬래시 명령어 라우팅 + Tab 자동완성
-│   ├── status-bar.js           # 상태 바 렌더링
-│   ├── slash-menu.js           # 인라인 검색 슬래시 메뉴 (stdin 직접 처리)
-│   ├── paste-detect-stream.js  # Bracketed Paste Mode (멀티라인 입력)
-│   └── commands/               # 슬래시 명령어 핸들러
+│   ├── repl-shell.js           # REPL loop (status bar + command menu)
+│   ├── command-router.js       # Slash command routing + tab completion
+│   ├── status-bar.js           # Status bar rendering
+│   ├── slash-menu.js           # Inline searchable slash menu (direct stdin handling)
+│   ├── paste-detect-stream.js  # Bracketed Paste Mode (multi-line input)
+│   └── commands/               # Slash command handlers
 │       ├── help.js
 │       ├── status.js
 │       ├── history.js
@@ -596,55 +598,55 @@ src/
 │       ├── save.js
 │       └── load.js
 ├── session/
-│   ├── session.js              # 세션 (PipelineState + 워크스페이스 + 실행 이력)
-│   └── session-store.js        # 세션 디스크 저장/복원
+│   ├── session.js              # Session (PipelineState + workspace + execution history)
+│   └── session-store.js        # Session disk save/restore
 └── github/
-    └── client.js               # GitHub API (Issues, PRs, Projects) + 빈 레포 자동 초기화
+    └── client.js               # GitHub API (Issues, PRs, Projects) + empty repo auto-init
 test/
-├── response-parser.test.js     # ResponseParser 단위 테스트 (다언어 키워드 매칭 포함)
-├── pipeline-state.test.js      # PipelineState 단위 테스트
-├── prompt-assembler.test.js    # PromptAssembler 단위 테스트
-├── paste-detect-stream.test.js # Bracketed Paste Mode 테스트
-├── slash-menu.test.js          # 슬래시 메뉴 인라인 검색 테스트
-├── i18n.test.js                # 번역 키 동기화 검증 (4개 언어 일치)
-└── team.test.js                # Team 페르소나 정규화 테스트
+├── response-parser.test.js     # ResponseParser unit tests (incl. multilingual keyword matching)
+├── pipeline-state.test.js      # PipelineState unit tests
+├── prompt-assembler.test.js    # PromptAssembler unit tests
+├── paste-detect-stream.test.js # Bracketed Paste Mode tests
+├── slash-menu.test.js          # Slash menu inline search tests
+├── i18n.test.js                # Translation key sync validation (4-language parity)
+└── team.test.js                # Team persona normalization tests
 ```
 
-## GitHub에 기록되는 항목
+## What Gets Recorded on GitHub
 
-모든 과정이 GitHub에 추적 가능하게 기록됩니다:
+Every step is recorded on GitHub for full traceability:
 
-- **회의록**: Issue (meeting-notes 라벨)
-- **태스크**: Issue (backlog → todo → in-progress → done)
-- **배정 기록**: Issue Comment
-- **개발 로그**: Issue Comment + Commit
-- **이미지 생성 결과**: Issue Comment (파일 경로 + 텍스트 설명)
-- **페르소나 간 논의**: Issue Comment
-- **코드 리뷰**: Issue Comment
-- **QA 결과**: Issue Comment
-- **최종 결과물**: Pull Request
+- **Meeting minutes**: Issue (meeting-notes label)
+- **Tasks**: Issue (backlog → todo → in-progress → done)
+- **Assignment records**: Issue Comment
+- **Development logs**: Issue Comment + Commit
+- **Image generation results**: Issue Comment (file path + text description)
+- **Inter-persona discussions**: Issue Comment
+- **Code reviews**: Issue Comment
+- **QA results**: Issue Comment
+- **Final deliverables**: Pull Request
 
-각 기록에는 어떤 AI CLI가 수행했는지 태그됩니다 (예: `[claude]`, `[gemini]`, `[codex]`).
+Each record is tagged with the AI CLI that performed it (e.g., `[claude]`, `[gemini]`, `[codex]`).
 
-## Claude Code 연동
+## Claude Code Integration
 
-이 CLI를 Claude Code에서도 호출할 수 있습니다:
+This CLI can also be invoked from within Claude Code:
 
 ```bash
-# Claude Code 내에서
-polymeld run "요구사항" --no-interactive
+# From inside Claude Code
+polymeld run "requirements" --no-interactive
 ```
 
-또는 CLAUDE.md에 등록:
+Or register it in CLAUDE.md:
 ```markdown
 ## Polymeld
-프로젝트 요구사항이 주어지면 Polymeld CLI를 실행하세요:
-`polymeld run "요구사항" --no-interactive`
+When given project requirements, run the Polymeld CLI:
+`polymeld run "requirements" --no-interactive`
 ```
 
-## 페르소나 커스터마이징
+## Persona Customization
 
-설정 파일(`config.yaml`)에서 페르소나를 추가/수정할 수 있습니다:
+You can add or modify personas in your `config.yaml`:
 
 ```yaml
 personas:
@@ -652,40 +654,40 @@ personas:
     name: 최배포
     role: DevOps Engineer
     model: codex
-    description: "CI/CD와 인프라 자동화에 집착. 배포 파이프라인의 완벽함을 추구."
+    description: "Obsessed with CI/CD and infrastructure automation. Strives for deployment pipeline perfection."
     expertise:
-      - CI/CD 파이프라인 구축
-      - 컨테이너 오케스트레이션
-      - 인프라 자동화
+      - CI/CD pipeline construction
+      - Container orchestration
+      - Infrastructure automation
 
   concept_artist:
     name: 이컨셉
     role: Concept Artist
-    model: gemini              # 토론/기획 시 텍스트 모델
-    image_model: gemini_image  # 이미지 생성 시 이미지 모델
-    description: "컨셉 아트와 비주얼 디자인 전문가"
+    model: gemini              # Text model for discussion/planning
+    image_model: gemini_image  # Image model for image generation
+    description: "Specialist in concept art and visual design"
     expertise:
-      - 컨셉 아트 제작
-      - 캐릭터/배경 디자인
+      - Concept art creation
+      - Character/environment design
 ```
 
-> 모든 페르소나는 회의에 참여하되, 관련 없는 주제에서는 `[PASS]`로 자발적으로 패스합니다. 별도의 on_demand 설정은 필요 없습니다.
+> All personas participate in meetings, but voluntarily pass with `[PASS]` on unrelated topics. No separate on_demand configuration is needed.
 
-## 다국어 지원 (i18n)
+## Multilingual Support (i18n)
 
-CLI UI, AI 시스템 프롬프트, GitHub 코멘트 등 모든 텍스트가 4개 언어로 제공됩니다:
+All text -- CLI UI, AI system prompts, GitHub comments, and more -- is available in 4 languages:
 
-| 언어 | 코드 | 설정 방법 |
-|------|------|----------|
-| 한국어 | `ko` | `--lang ko` 또는 OS 로케일 |
-| English | `en` | `--lang en` 또는 OS 로케일 |
-| 日本語 | `ja` | `--lang ja` 또는 OS 로케일 |
-| 中文(简体) | `zh-CN` | `--lang zh-CN` 또는 OS 로케일 |
+| Language | Code | How to Set |
+|----------|------|------------|
+| 한국어 | `ko` | `--lang ko` or OS locale |
+| English | `en` | `--lang en` or OS locale |
+| 日本語 | `ja` | `--lang ja` or OS locale |
+| 中文(简体) | `zh-CN` | `--lang zh-CN` or OS locale |
 
-**로케일 감지 우선순위**: `--lang` 플래그 → 환경변수 (`LC_ALL`, `LC_MESSAGES`, `LANG`) → `Intl` API → `en` (기본값)
+**Locale detection priority**: `--lang` flag → environment variables (`LC_ALL`, `LC_MESSAGES`, `LANG`) → `Intl` API → `en` (default)
 
-AI 응답 파싱도 다국어 대응: 코드 리뷰 판정(`APPROVED`/`승인`/`承認`/`批准`), QA 판정(`PASS`/`합격`/`合格`/`通过`) 등을 언어에 무관하게 인식합니다.
+AI response parsing is also multilingual: Code review verdicts (`APPROVED`/`승인`/`承認`/`批准`), QA verdicts (`PASS`/`합격`/`合格`/`通过`), and others are recognized regardless of language.
 
-## 라이선스
+## License
 
 MIT
