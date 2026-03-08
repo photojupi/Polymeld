@@ -37,7 +37,7 @@
       "globalSetupTitle": "🔧 Polymeld Global Setup",
       "globalExists": "Global config already exists: {{path}}",
       "globalCreated": "✅ Global config created: {{path}}",
-      "setupAuth": "Would you like to set up credentials (API keys, GitHub token) now?",
+
       "globalComplete": "✅ Global setup complete!",
       "nextStep": "Run polymeld from your GitHub project folder.",
       "projectExists": "Project config already exists: {{path}}",
@@ -53,7 +53,8 @@
       "saved": "✅ Credentials saved: {{path}}",
       "githubGuideTitle": "🔑 GitHub Personal Access Token Setup",
       "githubGuideUrl": "https://github.com/settings/tokens → 'Generate new token'",
-      "githubGuideScopes": "Required scopes — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects write"
+      "githubGuideScopes": "Required scopes — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects write",
+      "githubTokenRequired": "GitHub token is required. Generate one at https://github.com/settings/tokens."
     },
     "start": {
       "description": "Start interactive REPL mode (session-persistent, slash commands)",

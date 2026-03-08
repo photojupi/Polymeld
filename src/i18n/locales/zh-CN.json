@@ -37,7 +37,7 @@
       "globalSetupTitle": "🔧 Polymeld 全局设置",
       "globalExists": "全局配置已存在: {{path}}",
       "globalCreated": "✅ 全局配置已创建: {{path}}",
-      "setupAuth": "是否现在设置凭证（API密钥、GitHub令牌）？",
+
       "globalComplete": "✅ 全局设置完成！",
       "nextStep": "在GitHub项目文件夹中运行 polymeld。",
       "projectExists": "项目配置已存在: {{path}}",
@@ -53,7 +53,8 @@
       "saved": "✅ 凭证已保存: {{path}}",
       "githubGuideTitle": "🔑 GitHub Personal Access Token 创建指南",
       "githubGuideUrl": "https://github.com/settings/tokens → 'Generate new token'",
-      "githubGuideScopes": "所需权限 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 写入"
+      "githubGuideScopes": "所需权限 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 写入",
+      "githubTokenRequired": "GitHub令牌为必填项。请在 https://github.com/settings/tokens 生成。"
     },
     "start": {
       "description": "启动交互式REPL模式（会话保持，斜杠命令）",

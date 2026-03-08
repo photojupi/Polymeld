@@ -37,7 +37,6 @@
       "globalSetupTitle": "🔧 Polymeld 글로벌 설정",
       "globalExists": "글로벌 설정이 이미 존재합니다: {{path}}",
       "globalCreated": "✅ 글로벌 설정 생성: {{path}}",
-      "setupAuth": "자격 증명(API 키, GitHub 토큰)을 지금 설정하시겠습니까?",
       "globalComplete": "✅ 글로벌 설정 완료!",
       "nextStep": "GitHub 프로젝트 폴더에서 polymeld 를 실행하세요.",
       "projectExists": "프로젝트 설정이 이미 존재합니다: {{path}}",
@@ -53,7 +52,8 @@
       "saved": "✅ 자격 증명 저장: {{path}}",
       "githubGuideTitle": "🔑 GitHub Personal Access Token 생성 안내",
       "githubGuideUrl": "https://github.com/settings/tokens → 'Generate new token'",
-      "githubGuideScopes": "필요 권한 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 쓰기"
+      "githubGuideScopes": "필요 권한 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 쓰기",
+      "githubTokenRequired": "GitHub 토큰은 필수입니다. https://github.com/settings/tokens 에서 생성하세요."
     },
     "start": {
       "description": "인터랙티브 REPL 모드 시작 (세션 유지, 슬래시 명령어)",

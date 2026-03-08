@@ -37,7 +37,7 @@
       "globalSetupTitle": "🔧 Polymeld グローバル設定",
       "globalExists": "グローバル設定は既に存在します: {{path}}",
       "globalCreated": "✅ グローバル設定を作成しました: {{path}}",
-      "setupAuth": "認証情報（APIキー、GitHubトークン）を今設定しますか？",
+
       "globalComplete": "✅ グローバル設定完了！",
       "nextStep": "GitHubプロジェクトフォルダで polymeld を実行してください。",
       "projectExists": "プロジェクト設定は既に存在します: {{path}}",
@@ -53,7 +53,8 @@
       "saved": "✅ 認証情報を保存しました: {{path}}",
       "githubGuideTitle": "🔑 GitHub Personal Access Token 作成ガイド",
       "githubGuideUrl": "https://github.com/settings/tokens → 'Generate new token'",
-      "githubGuideScopes": "必要な権限 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 書き込み"
+      "githubGuideScopes": "必要な権限 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 書き込み",
+      "githubTokenRequired": "GitHubトークンは必須です。https://github.com/settings/tokens で生成してください。"
     },
     "start": {
       "description": "インタラクティブREPLモード開始（セッション維持、スラッシュコマンド）",

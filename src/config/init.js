@@ -43,14 +43,7 @@ export async function initGlobalConfig() {
   fs.writeFileSync(configPath, generateGlobalTemplate(models), "utf-8");
   console.log(chalk.green(t("cli.init.globalCreated", { path: configPath })));
 
-  // credentials 설정 제안
-  const { setupAuth } = await inquirer.prompt([
-    { type: "confirm", name: "setupAuth", message: t("cli.init.setupAuth"), default: true },
-  ]);
-
-  if (setupAuth) {
-    await runAuthPrompt();
-  }
+  await runAuthPrompt();
 
   console.log(chalk.green(`\n${t("cli.init.globalComplete")}`));
   console.log(chalk.gray(`  ${t("cli.init.nextStep")}\n`));
@@ -91,6 +84,7 @@ export async function runAuthPrompt() {
       name: "GITHUB_TOKEN",
       message: "GitHub Personal Access Token:",
       default: process.env.GITHUB_TOKEN || "",
+      validate: (v) => v.trim() ? true : t("cli.auth.githubTokenRequired"),
     },
     {
       type: "input",
