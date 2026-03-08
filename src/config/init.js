@@ -198,7 +198,7 @@ cli:
   timeouts:
 ${timeoutLines.join("\n")}
   max_turns:
-    claude: 10             # Claude agentic loop max turns
+    claude: 20             # Claude agentic loop max turns
 
 # Pipeline settings
 pipeline:

@@ -427,7 +427,7 @@ export class ModelAdapter {
     if (systemPrompt) args.push("--system-prompt", systemPrompt);
 
     // max-turns 제한으로 무한 에이전트 루프 방지
-    const maxTurns = this.config.cli?.max_turns?.claude ?? 3;
+    const maxTurns = this.config.cli?.max_turns?.claude ?? 20;
     args.push("--max-turns", String(maxTurns));
 
     args.push(...this._resolveThinkingArgs("claude", thinkingBudget));

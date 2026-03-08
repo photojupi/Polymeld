@@ -51,7 +51,7 @@ cli:
     gemini: 600000                            # Gemini 10min (wall-clock)
     codex: { idle: 600000, max: 1800000 }     # 10min idle, 30min max
   max_turns:
-    claude: 10             # Claude agentic loop max turns
+    claude: 20             # Claude agentic loop max turns
 
 # Per-persona model assignment
 personas:
