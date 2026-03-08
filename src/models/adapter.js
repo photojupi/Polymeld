@@ -464,9 +464,8 @@ export class ModelAdapter {
   /**
    * Codex CLI: codex exec + stdin 파이핑
    * exec 자체가 비대화형 모드이므로 별도 quiet 플래그 불필요
-   * --full-auto: 승인 프롬프트 없이 샌드박스 내 자동 실행
+   * --full-auto: 승인 프롬프트 없이 workspace-write 샌드박스로 자동 실행
    * --skip-git-repo-check: 임의 디렉토리에서 실행 가능
-   * --sandbox read-only: 파일 수정 방지
    */
   async _chatCodex(model, systemPrompt, userMessage, thinkingBudget, onData) {
     const prompt = systemPrompt
@@ -475,7 +474,6 @@ export class ModelAdapter {
 
     const args = [
       "exec",
-      "--sandbox", "read-only",
       "--skip-git-repo-check",
       "--full-auto",
     ];

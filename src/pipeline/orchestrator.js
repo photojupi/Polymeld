@@ -610,6 +610,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
         currentCode: task.code,
       };
+      const preSnapshot = this._takeFileSnapshot();
       const fixResult = await lead.writeCode(leadFixBundle);
       fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
 
@@ -618,7 +619,8 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         await this._recommitCode(
           task,
           fixResult.code,
-          `fix: lead direct fix for ${task.title} (#${task.issueNumber})`
+          `fix: lead direct fix for ${task.title} (#${task.issueNumber})`,
+          preSnapshot
         );
         await this.github.addComment(
           task.issueNumber,
@@ -762,6 +764,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
             acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
             currentCode: task.code,
           };
+          const preSnapshot = this._takeFileSnapshot();
           const fixResult = await lead.writeCode(leadFixBundle);
           fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
 
@@ -770,7 +773,8 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
             await this._recommitCode(
               task,
               fixResult.code,
-              `fix: lead direct fix for QA feedback on ${task.title} (#${task.issueNumber})`
+              `fix: lead direct fix for QA feedback on ${task.title} (#${task.issueNumber})`,
+              preSnapshot
             );
             await this.github.addComment(
               task.issueNumber,
@@ -946,6 +950,15 @@ ${this.team
 
   // ─── 헬퍼 ─────────────────────────────────────────────
 
+  /** 현재 파일 상태 스냅샷 반환 (pre/post 비교용) */
+  _takeFileSnapshot() {
+    if (!this.workspace?.isLocal) return null;
+    return {
+      untracked: new Set(this.workspace.getUntrackedFiles()),
+      modified: new Set(this.workspace.getModifiedFiles()),
+    };
+  }
+
   /**
    * 개발자에게 수정을 요청하고 결과를 재커밋
    * phaseCodeReview와 phaseQA의 공통 수정 루프에서 사용
@@ -961,6 +974,7 @@ ${this.team
       taskId: task.id,
       feedbackSource,
     });
+    const preSnapshot = this._takeFileSnapshot();
     const fixResult = await agent?.writeCode(fixBundle);
 
     if (fixResult) {
@@ -968,7 +982,8 @@ ${this.team
       await this._recommitCode(
         task,
         fixResult.code,
-        `fix: ${feedbackSource} feedback for ${task.title} (#${task.issueNumber})`
+        `fix: ${feedbackSource} feedback for ${task.title} (#${task.issueNumber})`,
+        preSnapshot
       );
       await this.github.addComment(
         task.issueNumber,
@@ -982,23 +997,70 @@ ${this.team
   /**
    * 수정된 코드를 워크스페이스에 재기록 + 재커밋
    * Phase 5(리뷰)/Phase 6(QA) 수정 루프에서 공통 사용
+   * @param {Object} [preSnapshot] - 에이전트 호출 전 파일 상태 (_takeFileSnapshot 반환값)
    */
-  async _recommitCode(task, rawCode, commitMessage) {
+  async _recommitCode(task, rawCode, commitMessage, preSnapshot) {
     if (!this.workspace?.isLocal) return;
-    const paths = task.filePaths || (task.filePath ? [task.filePath] : []);
-    if (paths.length === 0) return;
 
     return this._enqueueGit(() => {
       try {
-        const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);
-        const cleanCode = codeMatch ? codeMatch[1] : rawCode;
-        this.workspace.writeFile(paths[0], cleanCode);
-        this.workspace.gitAdd(paths);
+        const EXCLUDE_PATTERNS = [".DS_Store", ".polymeld/"];
+        const isExcluded = (f) => EXCLUDE_PATTERNS.some((p) => f.includes(p));
+
+        // 에이전트가 직접 수정한 파일 감지
+        let filesToAdd = [];
+        if (preSnapshot) {
+          const postUntracked = this.workspace.getUntrackedFiles();
+          const postModified = this.workspace.getModifiedFiles();
+          const newFiles = postUntracked.filter((f) => !preSnapshot.untracked.has(f) && !isExcluded(f));
+          const changedFiles = postModified.filter((f) => !preSnapshot.modified.has(f) && !isExcluded(f));
+          filesToAdd = [...new Set([...newFiles, ...changedFiles])];
+        }
+
+        if (filesToAdd.length > 0) {
+          // 에이전트가 직접 생성/수정한 파일: 이미 디스크에 존재
+          task.filePaths = filesToAdd;
+          task.filePath = filesToAdd[0];
+          this.workspace.gitAdd(filesToAdd);
+        } else {
+          // fallback: 기존 경로에 코드 추출 후 쓰기
+          const paths = task.filePaths || (task.filePath ? [task.filePath] : []);
+          if (paths.length === 0) return;
+          const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);
+          const cleanCode = codeMatch ? codeMatch[1] : rawCode;
+          this.workspace.writeFile(paths[0], cleanCode);
+          this.workspace.gitAdd(paths);
+        }
+
+        this.workspace.invalidateCache();
         this.workspace.gitCommit(commitMessage);
       } catch (e) {
         console.log(chalk.yellow(`  ${t("pipeline.recommitFailed", { message: e.message })}`));
       }
     });
+  }
+
+  /**
+   * LLM 응답 텍스트에서 파일 경로를 추출
+   * 코드블록 헤더(```lang path) 또는 파일 경로 주석(// path/to/file.ext) 감지
+   */
+  _parseFilePathsFromResponse(responseText) {
+    if (!responseText) return [];
+    const paths = new Set();
+    const FILE_EXT = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|sh|bash|zsh|md|json|yaml|yml|toml|css|scss|html|vue|svelte|c|cpp|h|hpp|cs|swift|kt)$/i;
+    // 패턴 1: ```lang filepath (예: ```javascript src/utils/helper.js)
+    for (const m of responseText.matchAll(/```\w*\s+([\w./-]+)/g)) {
+      if (m[1].includes("/") || FILE_EXT.test(m[1])) {
+        paths.add(m[1]);
+      }
+    }
+    // 패턴 2: 코드블록 내 첫 줄 주석 (// path/file.ext 또는 # path/file.ext)
+    for (const m of responseText.matchAll(/```\w*\n\s*(?:\/\/|#)\s*([\w./-]+)/g)) {
+      if (m[1].includes("/") || FILE_EXT.test(m[1])) {
+        paths.add(m[1]);
+      }
+    }
+    return [...paths];
   }
 
   /**
@@ -1099,18 +1161,24 @@ ${this.team
       detectedFiles = [...new Set([...newFiles, ...changedFiles])];
     }
 
-    // 파일 경로 결정: 감지된 파일이 있으면 사용, 없으면 fallback
+    // 파일 경로 결정: 감지된 파일 → 응답 파싱 → title 기반 fallback
     if (detectedFiles.length > 0) {
       task.filePaths = detectedFiles;
       task.filePath = detectedFiles[0];
     } else {
-      const filePath = `src/${task.category || "feature"}/${task.title
-        .replace(/[^a-zA-Z0-9가-힣]/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^_|_$/g, "")
-        .toLowerCase()}.js`;
-      task.filePath = filePath;
-      task.filePaths = [filePath];
+      const parsed = this._parseFilePathsFromResponse(result.code);
+      if (parsed.length > 0) {
+        task.filePaths = parsed;
+        task.filePath = parsed[0];
+      } else {
+        const filePath = `src/${task.category || "feature"}/${task.title
+          .replace(/[^a-zA-Z0-9가-힣]/g, "_")
+          .replace(/_+/g, "_")
+          .replace(/^_|_$/g, "")
+          .toLowerCase()}.js`;
+        task.filePath = filePath;
+        task.filePaths = [filePath];
+      }
     }
 
     // Git 작업: 큐에 넣어 직렬화
