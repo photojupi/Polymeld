@@ -67,14 +67,11 @@ npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 2. First run — the onboarding wizard starts automatically
+# 2. Run from your GitHub project folder — the onboarding wizard starts automatically
+cd ~/projects/my-app
 polymeld
 # → Model selection → GitHub token creation guide + input → Done!
 # → GITHUB_REPO is auto-detected from your project folder
-
-# 3. Run from your GitHub project folder!
-cd ~/projects/my-app
-polymeld run "Implement user authentication (email/password + OAuth)"
 ```
 
 > **GITHUB_REPO auto-detection**: When run from a GitHub project folder, `owner/repo` is automatically extracted from `git remote`. Just set `GITHUB_TOKEN` and you're ready to use it in any project.

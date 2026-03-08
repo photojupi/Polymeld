@@ -68,14 +68,11 @@ npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 2. 首次运行 — 引导向导会自动启动
+# 2. 在 GitHub 项目文件夹中运行 — 引导向导会自动启动
+cd ~/projects/my-app
 polymeld
 # → 模型选择 → GitHub Token 创建指南 + 输入 → 完成！
 # → GITHUB_REPO 会从项目文件夹自动检测
-
-# 3. 在 GitHub 项目文件夹中运行！
-cd ~/projects/my-app
-polymeld run "实现用户认证功能（邮箱/密码 + OAuth）"
 ```
 
 > **GITHUB_REPO 自动检测**：在 GitHub 项目文件夹中运行时，会自动从 `git remote` 提取 `owner/repo`。只需设置 `GITHUB_TOKEN`，即可在任何项目中直接使用。

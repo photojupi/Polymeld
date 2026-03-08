@@ -68,14 +68,11 @@ npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 2. 初回実行 — オンボーディングウィザードが自動起動します
+# 2. GitHubプロジェクトフォルダで実行 — オンボーディングウィザードが自動起動します
+cd ~/projects/my-app
 polymeld
 # → モデル選択 → GitHubトークン作成ガイド + 入力 → 完了！
 # → GITHUB_REPOはプロジェクトフォルダから自動検出されます
-
-# 3. GitHubプロジェクトフォルダで実行！
-cd ~/projects/my-app
-polymeld run "ユーザー認証機能の実装（メール/パスワード + OAuth）"
 ```
 
 > **GITHUB_REPO自動検出**: GitHubプロジェクトフォルダで実行すると、`git remote`から`owner/repo`を自動抽出します。`GITHUB_TOKEN`を設定するだけで、どのプロジェクトでもすぐに使えます。
