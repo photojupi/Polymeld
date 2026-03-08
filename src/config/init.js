@@ -181,9 +181,9 @@ function generateGlobalTemplate(models) {
 
   // CLI 타임아웃 (선택된 모델에 맞춰 생성)
   const timeoutLines = [];
-  if (models.includes("claude")) timeoutLines.push("    claude: { idle: 600000, max: 1800000 }   # 10min idle, 30min max");
-  if (models.includes("gemini")) timeoutLines.push("    gemini: 600000                            # Gemini 10min (wall-clock)");
-  if (models.includes("codex")) timeoutLines.push("    codex: { idle: 600000, max: 1800000 }     # 10min idle, 30min max");
+  if (models.includes("claude")) timeoutLines.push("    claude: { idle: 900000, max: 1800000 }   # 15min idle, 30min max");
+  if (models.includes("gemini")) timeoutLines.push("    gemini: 900000                            # Gemini 15min (wall-clock)");
+  if (models.includes("codex")) timeoutLines.push("    codex: { idle: 900000, max: 1800000 }     # 15min idle, 30min max");
 
   return `# Polymeld Global Settings
 # Default settings for all projects.
