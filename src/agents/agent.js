@@ -144,23 +144,28 @@ export class Agent {
   }
 
   /**
-   * QA 테스트
-   * @param {Object} contextBundle - ContextBuilder.buildForQA()의 반환값
-   * @param {string} contextBundle.systemContext - 시스템 맥락
-   * @param {string} contextBundle.code - 검증 대상 코드
+   * QA 테스트 — 실행 기반 검증
+   * filePaths가 있으면 실제 파일을 읽고 실행하여 검증
+   * filePaths가 없으면 실행 불가 → null 반환 (QA 스킵)
+   * @param {Object} contextBundle - PromptAssembler.forQA()의 반환값
+   * @param {string[]} contextBundle.filePaths - 검증 대상 파일 경로
    * @param {string} contextBundle.criteria - 수용 기준
    * @param {string} contextBundle.taskDescription - 태스크 설명
    */
   async runQA(contextBundle, { modelOverride } = {}) {
+    // 실행 기반 QA: filePaths가 없으면 실행 불가 → 스킵
+    if (!contextBundle.filePaths || contextBundle.filePaths.length === 0) {
+      return { agent: this.name, role: this.role, model: this.modelKey, qaResult: null };
+    }
+
     const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(
       `${t("agent.qaContext")}\n\n${contextBundle.systemContext}`
     );
 
-    const prompt = `${t("agent.qaCodeSection")}
-\`\`\`
-${contextBundle.code}
-\`\`\`
+    const fileList = contextBundle.filePaths.map((f) => `- ${f}`).join("\n");
+    const prompt = `${t("agent.qaFilesSection")}
+${fileList}
 
 ${t("agent.qaTaskSection")}
 ${contextBundle.taskDescription}
@@ -168,7 +173,7 @@ ${contextBundle.taskDescription}
 ${t("agent.qaCriteriaSection")}
 ${contextBundle.criteria}
 
-${t("agent.qaInstruction")}`;
+${t("agent.qaExecutionInstruction")}`;
 
     const response = await this.adapter.chat(
       modelKey,

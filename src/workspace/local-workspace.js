@@ -298,6 +298,37 @@ export class LocalWorkspace {
     }
   }
 
+  /**
+   * Untracked 파일 목록 반환 (.gitignore 제외)
+   * @returns {string[]} 상대 경로 배열
+   */
+  getUntrackedFiles() {
+    try {
+      const output = this._git(["ls-files", "--others", "--exclude-standard"]);
+      return output ? output.split("\n").filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * 수정된 tracked 파일 목록 반환
+   * @returns {string[]} 상대 경로 배열
+   */
+  getModifiedFiles() {
+    try {
+      const unstaged = this._git(["diff", "--name-only"]);
+      const staged = this._git(["diff", "--cached", "--name-only"]);
+      const all = [
+        ...(unstaged ? unstaged.split("\n").filter(Boolean) : []),
+        ...(staged ? staged.split("\n").filter(Boolean) : []),
+      ];
+      return [...new Set(all)];
+    } catch {
+      return [];
+    }
+  }
+
   gitAdd(files = ["."]) {
     this._git(["add", ...files]);
   }

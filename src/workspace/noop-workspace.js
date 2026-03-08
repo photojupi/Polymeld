@@ -12,6 +12,8 @@ export class NoOpWorkspace {
   readFile() { return ""; }
   findRelevantFiles() { return []; }
   writeFile() {}
+  getUntrackedFiles() { return []; }
+  getModifiedFiles() { return []; }
   getCurrentBranch() { return "main"; }
   gitCheckoutNewBranch() {}
   gitAdd() {}

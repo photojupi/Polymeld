@@ -150,6 +150,7 @@
     "fixReviewComment": "🔄 **{{agent}}**（`{{model}}`）: 审查反馈已应用（第{{attempt}}次）",
     "fixComplete": "{{agent}} 修改完成 → 进入重新审查",
     "qaSkipped": "⏭️  {{title}}（已完成QA — 跳过）",
+    "qaSkippedNoFiles": "⏭️  {{title}}（执行式QA不可用 — 无文件路径，跳过）",
     "qaRequestMessage": "{{title}} 请求QA",
     "qaRetryLabel": "🧪 QA重新验证（{{attempt}}/{{max}}）: {{title}}",
     "qaLabel": "🧪 QA验证: {{title}}",
@@ -436,6 +437,8 @@
     "qaTaskSection": "## 任务描述",
     "qaCriteriaSection": "## 验收标准",
     "qaInstruction": "请对上述代码执行QA验证。\n\n响应格式:\n1. 按验收标准逐项验证结果（表格形式）\n2. 边界情况测试结果\n3. 发现的Bug/问题\n4. 综合判定: PASS / FAIL\n\n请在最后添加以下JSON块:\n```json\n{ \"verdict\": \"PASS 或 FAIL\", \"summary\": \"一句话总结\" }\n```",
+    "qaFilesSection": "## 待测文件",
+    "qaExecutionInstruction": "请对上述文件执行QA验证。\n\n验证方法:\n1. 直接读取每个文件以检查代码\n2. 对可执行文件直接运行以验证结果（如: node, python, bash, chmod +x 等）\n3. 如果有测试文件，请运行测试\n4. 使用实际执行结果验证验收标准\n\n响应格式:\n1. 按验收标准逐项验证结果（包含执行输出，表格形式）\n2. 执行过程中发现的错误/异常\n3. 综合判定: PASS / FAIL\n\n请在最后添加以下JSON块:\n```json\n{ \"verdict\": \"PASS 或 FAIL\", \"summary\": \"一句话总结\" }\n```",
     "taskBreakdownContext": "项目的技术设计已完成。将其分解为可执行的任务。",
     "taskBreakdownPrompt": "## 项目需求\n{{requirement}}\n\n## 技术设计决策\n{{designDecisions}}\n\n请根据以上内容分解任务。\n\n## 规则\n- 每个任务1-4小时工作量\n- 为每个任务指定适合的角色（{{roles}}）\n- 编写具体的验收标准\n- **保守地标注依赖关系（dependencies）**：\n  - 以数组形式记录前置任务编号（从1开始）。例：[1] = 第1个任务完成后才能开始\n  - 仅在文件/模块级别存在实际依赖时才添加（修改同一文件、引用API接口等）\n  - 独立任务使用 dependencies: []（可并行执行）\n  - **哪怕有一点冲突风险也要添加依赖**（保守判断优先）\n\n## 响应格式（JSON）\n```json\n{\n  \"tasks\": [\n    {\n      \"title\": \"任务标题\",\n      \"description\": \"详细描述\",\n      \"suitable_role\": \"ace_programmer\",\n      \"estimated_hours\": 2,\n      \"priority\": \"P0\",\n      \"dependencies\": [],\n      \"acceptance_criteria\": [\"标准1\", \"标准2\"],\n      \"category\": \"backend\"\n    }\n  ]\n}\n```\n\n## 依赖关系示例\n- 数据库Schema（第1个）→ API实现（第2个）：dependencies: [1]（需要先有Schema才能编写API）\n- 前端组件（第3个）和后端API（第2个）在不同文件中：dependencies: []（独立）\n- 第1个完成后，第2个和第3个可以并行：第2个 dependencies: [1]，第3个 dependencies: [1]",
     "imageNotConfigured": "{{name}}（{{role}}）未配置 image_model，无法生成图片",
@@ -614,7 +617,10 @@
     "projectScopeHint": "→ 请检查令牌是否有 'project' 权限。",
     "projectLinkFailed": "⚠️ 项目-仓库关联失败:",
     "pipelineFieldCreated": "✅ 'Pipeline'字段已创建 — 请在看板视图中将列字段切换为'Pipeline'。",
-    "pipelineFieldFailed": "⚠️ Pipeline字段设置失败:"
+    "pipelineFieldFailed": "⚠️ Pipeline字段设置失败:",
+    "updateLabelsFailed": "⚠️ 标签更新失败 (Issue #{{number}}): {{message}}",
+    "closeIssueFailed": "⚠️ 关闭Issue失败 (#{{number}}): {{message}}",
+    "labelCreateFailed": "⚠️ 标签 '{{name}}' 创建失败: {{message}}"
   },
   "onboarding": {
     "welcome": "🚀 欢迎使用 Polymeld！",

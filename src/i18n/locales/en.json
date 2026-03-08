@@ -150,6 +150,7 @@
     "fixReviewComment": "🔄 **{{agent}}** (`{{model}}`): Review feedback applied (attempt {{attempt}})",
     "fixComplete": "{{agent}} fixes complete → proceeding to re-review",
     "qaSkipped": "⏭️  {{title}} (already QA'd — skipped)",
+    "qaSkippedNoFiles": "⏭️  {{title}} (execution-based QA unavailable — no file paths, skipped)",
     "qaRequestMessage": "{{title}} QA requested",
     "qaRetryLabel": "🧪 QA re-verification ({{attempt}}/{{max}}): {{title}}",
     "qaLabel": "🧪 QA Verification: {{title}}",
@@ -436,6 +437,8 @@
     "qaTaskSection": "## Task Description",
     "qaCriteriaSection": "## Acceptance Criteria",
     "qaInstruction": "Please perform QA verification on the above code.\n\nResponse format:\n1. Verification results per acceptance criterion (table format)\n2. Edge case test results\n3. Bugs/issues found\n4. Overall verdict: PASS / FAIL\n\nPlease include the following JSON block at the end:\n```json\n{ \"verdict\": \"PASS or FAIL\", \"summary\": \"one-line summary\" }\n```",
+    "qaFilesSection": "## Files Under Test",
+    "qaExecutionInstruction": "Please perform QA verification on the above files.\n\nVerification method:\n1. Read each file directly to review the code\n2. Execute runnable files to verify results (e.g., node, python, bash, chmod +x, etc.)\n3. If test files exist, run the tests\n4. Verify acceptance criteria using actual execution results\n\nResponse format:\n1. Verification results per acceptance criterion (including execution output, table format)\n2. Errors/exceptions found during execution\n3. Overall verdict: PASS / FAIL\n\nPlease include the following JSON block at the end:\n```json\n{ \"verdict\": \"PASS or FAIL\", \"summary\": \"one-line summary\" }\n```",
     "taskBreakdownContext": "The project's technical design is complete. Breaking it down into executable tasks.",
     "taskBreakdownPrompt": "## Project Requirements\n{{requirement}}\n\n## Technical Design Decisions\n{{designDecisions}}\n\nPlease break down the above into tasks.\n\n## Rules\n- Each task should be 1-4 hours of work\n- Specify the suitable role ({{roles}}) for each task\n- Write specific acceptance criteria\n- **Specify dependencies conservatively**:\n  - List prerequisite task numbers (1-based) as an array. Example: [1] = can start after task 1 completes\n  - Only add dependencies when there's actual file/module-level dependency (modifying same file, referencing API interfaces, etc.)\n  - Independent tasks use dependencies: [] (candidates for parallel execution)\n  - **When in doubt about potential conflicts, add the dependency** (conservative approach)\n\n## Response Format (JSON)\n```json\n{\n  \"tasks\": [\n    {\n      \"title\": \"Task title\",\n      \"description\": \"Detailed description\",\n      \"suitable_role\": \"ace_programmer\",\n      \"estimated_hours\": 2,\n      \"priority\": \"P0\",\n      \"dependencies\": [],\n      \"acceptance_criteria\": [\"Criterion 1\", \"Criterion 2\"],\n      \"category\": \"backend\"\n    }\n  ]\n}\n```\n\n## Dependency Examples\n- DB Schema (Task 1) → API Implementation (Task 2): dependencies: [1] (schema needed before API)\n- Frontend Component (Task 3) and Backend API (Task 2) in separate files: dependencies: [] (independent)\n- After Task 1 completes, Tasks 2 and 3 can run in parallel: Task 2 dependencies: [1], Task 3 dependencies: [1]",
     "imageNotConfigured": "{{name}} ({{role}}) cannot generate images: image_model not configured",
@@ -614,7 +617,10 @@
     "projectScopeHint": "→ Check if token has 'project' scope.",
     "projectLinkFailed": "⚠️ Project-repo linking failed:",
     "pipelineFieldCreated": "✅ 'Pipeline' field created — switch board view column to 'Pipeline'.",
-    "pipelineFieldFailed": "⚠️ Pipeline field setup failed:"
+    "pipelineFieldFailed": "⚠️ Pipeline field setup failed:",
+    "updateLabelsFailed": "⚠️ Label update failed (issue #{{number}}): {{message}}",
+    "closeIssueFailed": "⚠️ Close issue failed (#{{number}}): {{message}}",
+    "labelCreateFailed": "⚠️ Label '{{name}}' creation failed: {{message}}"
   },
   "onboarding": {
     "welcome": "🚀 Welcome to Polymeld!",

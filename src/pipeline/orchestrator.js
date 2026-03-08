@@ -648,6 +648,19 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         continue;
       }
 
+      // 실행 기반 QA 불가 시 스킵 (filePaths 없으면 실행 검증 불가)
+      const hasFilePaths = task.filePaths && task.filePaths.length > 0;
+      if (!hasFilePaths) {
+        console.log(chalk.yellow(`  ${t("pipeline.qaSkippedNoFiles", { title: task.title })}`));
+        task.qaPassed = true;
+        task.qaAttempts = 0;
+        task.qaVerdict = "skipped";
+        await this.github.updateLabels(task.issueNumber, ["done"], ["in-review"]);
+        await this.github.closeIssue(task.issueNumber);
+        this.state.completedTasks.push(task);
+        continue;
+      }
+
       await this.github.updateLabels(
         task.issueNumber,
         ["qa"],
@@ -971,13 +984,16 @@ ${this.team
    * Phase 5(리뷰)/Phase 6(QA) 수정 루프에서 공통 사용
    */
   async _recommitCode(task, rawCode, commitMessage) {
-    if (!this.workspace?.isLocal || !task.filePath) return;
+    if (!this.workspace?.isLocal) return;
+    const paths = task.filePaths || (task.filePath ? [task.filePath] : []);
+    if (paths.length === 0) return;
+
     return this._enqueueGit(() => {
       try {
         const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);
         const cleanCode = codeMatch ? codeMatch[1] : rawCode;
-        this.workspace.writeFile(task.filePath, cleanCode);
-        this.workspace.gitAdd([task.filePath]);
+        this.workspace.writeFile(paths[0], cleanCode);
+        this.workspace.gitAdd(paths);
         this.workspace.gitCommit(commitMessage);
       } catch (e) {
         console.log(chalk.yellow(`  ${t("pipeline.recommitFailed", { message: e.message })}`));
@@ -1054,6 +1070,14 @@ ${this.team
       }
     }
 
+    // 에이전트 호출 전 파일 상태 스냅샷 (에이전트가 직접 파일을 생성할 수 있으므로)
+    const preUntracked = new Set(
+      this.workspace?.isLocal ? this.workspace.getUntrackedFiles() : []
+    );
+    const preModified = new Set(
+      this.workspace?.isLocal ? this.workspace.getModifiedFiles() : []
+    );
+
     // LLM 호출 (병렬 실행의 핵심 — 가장 오래 걸리는 구간)
     const spinner = ora(`  ${t("pipeline.codingSpinner", { agent: agent.name })}`).start();
     const contextBundle = this.assembler.forCoding(this.state, { agentId: agent.id, taskId: task.id, codebaseContext });
@@ -1062,26 +1086,56 @@ ${this.team
 
     task.code = result.code;
 
-    const filePath = `src/${task.category || "feature"}/${task.title
-      .replace(/[^a-zA-Z0-9]/g, "_")
-      .toLowerCase()}.js`;
-    task.filePath = filePath;
+    // 에이전트가 직접 생성/수정한 파일 감지
+    const EXCLUDE_PATTERNS = [".DS_Store", ".polymeld/"];
+    const isExcluded = (f) => EXCLUDE_PATTERNS.some((p) => f.includes(p));
 
-    const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
-    const cleanCode = codeMatch ? codeMatch[1] : result.code;
+    let detectedFiles = [];
+    if (this.workspace?.isLocal) {
+      const postUntracked = this.workspace.getUntrackedFiles();
+      const postModified = this.workspace.getModifiedFiles();
+      const newFiles = postUntracked.filter((f) => !preUntracked.has(f) && !isExcluded(f));
+      const changedFiles = postModified.filter((f) => !preModified.has(f) && !isExcluded(f));
+      detectedFiles = [...new Set([...newFiles, ...changedFiles])];
+    }
+
+    // 파일 경로 결정: 감지된 파일이 있으면 사용, 없으면 fallback
+    if (detectedFiles.length > 0) {
+      task.filePaths = detectedFiles;
+      task.filePath = detectedFiles[0];
+    } else {
+      const filePath = `src/${task.category || "feature"}/${task.title
+        .replace(/[^a-zA-Z0-9가-힣]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_|_$/g, "")
+        .toLowerCase()}.js`;
+      task.filePath = filePath;
+      task.filePaths = [filePath];
+    }
 
     // Git 작업: 큐에 넣어 직렬화
     if (this.workspace?.isLocal) {
       await this._enqueueGit(() => {
         try {
           this.workspace.gitCheckoutNewBranch(branchName, baseBranch);
-          this.workspace.writeFile(filePath, cleanCode);
+
+          if (detectedFiles.length > 0) {
+            // 에이전트가 직접 생성한 파일: 이미 디스크에 존재
+            this.workspace.gitAdd(detectedFiles);
+          } else {
+            // fallback: 응답 텍스트에서 코드 추출 후 쓰기
+            const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
+            const cleanCode = codeMatch ? codeMatch[1] : result.code;
+            this.workspace.writeFile(task.filePath, cleanCode);
+            this.workspace.gitAdd([task.filePath]);
+          }
+
           this.workspace.invalidateCache();
-          this.workspace.gitAdd([filePath]);
           this.workspace.gitCommit(
             `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
           );
-          console.log(chalk.gray(`  ${t("pipeline.localCommit", { path: filePath })}`));
+          const pathLog = task.filePaths.join(", ");
+          console.log(chalk.gray(`  ${t("pipeline.localCommit", { path: pathLog })}`));
         } catch (e) {
           console.log(chalk.yellow(`  ${t("pipeline.localCommitFailed", { message: e.message })}`));
         }
@@ -1092,13 +1146,15 @@ ${this.team
           if (this.config.pipeline?.auto_branch) {
             await this.github.createBranch(branchName);
           }
+          const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
+          const cleanCode = codeMatch ? codeMatch[1] : result.code;
           await this.github.commitFile(
             branchName,
-            filePath,
+            task.filePath,
             cleanCode,
             `feat: ${task.title} (#${task.issueNumber})\n\nDeveloped by: ${agent.name} (${agent.modelKey})`
           );
-          console.log(chalk.gray(`  ${t("pipeline.commit", { path: filePath })}`));
+          console.log(chalk.gray(`  ${t("pipeline.commit", { path: task.filePath })}`));
         } catch (e) {
           console.log(chalk.yellow(`  ${t("pipeline.commitSkipped", { message: e.message })}`));
         }

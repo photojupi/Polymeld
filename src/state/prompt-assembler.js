@@ -295,11 +295,14 @@ export class PromptAssembler {
       }
     }
 
+    const filePaths = task?.filePaths || (task?.filePath ? [task.filePath] : []);
+
     return {
       systemContext: sections.join("\n\n"),
       code,
       criteria,
       taskDescription,
+      filePaths,
     };
   }
 

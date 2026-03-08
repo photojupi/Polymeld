@@ -43,6 +43,7 @@ export class GitHubClient {
     this.owner = owner;
     this.repo = repoName;
     this.projectNumber = null;
+    this._knownLabels = new Set();
   }
 
   issueUrl(number) {
@@ -66,6 +67,31 @@ export class GitHubClient {
         });
       } catch (e) {
         if (e.status !== 422) throw e; // 422 = already exists
+      }
+      this._knownLabels.add(name);
+    }
+  }
+
+  /**
+   * 동적 라벨(assigned:xxx 등)이 없으면 자동 생성
+   * _knownLabels 캐시로 중복 API 호출 방지
+   */
+  async _ensureDynamicLabels(labels) {
+    const unknown = labels.filter((l) => !this._knownLabels.has(l));
+    for (const name of unknown) {
+      try {
+        await this.octokit.rest.issues.createLabel({
+          owner: this.owner,
+          repo: this.repo,
+          name,
+          color: "ededed",
+        });
+        this._knownLabels.add(name);
+      } catch (e) {
+        if (e.status === 422) {
+          this._knownLabels.add(name); // 이미 존재 → 캐시에 추가
+        }
+        // 다른 에러는 캐시에 추가하지 않음 (다음 호출 시 재시도)
       }
     }
   }
@@ -94,33 +120,42 @@ export class GitHubClient {
   }
 
   async updateLabels(issueNumber, addLabels = [], removeLabels = []) {
-    // 현재 라벨 조회
-    const { data: issue } = await this.octokit.rest.issues.get({
-      owner: this.owner,
-      repo: this.repo,
-      issue_number: issueNumber,
-    });
+    try {
+      await this._ensureDynamicLabels(addLabels);
 
-    const currentLabels = issue.labels.map((l) => l.name);
-    const newLabels = currentLabels
-      .filter((l) => !removeLabels.includes(l))
-      .concat(addLabels);
+      const { data: issue } = await this.octokit.rest.issues.get({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+      });
 
-    await this.octokit.rest.issues.update({
-      owner: this.owner,
-      repo: this.repo,
-      issue_number: issueNumber,
-      labels: [...new Set(newLabels)],
-    });
+      const currentLabels = issue.labels.map((l) => l.name);
+      const newLabels = currentLabels
+        .filter((l) => !removeLabels.includes(l))
+        .concat(addLabels);
+
+      await this.octokit.rest.issues.update({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+        labels: [...new Set(newLabels)],
+      });
+    } catch (e) {
+      console.warn(t("github.updateLabelsFailed", { number: issueNumber, message: e.message }));
+    }
   }
 
   async closeIssue(issueNumber) {
-    await this.octokit.rest.issues.update({
-      owner: this.owner,
-      repo: this.repo,
-      issue_number: issueNumber,
-      state: "closed",
-    });
+    try {
+      await this.octokit.rest.issues.update({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+        state: "closed",
+      });
+    } catch (e) {
+      console.warn(t("github.closeIssueFailed", { number: issueNumber, message: e.message }));
+    }
   }
 
   // ─── Pull Requests ────────────────────────────────────
