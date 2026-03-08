@@ -292,7 +292,7 @@
     "decisionLogTable": "| 时间 | 级别 | 问题 | 决策 | 自动 |"
   },
   "repl": {
-    "banner": "🤖 Polymeld CLI v0.1.0 - 交互模式",
+    "banner": "🤖 Polymeld CLI v{{version}} - 交互模式",
     "bannerDesc": "输入自然语言需求即可运行完整流水线。",
     "bannerHelp": "输入 /help 查看可用命令。",
     "teamMembers": "团队: {{names}}",

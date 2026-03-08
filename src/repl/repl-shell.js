@@ -3,12 +3,16 @@
 
 import readline from "readline";
 import chalk from "chalk";
+import { createRequire } from "module";
 import { Session } from "../session/session.js";
 import { SessionStore } from "../session/session-store.js";
 import { CommandRouter } from "./command-router.js";
 import { StatusBar } from "./status-bar.js";
 import { PasteDetectStream } from "./paste-detect-stream.js";
 import { t } from "../i18n/index.js";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../../package.json");
 
 export class ReplShell {
   constructor(config) {
@@ -213,7 +217,7 @@ export class ReplShell {
   }
 
   _printBanner() {
-    console.log(chalk.bold.cyan(`\n${t("repl.banner")}\n`));
+    console.log(chalk.bold.cyan(`\n${t("repl.banner", { version })}\n`));
     console.log(chalk.gray(`  ${t("repl.bannerDesc")}`));
     console.log(chalk.gray(`  ${t("repl.bannerHelp")}\n`));
 

@@ -292,7 +292,7 @@
     "decisionLogTable": "| 시간 | 레벨 | 질문 | 결정 | 자동 |"
   },
   "repl": {
-    "banner": "🤖 Polymeld CLI v0.1.0 - Interactive Mode",
+    "banner": "🤖 Polymeld CLI v{{version}} - Interactive Mode",
     "bannerDesc": "요구사항을 자연어로 입력하면 전체 파이프라인이 실행됩니다.",
     "bannerHelp": "/help 로 사용 가능한 커맨드를 확인하세요.",
     "teamMembers": "팀원: {{names}}",

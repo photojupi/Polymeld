@@ -292,7 +292,7 @@
     "decisionLogTable": "| 時刻 | レベル | 質問 | 判断 | 自動 |"
   },
   "repl": {
-    "banner": "🤖 Polymeld CLI v0.1.0 - インタラクティブモード",
+    "banner": "🤖 Polymeld CLI v{{version}} - インタラクティブモード",
     "bannerDesc": "要件を自然言語で入力するとフルパイプラインが実行されます。",
     "bannerHelp": "/help で使用可能なコマンドを確認できます。",
     "teamMembers": "チーム: {{names}}",

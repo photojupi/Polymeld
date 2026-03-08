@@ -292,7 +292,7 @@
     "decisionLogTable": "| Time | Level | Question | Decision | Auto |"
   },
   "repl": {
-    "banner": "🤖 Polymeld CLI v0.1.0 - Interactive Mode",
+    "banner": "🤖 Polymeld CLI v{{version}} - Interactive Mode",
     "bannerDesc": "Enter requirements in natural language to run the full pipeline.",
     "bannerHelp": "Type /help to see available commands.",
     "teamMembers": "Team: {{names}}",
