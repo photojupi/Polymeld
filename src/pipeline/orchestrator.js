@@ -360,9 +360,29 @@ export class PipelineOrchestrator {
 
     spinner.succeed(t("pipeline.taskBreakdownComplete"));
 
-    const parsed = ResponseParser.parseTasks(result.tasks);
+    let parsed = ResponseParser.parseTasks(result.tasks);
     if (!parsed.success) {
-      throw new Error(t("pipeline.taskParseFailed", { raw: (result.tasks || "").substring(0, 200) }));
+      // 1회 재시도: 원본 응답을 repair 프롬프트로 JSON 변환 시도
+      const retrySpinner = ora(t("pipeline.taskParseRetrying")).start();
+      let retryOk = false;
+      try {
+        const retryPrompt = t("agent.taskBreakdownRetryPrompt", {
+          previousResponse: result.tasks,
+        });
+        const retryResponse = await this.team.lead.adapter.chat(
+          this.team.lead.modelKey,
+          t("agent.taskBreakdownContext"),
+          retryPrompt,
+          { thinkingBudget: this.team.lead.thinkingBudget }
+        );
+        parsed = ResponseParser.parseTasks(retryResponse);
+        retryOk = parsed.success;
+      } catch { /* retryOk stays false */ }
+      if (!retryOk) {
+        retrySpinner.fail();
+        throw new Error(t("pipeline.taskParseFailed", { raw: (result.tasks || "").substring(0, 200) }));
+      }
+      retrySpinner.succeed();
     }
     let tasks = parsed.tasks;
 
