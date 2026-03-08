@@ -236,7 +236,7 @@ export class LocalWorkspace {
     }
     const dir = path.dirname(fullPath);
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(fullPath, content, "utf-8");
+    fs.writeFileSync(fullPath, typeof content === "string" ? content : String(content), "utf-8");
   }
 
   // ─── Git 명령 ──────────────────────────────────────
