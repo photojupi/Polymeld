@@ -47,7 +47,7 @@ models:
 cli:
   timeout: 600000          # Default timeout 10min (ms)
   timeouts:
-    claude: { idle: 600000, max: 1800000 }   # 10min idle, 30min max
+    claude: { idle: 900000, max: 1800000 }   # 15min idle, 30min max
     gemini: 600000                            # Gemini 10min (wall-clock)
     codex: { idle: 600000, max: 1800000 }     # 10min idle, 30min max
   max_turns:
