@@ -42,7 +42,8 @@
       "projectExists": "プロジェクト設定は既に存在します: {{path}}",
       "projectCreated": "✅ プロジェクト設定を作成しました: {{path}}",
       "gitignoreHint": "💡 .gitignoreに追加してください: .polymeld/config.local.yaml, .polymeld/sessions/",
-      "optional": "任意"
+      "optional": "任意",
+      "repoAutoDetect": "未入力時はプロジェクトフォルダから自動検出"
     },
     "auth": {
       "description": "認証情報の管理（APIキー、GitHubトークン）",
@@ -224,7 +225,7 @@
     "githubConnected": "✅ {{label}} 連携済み（{{repo}}）",
     "githubFailed": "❌ {{label}} {{reason}}",
     "githubRequired": "GitHub連携が必要です。以下を確認してください:",
-    "githubStep1": "1. GITHUB_TOKENとGITHUB_REPOが設定されているか（polymeld auth または .env）",
+    "githubStep1": "1. GITHUB_TOKENが設定されているか確認（polymeld auth または .env）。GITHUB_REPOはプロジェクトフォルダから自動検出されます。",
     "githubStep2": "2. トークンにIssues、Contents、Pull requestsの書き込み権限があるか",
     "githubStep3": "3. トークンが該当リポジトリにアクセスできるか",
     "githubStep4": "4. Classic PAT: 'repo' + 'project' スコープ / Fine-grained PAT: Issues・Contents・Pull requests・Projects 書き込み権限",
@@ -240,9 +241,10 @@
     "timeout": "応答タイムアウト",
     "authFailed": "認証失敗",
     "inputFailed": "入力失敗",
-    "tokenRepoMissing": "GITHUB_TOKENとGITHUB_REPOが未設定",
+    "tokenRepoMissing": "GITHUB_TOKEN未設定（GITHUB_REPOはプロジェクトフォルダから自動検出可能）",
     "tokenMissing": "GITHUB_TOKEN未設定",
-    "repoMissing": "GITHUB_REPO未設定",
+    "repoMissing": "GITHUB_REPO未設定（自動検出失敗 — GitHubプロジェクトフォルダで実行してください）",
+    "repoAutoDetected": "自動検出",
     "tokenAuthFailed": "トークン認証失敗",
     "repoAccessDenied": "リポジトリアクセス拒否（{{repo}}）",
     "repoWriteDenied": "リポジトリ書き込み権限なし（{{repo}}）",

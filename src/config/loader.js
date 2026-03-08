@@ -10,6 +10,7 @@ import os from "os";
 import chalk from "chalk";
 import { t } from "../i18n/index.js";
 import { getGlobalConfigDir, getProjectConfigDir } from "./paths.js";
+import { isRepoAutoDetected } from "./credentials.js";
 
 /**
  * 글로벌 설정 존재 여부 확인 (온보딩 분기용)
@@ -283,7 +284,8 @@ async function checkGitHub() {
       // 네트워크 오류 시 무시 (필수 체크가 아님)
     }
 
-    return { ok: true, user: userData.login, repo, warnings };
+    return { ok: true, user: userData.login, repo, warnings,
+             autoDetected: isRepoAutoDetected() };
   } catch {
     return { ok: false, reason: t("config.networkFailed") };
   }
@@ -372,7 +374,8 @@ export async function validateConnections(config) {
   rewriteLine(chalk.gray(`  ${t("config.authChecking", { label: ghLabel })}`));
   const github = await checkGitHub();
   if (github.ok) {
-    rewriteLine(chalk.green(`  ${t("config.githubConnected", { label: ghLabel, repo: github.repo })}\n`));
+    const autoSuffix = github.autoDetected ? ` · ${t("config.repoAutoDetected")}` : "";
+    rewriteLine(chalk.green(`  ${t("config.githubConnected", { label: ghLabel, repo: github.repo })}${autoSuffix}\n`));
     if (github.warnings?.length) {
       for (const w of github.warnings) {
         console.log(chalk.yellow(`  ⚠️  ${ghLabel} ${w}`));

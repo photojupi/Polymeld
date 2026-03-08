@@ -3,6 +3,7 @@
 
 import fs from "fs";
 import path from "path";
+import { execFileSync } from "child_process";
 import YAML from "yaml";
 import { getGlobalConfigDir } from "./paths.js";
 
@@ -68,6 +69,41 @@ export function saveCredentials(entries) {
   }
 
   return credPath;
+}
+
+let _repoAutoDetected = false;
+
+/**
+ * cwd의 git remote origin에서 GITHUB_REPO를 자동 감지하여 process.env에 주입.
+ * 이미 GITHUB_REPO가 설정되어 있으면 건너뜀 (명시 설정 우선).
+ * loadCredentials() 이후에 호출해야 credentials.yaml 값이 우선 적용됨.
+ * @returns {boolean} 자동감지 성공 여부
+ */
+export function detectGitHubRepo() {
+  if (process.env.GITHUB_REPO) return false;
+  if (!process.env.GITHUB_TOKEN) return false;
+
+  try {
+    const url = execFileSync("git", ["remote", "get-url", "origin"], {
+      cwd: process.cwd(),
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+    // LocalWorkspace.getRemoteRepo()와 동일한 정규식
+    const match = url.match(/github\.com[/:]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
+    if (match) {
+      process.env.GITHUB_REPO = `${match[1]}/${match[2]}`;
+      _repoAutoDetected = true;
+      return true;
+    }
+  } catch {
+    // git 미설치, remote 없음 등 — 조용히 실패
+  }
+  return false;
+}
+
+export function isRepoAutoDetected() {
+  return _repoAutoDetected;
 }
 
 /**

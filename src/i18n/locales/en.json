@@ -42,7 +42,8 @@
       "projectExists": "Project config already exists: {{path}}",
       "projectCreated": "✅ Project config created: {{path}}",
       "gitignoreHint": "💡 Add to .gitignore: .polymeld/config.local.yaml, .polymeld/sessions/",
-      "optional": "optional"
+      "optional": "optional",
+      "repoAutoDetect": "auto-detected from project folder if empty"
     },
     "auth": {
       "description": "Manage credentials (API keys, GitHub token)",
@@ -224,7 +225,7 @@
     "githubConnected": "✅ {{label}} linked ({{repo}})",
     "githubFailed": "❌ {{label}} {{reason}}",
     "githubRequired": "GitHub integration is required. Please check the following:",
-    "githubStep1": "1. Verify GITHUB_TOKEN and GITHUB_REPO are set (polymeld auth or .env)",
+    "githubStep1": "1. Verify GITHUB_TOKEN is set (polymeld auth or .env). GITHUB_REPO is auto-detected from the project folder.",
     "githubStep2": "2. Ensure the token has write permissions for Issues, Contents, and Pull requests",
     "githubStep3": "3. Verify the token has access to the repository",
     "githubStep4": "4. Classic PAT: 'repo' + 'project' scopes / Fine-grained PAT: Issues, Contents, Pull requests, Projects write permissions",
@@ -240,9 +241,10 @@
     "timeout": "Response timed out",
     "authFailed": "Authentication failed",
     "inputFailed": "Input failed",
-    "tokenRepoMissing": "GITHUB_TOKEN and GITHUB_REPO not set",
+    "tokenRepoMissing": "GITHUB_TOKEN not set (GITHUB_REPO can be auto-detected from project folder)",
     "tokenMissing": "GITHUB_TOKEN not set",
-    "repoMissing": "GITHUB_REPO not set",
+    "repoMissing": "GITHUB_REPO not set (auto-detection failed — run from a GitHub project folder)",
+    "repoAutoDetected": "auto-detected",
     "tokenAuthFailed": "Token authentication failed",
     "repoAccessDenied": "Repository access denied ({{repo}})",
     "repoWriteDenied": "Repository write access denied ({{repo}})",
