@@ -353,6 +353,7 @@ personas:
     name: Iris Bloom
     role: Illustrator
     model: ${pick("gemini")}${models.includes("gemini") ? "\n    image_model: gemini_image" : ""}
+    image_only: true
     description: |
       An illustrator who creates visual assets for the project.
       Generates diverse images including characters, backgrounds, icons, and banners.

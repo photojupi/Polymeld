@@ -14,6 +14,7 @@ export class Agent {
     this.role = personaConfig.role; // e.g., "Tech Lead"
     this.modelKey = personaConfig.model; // e.g., "claude"
     this.imageModelKey = personaConfig.image_model || null; // e.g., "gemini_image"
+    this.imageOnly = personaConfig.image_only || false;
     this.thinkingBudget = personaConfig.thinking_budget; // 0-100 or undefined
     this.description = t(`agent.personas.${pid}.description`, { defaultValue: personaConfig.description || "" });
     const rawExpertise = t(`agent.personas.${pid}.expertise`, { returnObjects: true, defaultValue: personaConfig.expertise || [] });

@@ -11,11 +11,16 @@ import { t } from "../i18n/index.js";
  * 태스크가 이미지 생성 관련인지 판단
  */
 export function isImageTask(task) {
+  if (task.category === "art") return true;
   const keywords = ["이미지", "image", "디자인", "design", "목업", "mockup",
     "아이콘", "icon", "일러스트", "illustrat", "배너", "banner",
-    "로고", "logo", "UI", "와이어프레임", "wireframe"];
-  const text = `${task.title || ""} ${task.description || ""} ${task.category || ""}`.toLowerCase();
-  return keywords.some(kw => text.includes(kw.toLowerCase()));
+    "로고", "logo", "와이어프레임", "wireframe",
+    "시안", "컨셉", "concept", "에셋", "asset",
+    "스프라이트", "sprite", "텍스처", "texture", "렌더링", "render"];
+  const text = `${task.title || ""} ${task.description || ""}`.toLowerCase();
+  if (keywords.some(kw => text.includes(kw.toLowerCase()))) return true;
+  // "UI"는 단어 경계 매칭 (build, fluid 등 오탐 방지)
+  return /\bui\b/i.test(`${task.title || ""} ${task.description || ""}`);
 }
 
 export function formatMetaLine(meta) {
