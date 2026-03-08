@@ -62,37 +62,24 @@ npm install -g polymeld
 ## 빠른 시작
 
 ```bash
-# 1. CLI 도구 설치 (미설치 시)
+# 1. CLI 도구 설치 (사용할 모델만 설치하면 됩니다)
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 3. 초기 설정 (대화형 위저드)
-polymeld init --global      # 글로벌 설정 + 자격 증명 입력
-# 또는 인수 없이 실행하면 온보딩 위저드가 자동으로 시작됩니다:
+# 2. 첫 실행 — 온보딩 위저드가 자동으로 시작됩니다
 polymeld
+# → 모델 선택 → GitHub 토큰 생성 안내 + 입력 → 완료!
+# → GITHUB_REPO는 입력하지 않아도 프로젝트 폴더에서 자동 감지됩니다
 
-# 4. (선택) 로컬 워크스페이스 연동
-# 대상 프로젝트 디렉토리에서 실행하면 자동 감지:
-cd ~/projects/my-app && polymeld start
-# 또는 설정 파일에 명시:
-#   project:
-#     local_path: ~/projects/my-app
-
-# 5. 설정 확인 (CLI 인증 + GitHub 연동 자동 검증)
-polymeld test-models
-
-# 6. 실행!
+# 3. GitHub 프로젝트 폴더에서 실행!
+cd ~/projects/my-app
 polymeld run "사용자 인증 기능 구현 (이메일/비밀번호 + OAuth)"
-
-# 7. 언어 지정 (선택, 미지정 시 OS 로케일 자동 감지)
-polymeld run "채팅 기능" --lang en   # English
-polymeld run "채팅 기능" --lang ja   # 日本語
-polymeld run "채팅 기능" --lang zh-CN # 中文(简体)
-
 ```
 
-> **첫 실행 시 온보딩**: `polymeld`를 인수 없이 실행하면, 글로벌 설정이 없는 경우 온보딩 위저드(모델 선택 → 자격 증명 입력)를 안내한 후 REPL 모드로 자동 진입합니다.
+> **GITHUB_REPO 자동 감지**: GitHub 프로젝트 폴더에서 실행하면, `git remote`에서 `owner/repo`를 자동 추출합니다. `GITHUB_TOKEN`만 설정하면 어떤 프로젝트에서든 바로 사용할 수 있습니다.
+
+> **첫 실행 시 온보딩**: `polymeld`를 인수 없이 실행하면, 글로벌 설정이 없는 경우 온보딩 위저드(모델 선택 → GitHub 토큰 생성 안내 → 자격 증명 입력)를 안내한 후 REPL 모드로 자동 진입합니다.
 
 ## 설정
 
@@ -106,12 +93,18 @@ cp .env.example .env
 ```
 
 ```bash
-# GitHub Personal Access Token
+# GitHub Personal Access Token (필수)
 # - Classic PAT: repo(필수) + project(선택, Projects 보드용) 스코프
 # - Fine-grained PAT: Issues, Contents, Pull requests 쓰기 권한
+# - 생성: https://github.com/settings/tokens → 'Generate new token'
 GITHUB_TOKEN=ghp_xxxxx
-GITHUB_REPO=owner/repo            # 대상 리포지터리 (owner/repo 형식)
+
+# 대상 리포지터리 (선택 — 미설정 시 cwd의 git remote에서 자동 감지)
+# 특정 repo를 고정하고 싶을 때만 설정하세요
+# GITHUB_REPO=owner/repo
 ```
+
+> **GITHUB_REPO 자동 감지**: 프로젝트 폴더에서 실행하면 `git remote get-url origin`에서 `owner/repo`를 자동 추출합니다. `GITHUB_TOKEN`만 설정하면 어떤 프로젝트에서든 바로 사용 가능합니다.
 
 > **시작 시 자동 검증**: CLI 설치 → CLI 인증 → GitHub 연동 + 토큰 스코프를 순차적으로 확인합니다. Classic PAT의 `project` 스코프 누락 시 경고를 표시합니다.
 
@@ -136,30 +129,30 @@ GITHUB_REPO=owner/repo            # 대상 리포지터리 (owner/repo 형식)
 ```yaml
 # ~/.polymeld/credentials.yaml
 GITHUB_TOKEN: ghp_xxxxx
-GITHUB_REPO: owner/repo
+# GITHUB_REPO: owner/repo  # 선택 — 미설정 시 프로젝트 폴더에서 자동 감지
 ANTHROPIC_API_KEY: sk-...
 GOOGLE_API_KEY: AIzaSy...
 OPENAI_API_KEY: sk-...
 ```
 
-**로드 우선순위**: `.env` (dotenv) → `~/.polymeld/credentials.yaml` → 환경 변수 (`process.env` 우선)
+**로드 우선순위**: 환경 변수 (`process.env`) → `.env` (dotenv) → `~/.polymeld/credentials.yaml` → **cwd git remote 자동 감지** (GITHUB_REPO만)
 
-> `polymeld auth`로 대화형으로 입력하거나, `polymeld auth --show`로 현재 설정 상태를 확인할 수 있습니다.
+> `polymeld auth`로 대화형으로 입력하거나, `polymeld auth --show`로 현재 설정 상태를 확인할 수 있습니다. GitHub 토큰 생성 URL과 필요 권한이 안내됩니다.
 
 ### config.yaml 설정 항목
 
 #### 프로젝트 설정 (로컬 워크스페이스)
 
-에이전트가 기존 코드를 참고하고, 생성된 코드를 로컬 파일로 직접 저장하도록 설정합니다:
+**프로젝트 폴더에서 실행하면 워크스페이스와 GITHUB_REPO가 자동 감지됩니다.** 별도 설정이 필요 없습니다.
+
+cwd가 아닌 다른 폴더의 프로젝트를 타겟으로 하려면:
 
 ```yaml
-# 로컬 Git 레포 경로를 지정하면 에이전트가 기존 코드를 참고하여 개발합니다.
-# 미설정 시 현재 디렉토리의 .git을 자동 감지합니다.
+# 프로젝트 폴더에서 실행하면 자동 감지되므로 대부분 설정 불필요.
+# 다른 폴더의 프로젝트를 타겟으로 할 때만 설정:
 project:
   local_path: ~/projects/my-app
 ```
-
-> **자동 감지**: `project.local_path`를 설정하지 않아도, 대상 프로젝트 디렉토리에서 Polymeld를 실행하면 `.git`을 자동 감지하여 워크스페이스로 사용합니다.
 
 #### 모델 정의
 
@@ -433,15 +426,17 @@ polymeld auth --show
 
 ### 워크스페이스 감지 우선순위
 
-1. 설정 파일의 `project.local_path` 설정
-2. 현재 디렉토리의 `.git` 자동 감지 (Polymeld 자체 레포 제외)
-3. 미감지 시 `NoOpWorkspace`로 GitHub API 전용 모드
+| 우선순위 | 감지 방법 | 설명 |
+|---------|----------|------|
+| 1 | `project.local_path` | 설정 파일에 명시된 경로 |
+| 2 | cwd `.git` 자동 감지 | 프로젝트 폴더에서 실행 시 (Polymeld 자체 레포 제외) |
+| 3 | `NoOpWorkspace` | 미감지 시 GitHub API 전용 모드 |
 
-> `local_path` 설정 시 CLI 프로세스가 해당 경로에서 실행되므로, 에이전트가 해당 프로젝트의 파일을 직접 읽고 쓸 수 있습니다.
+**GITHUB_REPO도 동일한 원리로 자동 감지됩니다**: cwd의 `git remote get-url origin`에서 `owner/repo`를 추출합니다.
 
 ### 빈 GitHub 레포 자동 초기화
 
-`GITHUB_REPO`로 지정된 레포가 비어있는 경우 자동으로:
+`GITHUB_REPO`로 지정(또는 자동 감지)된 레포가 비어있는 경우 자동으로:
 1. Initial Commit을 생성하고
 2. `GITHUB_REPO` 값으로 origin remote를 설정합니다
 
