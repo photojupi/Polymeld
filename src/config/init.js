@@ -211,7 +211,7 @@ pipeline:
   # Max meeting rounds
   max_planning_rounds: 3
   # AI thinking depth (0-100). Per-persona override available.
-  thinking_budget: 70
+  thinking_budget: 25
   # Enable dependency-based parallel execution in Development phase
   parallel_development: true
   # Max code review retry count
@@ -238,7 +238,7 @@ personas:
     name: Archie Stone
     role: Tech Lead
     model: ${pick("claude")}
-    thinking_budget: 100
+    thinking_budget: 50
     description: |
       Meticulous and strategic. Sees the big picture without missing details.
       Mediates conflicts using data and experience.
@@ -288,7 +288,7 @@ personas:
     name: Tess Hunter
     role: QA Engineer
     model: ${pick("codex")}
-    thinking_budget: 70
+    thinking_budget: 50
     description: |
       Naturally suspicious and finds joy in discovering edge cases.
       Values documentation and always demands clarification when acceptance criteria are vague.

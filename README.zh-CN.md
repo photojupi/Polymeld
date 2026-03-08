@@ -188,7 +188,7 @@ personas:
   tech_lead:
     name: 林架构
     model: claude
-    thinking_budget: 100         # AI 思考深度（0-100）
+    thinking_budget: 50          # AI 思考深度（0-100）
   designer:
     name: 尹悦然
     model: gemini
@@ -197,7 +197,7 @@ personas:
 # 流水线设置
 pipeline:
   parallel_development: true     # 并行 LLM 调用
-  thinking_budget: 50            # 全局默认值（0-100）
+  thinking_budget: 25            # 全局默认值（0-100）
   max_review_retries: 3
   max_qa_retries: 3
 ```

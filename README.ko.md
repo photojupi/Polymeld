@@ -188,7 +188,7 @@ personas:
   tech_lead:
     name: 김아키
     model: claude
-    thinking_budget: 100         # AI 사고 깊이 (0-100)
+    thinking_budget: 50          # AI 사고 깊이 (0-100)
   designer:
     name: 윤경험
     model: gemini
@@ -197,7 +197,7 @@ personas:
 # 파이프라인 설정
 pipeline:
   parallel_development: true     # 병렬 LLM 호출
-  thinking_budget: 50            # 전역 기본값 (0-100)
+  thinking_budget: 25            # 전역 기본값 (0-100)
   max_review_retries: 3
   max_qa_retries: 3
 ```

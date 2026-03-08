@@ -188,7 +188,7 @@ personas:
   tech_lead:
     name: 設楽 匠
     model: claude
-    thinking_budget: 100         # AI思考深度（0-100）
+    thinking_budget: 50          # AI思考深度（0-100）
   designer:
     name: 美濃 花
     model: gemini
@@ -197,7 +197,7 @@ personas:
 # パイプライン設定
 pipeline:
   parallel_development: true     # 並列LLM呼び出し
-  thinking_budget: 50            # グローバルデフォルト値（0-100）
+  thinking_budget: 25            # グローバルデフォルト値（0-100）
   max_review_retries: 3
   max_qa_retries: 3
 ```

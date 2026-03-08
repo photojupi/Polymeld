@@ -60,7 +60,7 @@ personas:
     name: Archie Stone
     role: Tech Lead
     model: claude          # Claude for architecture/orchestration
-    thinking_budget: 100   # Max thinking depth for team lead
+    thinking_budget: 50    # Above default for lead decisions
     description: |
       Meticulous and strategic. Sees the big picture without missing details.
       Mediates conflicts using data and experience.
@@ -110,7 +110,7 @@ personas:
     name: Tess Hunter
     role: QA Engineer
     model: codex           # Codex for QA
-    thinking_budget: 70    # Deep thinking for QA
+    thinking_budget: 50    # Above default for QA verification
     description: |
       Verifies by running code directly; if execution results differ from expectations, verdict is FAIL.
       Validates acceptance criteria with actual output, not theoretical speculation.
@@ -220,7 +220,7 @@ pipeline:
   #   Claude  → --effort (low/medium/high)
   #   Codex   → -c model_reasoning_effort (low/medium/high/xhigh)
   #   Gemini  → CLI flag not supported (settings.json thinkingConfig only)
-  thinking_budget: 50
+  thinking_budget: 25
 
   # ─── Parallel Execution ───────────────────────────────
   # Enable dependency-based parallel execution in Phase 5 (Development)

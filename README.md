@@ -188,7 +188,7 @@ personas:
   tech_lead:
     name: Archie Stone
     model: claude
-    thinking_budget: 100         # AI reasoning depth (0-100)
+    thinking_budget: 50          # AI reasoning depth (0-100)
   designer:
     name: Eve Fielding
     model: gemini
@@ -197,7 +197,7 @@ personas:
 # Pipeline settings
 pipeline:
   parallel_development: true     # Concurrent LLM calls
-  thinking_budget: 50            # Global default (0-100)
+  thinking_budget: 25            # Global default (0-100)
   max_review_retries: 3
   max_qa_retries: 3
 ```
