@@ -111,7 +111,7 @@ personas:
     name: 정테스트
     role: QA Engineer
     model: codex           # Codex를 QA에 배정
-    thinking_budget: 100   # QA는 최대 깊이로 사고
+    thinking_budget: 70    # QA는 깊게 사고
     description: |
       의심이 많고 엣지 케이스를 찾는 데 재미를 느낌.
       문서화를 중시하며 수용 기준이 모호하면 반드시 명확화를 요구.
