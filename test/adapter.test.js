@@ -164,6 +164,16 @@ describe("ModelAdapter._normalizeOutput", () => {
   it("전후 공백 제거", () => {
     assert.equal(adapter._normalizeOutput("  hello  ", "claude"), "hello");
   });
+
+  it("codex JSONL 스트리밍 이벤트 라인 제거", () => {
+    const raw = '{"type":"thread.started","thread_id":"abc"}\n{"type":"turn.started"}\nActual output\n{"type":"turn.completed","usage":{"input_tokens":100}}';
+    assert.equal(adapter._normalizeOutput(raw, "codex"), "Actual output");
+  });
+
+  it("codex JSONL 후행 공백 포함 라인도 제거", () => {
+    const raw = '{"type":"item.completed","item":{}}  \nOutput text';
+    assert.equal(adapter._normalizeOutput(raw, "codex"), "Output text");
+  });
 });
 
 // ─── ModelAdapter._buildCombinedPrompt ───────────────

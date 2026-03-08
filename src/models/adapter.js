@@ -201,6 +201,8 @@ export class ModelAdapter {
     if (cli === "codex") {
       // Codex TUI 진행률 표시/헤더 라인 제거
       text = text.replace(/^(Thinking|Executing|Reading).*\n/gm, "");
+      // JSONL 스트리밍 이벤트 라인 제거 ({"type":"...",...} 형태)
+      text = text.replace(/^\{"type":.+\}\s*$/gm, "");
     }
     if (cli === "gemini") {
       // Gemini 디버그/상태 라인 제거 (━ 등 구분선)
@@ -472,10 +474,15 @@ export class ModelAdapter {
           }
           // agent message 텍스트 수집
           if (ev.type === "item.completed" && ev.item?.type === "agent_message") {
-            const parts = ev.item.content ?? ev.item.parts ?? [];
-            for (const p of parts) {
-              if (typeof p === "string") text += p;
-              else if (p.text) text += p.text;
+            // text 필드가 직접 있는 경우 (OpenAI Responses API 형식)
+            if (typeof ev.item.text === "string" && ev.item.text) {
+              text += ev.item.text;
+            } else {
+              const parts = ev.item.content ?? ev.item.parts ?? [];
+              for (const p of parts) {
+                if (typeof p === "string") text += p;
+                else if (p.text) text += p.text;
+              }
             }
           }
         } catch { /* 개별 줄 파싱 실패 무시 */ }
