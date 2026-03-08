@@ -290,6 +290,16 @@ pipeline:
 - `false`: 기존 순차 실행 방식 유지
 - Git 작업(브랜치 생성, 커밋)은 충돌 방지를 위해 항상 직렬 큐로 처리
 
+#### 수정 루프 설정
+
+코드 리뷰 및 QA에서 실패 시 자동 재시도 횟수를 설정합니다:
+
+```yaml
+pipeline:
+  max_review_retries: 3    # 리뷰 → 수정 → 재리뷰 최대 반복 수
+  max_qa_retries: 3        # QA 실패 → 수정 → 재검증 최대 반복 수
+```
+
 #### 회의 시스템
 
 **실시간 발언 미리보기**: 회의 중 각 AI의 응답이 생성되는 과정을 spinner에 실시간으로 표시하고, 완료 후 내용을 영구 출력합니다:
@@ -314,7 +324,7 @@ pipeline:
 | 김아키 | Tech Lead (팀장) | Claude Opus 4.6 | - | 100 |
 | 한코딩 | Ace Programmer | GPT-5.4 | - | - |
 | 류창작 | Creative Programmer | Gemini 3.1 Pro | - | - |
-| 정테스트 | QA Engineer | GPT-5.4 | - | 100 |
+| 정테스트 | QA Engineer | GPT-5.4 | - | 70 |
 | 강기획 | Ace Planner | Gemini 3.1 Pro | - | - |
 | 안보안 | Security Expert | Claude Opus 4.6 | - | - |
 | 윤경험 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
@@ -454,49 +464,43 @@ Phase 0: 코드베이스 분석 (수정 모드 + 로컬 워크스페이스 시)
   → 기존 코드베이스 구조 및 패턴 분석
   → 분석 결과를 이후 Phase에서 맥락으로 활용
 
-Phase 1: 킥오프 미팅
+Phase 1: 미팅
   → 페르소나들이 각자의 AI 모델로 의견 제시
   → 관련 없는 페르소나는 [PASS]로 자발적 패스
   → 팀장이 [CONCLUDE]로 충분한 논의 후 조기 종료 가능
   → 이슈 제목은 팀장 AI가 한 줄 요약으로 자동 생성
   → 회의록이 GitHub Issue에 자동 등록
-  → 킥오프 요약(kickoffSummary)이 이후 에이전트 프롬프트에 주입
+  → 팀장의 최종 정리가 설계 결정사항(designDecisions)으로 저장
 
-Phase 2: 기술 설계 미팅
-  → 페르소나 간 의견 충돌/합의 시뮬레이션
-  → 서로 다른 모델이 서로 다른 관점으로 토론
-  → [PASS] / [CONCLUDE] 동일 적용
-  → 설계 결정 문서가 GitHub Issue에 등록
-
-Phase 3: 태스크 분해
+Phase 2: 태스크 분해
   → 팀장이 1-4시간 단위로 태스크 분해
   → 각 태스크가 GitHub Issue로 생성 (backlog 라벨)
 
-Phase 4: 작업 분배
+Phase 3: 작업 분배
   → 팀장이 각 태스크를 적합한 페르소나에게 배정
   → 이미지 태스크는 image_model 보유 에이전트에게 우선 배정
   → 배정 이유가 Issue Comment로 기록
 
-Phase 5: 개발 (의존성 기반 병렬 실행)
+Phase 4: 개발 (의존성 기반 병렬 실행)
   → 태스크 간 의존성을 분석하여 독립 태스크를 병렬 실행
   → LLM 호출은 병렬, Git 작업은 직렬 큐로 충돌 방지
   → 이미지 태스크: image_model로 이미지 생성 (output/images/ 저장)
   → feature 브랜치에 커밋
   → 진행 상황이 Issue Comment로 업데이트
 
-Phase 6: 코드 리뷰
+Phase 5: 코드 리뷰 (최대 max_review_retries회 재시도)
   → 팀장이 다른 모델이 작성한 코드를 리뷰
   → ResponseParser가 APPROVED / CHANGES_REQUESTED 판정 추출
   → 수정 필요 시 팀장이 직접 수정 코드 작성 후 재커밋
   → 리뷰 결과가 Issue Comment로 기록
 
-Phase 7: QA
+Phase 6: QA (최대 max_qa_retries회 재시도)
   → QA가 코드 검증
   → ResponseParser가 PASS / FAIL 판정 추출
   → 실패 시 팀장이 직접 수정 후 재커밋
   → 테스트 결과가 Issue Comment에 표 형태로 기록
 
-Phase 8: PR 생성
+Phase 7: PR 생성
   → 모든 이력(회의록, 리뷰, QA)이 링크된 PR 자동 생성
 ```
 
@@ -519,16 +523,14 @@ Phase 8: PR 생성
 ```
 project.requirement     - 원본 요구사항 텍스트
 project.title           - 프로젝트 제목 (워크스페이스에서 자동 파생)
-kickoffSummary          - 킥오프 미팅 요약 (이후 에이전트 프롬프트에 주입)
-designDecisions         - 설계 결정 사항
+designDecisions         - 설계 결정 사항 (미팅 팀장 최종 정리)
 techStack               - 기술 스택
 tasks[]                 - 분해된 태스크 목록 (코드/리뷰/QA 결과 포함)
 completedTasks[]        - 완료된 태스크
 messages[]              - 에이전트 간 전체 메시지
 codebaseAnalysis        - Phase 0 코드베이스 분석 결과
 completedPhases[]       - 완료된 Phase 체크포인트 (재개 시 활용)
-github.kickoffIssue     - GitHub 킥오프 Issue 번호
-github.designIssue      - GitHub 설계 Issue 번호
+github.planningIssue    - GitHub 미팅 Issue 번호
 ```
 
 ### PromptAssembler — Phase별 차등 토큰 예산
@@ -579,7 +581,7 @@ src/
 │   ├── pipeline-state.js       # 단일 상태 저장소 (Phase 체크포인트 포함)
 │   └── prompt-assembler.js     # Phase별 차등 토큰 예산 맥락 조립기
 ├── pipeline/
-│   └── orchestrator.js         # 9-Phase 파이프라인 (Phase 0~8 + 병렬 실행 + 체크포인트)
+│   └── orchestrator.js         # 8-Phase 파이프라인 (Phase 0~7 + 병렬 실행 + 체크포인트)
 ├── workspace/
 │   ├── local-workspace.js      # 로컬 Git 레포 (파일 탐색/읽기/쓰기 + git CLI)
 │   └── noop-workspace.js       # 워크스페이스 미설정 시 No-op 클라이언트
