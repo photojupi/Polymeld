@@ -4,6 +4,16 @@
 import { Octokit } from "octokit";
 import { t } from "../i18n/index.js";
 
+/** Pipeline 6단계 → 빌트인 Status 3단계 매핑 */
+const PIPELINE_TO_STATUS = {
+  "Backlog":     "Todo",
+  "Todo":        "Todo",
+  "In Progress": "In Progress",
+  "In Review":   "In Progress",
+  "QA":          "In Progress",
+  "Done":        "Done",
+};
+
 /**
  * GitHub 미설정 시 사용하는 No-op 클라이언트
  * PipelineOrchestrator가 github 메서드를 호출해도 에러 나지 않음
@@ -288,11 +298,21 @@ export class GitHubClient {
         console.log(t("github.pipelineFieldCreated"));
       }
 
-      // 필드 ID + 옵션 ID 캐시
+      // Pipeline 필드 ID + 옵션 ID 캐시
       this.statusFieldId = field.id;
       this.statusOptions = {};
       for (const opt of field.options) {
         if (DESIRED.includes(opt.name)) this.statusOptions[opt.name] = opt.id;
+      }
+
+      // 빌트인 Status 필드 캐시 (칸반보드 기본 뷰용)
+      const builtinStatus = node.fields.nodes.find(f => f.name === "Status");
+      if (builtinStatus) {
+        this.builtinStatusFieldId = builtinStatus.id;
+        this.builtinStatusOptions = {};
+        for (const opt of builtinStatus.options) {
+          this.builtinStatusOptions[opt.name] = opt.id;
+        }
       }
     } catch (e) {
       console.warn(t("github.pipelineFieldFailed"), e.message);
@@ -327,6 +347,36 @@ export class GitHubClient {
       });
     } catch (e) {
       console.warn("프로젝트 Status 업데이트 실패:", e.message);
+      return;
+    }
+
+    // 빌트인 Status 필드 동기화 (칸반보드 기본 뷰 반영)
+    const mappedStatus = PIPELINE_TO_STATUS[statusName];
+    if (mappedStatus && this.builtinStatusFieldId && this.builtinStatusOptions) {
+      const builtinOptionId = this.builtinStatusOptions[mappedStatus];
+      if (builtinOptionId) {
+        try {
+          await this.octokit.graphql(`
+            mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: $projectId
+                itemId: $itemId
+                fieldId: $fieldId
+                value: { singleSelectOptionId: $optionId }
+              }) {
+                projectV2Item { id }
+              }
+            }
+          `, {
+            projectId: this.projectId,
+            itemId,
+            fieldId: this.builtinStatusFieldId,
+            optionId: builtinOptionId,
+          });
+        } catch {
+          // 빌트인 Status 실패는 무시 — Pipeline이 primary source of truth
+        }
+      }
     }
   }
 
