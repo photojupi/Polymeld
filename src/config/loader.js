@@ -74,7 +74,7 @@ export function loadConfig(configPath) {
   return mergeLayers(layers);
 }
 
-function parseYaml(filePath) {
+export function parseYaml(filePath) {
   const raw = fs.readFileSync(filePath, "utf-8");
   const parsed = YAML.parse(raw);
   return parsed && typeof parsed === "object" ? parsed : {};
@@ -95,12 +95,12 @@ function findLegacyConfigFile() {
   return null;
 }
 
-function isPlainObject(v) {
+export function isPlainObject(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v) &&
     Object.getPrototypeOf(v) === Object.prototype;
 }
 
-function deepMerge(target, source) {
+export function deepMerge(target, source) {
   const output = { ...target };
   for (const key of Object.keys(source)) {
     if (isPlainObject(source[key]) && isPlainObject(target[key])) {
@@ -112,7 +112,7 @@ function deepMerge(target, source) {
   return output;
 }
 
-function mergeLayers(layers) {
+export function mergeLayers(layers) {
   let result = {};
   for (const layer of layers) {
     result = deepMerge(result, layer);
@@ -137,7 +137,7 @@ export function isCliInstalled(command) {
  * CLI 인증 프로브 - 최소한의 프롬프트로 실제 연결 확인
  * stdout 출력 시 즉시 성공, 그 외는 종료 코드로 판정
  */
-function probeCliAuth(cli) {
+export function probeCliAuth(cli) {
   const probes = {
     claude: { args: ["-p", "--output-format", "text", "--max-turns", "1"], stdin: "Reply OK" },
     gemini: { args: ["--output-format", "text"], stdin: "Reply OK" },
