@@ -92,6 +92,7 @@ export class PipelineOrchestrator {
         this.state.github.planningIssue,
         t("pipeline.pipelineCompleteComment", { mode: this.interaction.mode, log: decisionLog })
       );
+      await this.github.closeIssue(this.state.github.planningIssue);
     }
   }
 
