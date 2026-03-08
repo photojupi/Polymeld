@@ -34,6 +34,7 @@ export async function initGlobalConfig() {
         { name: "Gemini CLI (Google)", value: "gemini" },
         { name: "Codex CLI (OpenAI)", value: "codex" },
       ],
+      validate: (v) => v.length > 0 || t("cli.init.selectModelsMin"),
     },
   ]);
 
@@ -157,10 +158,15 @@ function generateGlobalTemplate(models) {
   }
   if (models.includes("gemini")) {
     modelEntries.push("  gemini:\n    cli: gemini\n    model: gemini-3.1-pro-preview");
+    modelEntries.push("  gemini_image:\n    cli: gemini\n    model: gemini-3.1-flash-image");
   }
   if (models.includes("codex")) {
     modelEntries.push("  codex:\n    cli: codex\n    model: gpt-5.4");
   }
+
+  // 페르소나별 선호 모델 배정 (없으면 첫 번째 선택 모델로 fallback)
+  const fb = models[0]; // fallback
+  const pick = (preferred) => models.includes(preferred) ? preferred : fb;
 
   return `# Polymeld 글로벌 설정
 # 이 파일은 모든 프로젝트에 적용되는 기본 설정입니다.
@@ -175,6 +181,42 @@ cli:
 pipeline:
   interaction_mode: semi-auto
   thinking_budget: 70
+
+personas:
+  tech_lead:
+    name: Archie Stone
+    role: Tech Lead
+    model: ${pick("claude")}
+    thinking_budget: 100
+  ace_programmer:
+    name: Cody Sharp
+    role: Ace Programmer
+    model: ${pick("codex")}
+  creative_programmer:
+    name: Nova Cruz
+    role: Creative Programmer
+    model: ${pick("gemini")}
+  qa:
+    name: Tess Hunter
+    role: QA Engineer
+    model: ${pick("codex")}
+    thinking_budget: 70
+  designer:
+    name: Eve Fielding
+    role: UX/Visual Designer
+    model: ${pick("gemini")}${models.includes("gemini") ? "\n    image_model: gemini_image" : ""}
+  ace_planner:
+    name: Max Planner
+    role: Ace Planner
+    model: ${pick("gemini")}
+  security_expert:
+    name: Sam Shield
+    role: Security Expert
+    model: ${pick("claude")}
+  illustrator:
+    name: Iris Bloom
+    role: Illustrator
+    model: ${pick("gemini")}${models.includes("gemini") ? "\n    image_model: gemini_image" : ""}
 `;
 }
 

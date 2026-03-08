@@ -33,6 +33,7 @@
       "description": "設定ファイルの初期化",
       "optGlobal": "グローバル設定の初期化 (~/.polymeld/)",
       "selectModels": "使用するAIモデルを選択してください:",
+      "selectModelsMin": "モデルを1つ以上選択してください。",
       "globalSetupTitle": "🔧 Polymeld グローバル設定",
       "globalExists": "グローバル設定は既に存在します: {{path}}",
       "globalCreated": "✅ グローバル設定を作成しました: {{path}}",
@@ -309,6 +310,7 @@
     "unknownCommandHelp": "/help で使用可能なコマンドを確認できます。",
     "commandMenu": {
       "resume": "中断したパイプラインを再開",
+      "mode": "インタラクションモード変更",
       "status": "現在のセッション状態",
       "context": "パイプラインコンテキスト表示",
       "history": "実行履歴",
@@ -321,6 +323,7 @@
     "help": {
       "header": "🤖 Polymeld REPL ヘルプ",
       "slashCommands": "スラッシュコマンド:",
+      "cmdMode": "インタラクションモード変更（full-auto, semi-auto, manual）",
       "cmdStatus": "現在のセッション状態",
       "cmdHistory": "実行履歴の表示",
       "cmdTeam": "チーム構成確認",
@@ -333,6 +336,13 @@
       "naturalInput": "自然言語入力:",
       "naturalDesc": "要件を自然言語で入力するとフルパイプラインが実行されます。",
       "naturalExample": "例: 「ユーザー認証システムを作ってください」"
+    },
+    "mode": {
+      "current": "現在のモード: {{mode}}",
+      "usage": "使い方: /mode <full-auto|semi-auto|manual>",
+      "unknown": "不明なモード: {{mode}}",
+      "available": "使用可能: {{modes}}",
+      "already": "すでに{{mode}}モードです。"
     },
     "status": {
       "noHistory": "まだ実行履歴がありません。自然言語で要件を入力してください。",

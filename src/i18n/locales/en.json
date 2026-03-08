@@ -33,6 +33,7 @@
       "description": "Initialize configuration",
       "optGlobal": "Initialize global config (~/.polymeld/)",
       "selectModels": "Select AI models to use:",
+      "selectModelsMin": "Please select at least one model.",
       "globalSetupTitle": "🔧 Polymeld Global Setup",
       "globalExists": "Global config already exists: {{path}}",
       "globalCreated": "✅ Global config created: {{path}}",
@@ -309,6 +310,7 @@
     "unknownCommandHelp": "Type /help to see available commands.",
     "commandMenu": {
       "resume": "Resume interrupted pipeline",
+      "mode": "Change interaction mode",
       "status": "Current session status",
       "context": "View pipeline context",
       "history": "Execution history",
@@ -321,6 +323,7 @@
     "help": {
       "header": "🤖 Polymeld REPL Help",
       "slashCommands": "Slash Commands:",
+      "cmdMode": "Change interaction mode (full-auto, semi-auto, manual)",
       "cmdStatus": "Current session status",
       "cmdHistory": "View execution history",
       "cmdTeam": "View team composition",
@@ -333,6 +336,13 @@
       "naturalInput": "Natural Language Input:",
       "naturalDesc": "Enter requirements in natural language to run the full pipeline.",
       "naturalExample": "Example: \"Create a user authentication system\""
+    },
+    "mode": {
+      "current": "Current mode: {{mode}}",
+      "usage": "Usage: /mode <full-auto|semi-auto|manual>",
+      "unknown": "Unknown mode: {{mode}}",
+      "available": "Available: {{modes}}",
+      "already": "Already in {{mode}} mode."
     },
     "status": {
       "noHistory": "No execution history yet. Enter requirements in natural language to start.",
