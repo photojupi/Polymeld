@@ -220,7 +220,7 @@ export class ReplShell {
     // 팀 구성 간략 출력
     const personas = this.config.personas;
     const names = Object.entries(personas)
-      .map(([id, p]) => t(`agent.personas.${id}`, { defaultValue: p.name }))
+      .map(([id, p]) => t(`agent.personas.${id}.name`, { defaultValue: p.name }))
       .join(", ");
     console.log(chalk.gray(`  ${t("repl.teamMembers", { names })}\n`));
   }

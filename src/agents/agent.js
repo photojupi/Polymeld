@@ -8,15 +8,17 @@ import { t } from "../i18n/index.js";
 export class Agent {
   constructor(personaConfig, modelAdapter) {
     this.id = personaConfig.id; // e.g., "tech_lead"
-    // i18n 이름 우선, 없으면 config name fallback
-    this.name = t(`agent.personas.${personaConfig.id}`, { defaultValue: personaConfig.name });
+    // i18n 우선, 없으면 config fallback
+    const pid = personaConfig.id;
+    this.name = t(`agent.personas.${pid}.name`, { defaultValue: personaConfig.name });
     this.role = personaConfig.role; // e.g., "Tech Lead"
     this.modelKey = personaConfig.model; // e.g., "claude"
     this.imageModelKey = personaConfig.image_model || null; // e.g., "gemini_image"
     this.thinkingBudget = personaConfig.thinking_budget; // 0-100 or undefined
-    this.description = personaConfig.description;
-    this.expertise = personaConfig.expertise || [];
-    this.style = personaConfig.style || "";
+    this.description = t(`agent.personas.${pid}.description`, { defaultValue: personaConfig.description || "" });
+    const rawExpertise = t(`agent.personas.${pid}.expertise`, { returnObjects: true, defaultValue: personaConfig.expertise || [] });
+    this.expertise = Array.isArray(rawExpertise) ? rawExpertise : (personaConfig.expertise || []);
+    this.style = t(`agent.personas.${pid}.style`, { defaultValue: personaConfig.style || "" });
     this.adapter = modelAdapter;
   }
 

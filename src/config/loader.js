@@ -400,7 +400,7 @@ export async function validateConnections(config) {
 
     for (const [id, persona] of Object.entries(config.personas)) {
       const modelConfig = config.models[persona.model];
-      const name = t(`agent.personas.${id}`, { defaultValue: persona.name });
+      const name = t(`agent.personas.${id}.name`, { defaultValue: persona.name });
       if (modelConfig && missingClis.includes(modelConfig.cli)) {
         if (hasApiKey(modelConfig.cli)) {
           apiOnly.push(`   - ${name} (${persona.role}) → ${t("config.apiModeLabel")}`);
