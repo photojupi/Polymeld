@@ -19,7 +19,7 @@ export function probeCliAuth(cli) {
   const probes = {
     claude: { args: ["-p", "--output-format", "text", "--max-turns", "1"], stdin: "Reply OK" },
     gemini: { args: ["--output-format", "text"], stdin: "Reply OK" },
-    codex: { args: ["exec", "--sandbox", "read-only", "--skip-git-repo-check", "--full-auto"], stdin: "echo OK" },
+    codex: { args: ["exec", "--skip-git-repo-check", "--full-auto"], stdin: "Reply OK" },
   };
   const probe = probes[cli];
   if (!probe) return Promise.resolve({ ok: false, reason: "unknown" });
