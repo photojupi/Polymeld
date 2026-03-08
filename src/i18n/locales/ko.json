@@ -38,7 +38,7 @@
       "globalCreated": "✅ 글로벌 설정 생성: {{path}}",
       "setupAuth": "자격 증명(API 키, GitHub 토큰)을 지금 설정하시겠습니까?",
       "globalComplete": "✅ 글로벌 설정 완료!",
-      "nextStep": "프로젝트 디렉토리에서 polymeld init 으로 프로젝트 설정을 초기화하세요.",
+      "nextStep": "GitHub 프로젝트 폴더에서 polymeld 를 실행하세요. 워크스페이스와 GITHUB_REPO가 자동 감지됩니다.",
       "projectExists": "프로젝트 설정이 이미 존재합니다: {{path}}",
       "projectCreated": "✅ 프로젝트 설정 생성: {{path}}",
       "gitignoreHint": "💡 .gitignore에 추가하세요: .polymeld/config.local.yaml, .polymeld/sessions/",

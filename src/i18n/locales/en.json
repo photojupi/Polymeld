@@ -38,7 +38,7 @@
       "globalCreated": "✅ Global config created: {{path}}",
       "setupAuth": "Would you like to set up credentials (API keys, GitHub token) now?",
       "globalComplete": "✅ Global setup complete!",
-      "nextStep": "Run polymeld init in your project directory to initialize project config.",
+      "nextStep": "Run polymeld from your GitHub project folder. Workspace and GITHUB_REPO will be auto-detected.",
       "projectExists": "Project config already exists: {{path}}",
       "projectCreated": "✅ Project config created: {{path}}",
       "gitignoreHint": "💡 Add to .gitignore: .polymeld/config.local.yaml, .polymeld/sessions/",

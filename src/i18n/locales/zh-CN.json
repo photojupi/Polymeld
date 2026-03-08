@@ -38,7 +38,7 @@
       "globalCreated": "✅ 全局配置已创建: {{path}}",
       "setupAuth": "是否现在设置凭证（API密钥、GitHub令牌）？",
       "globalComplete": "✅ 全局设置完成！",
-      "nextStep": "在项目目录中运行 polymeld init 来初始化项目配置。",
+      "nextStep": "在GitHub项目文件夹中运行 polymeld。工作区和GITHUB_REPO会自动检测。",
       "projectExists": "项目配置已存在: {{path}}",
       "projectCreated": "✅ 项目配置已创建: {{path}}",
       "gitignoreHint": "💡 请添加到 .gitignore: .polymeld/config.local.yaml, .polymeld/sessions/",
