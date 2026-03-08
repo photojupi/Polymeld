@@ -50,7 +50,10 @@
       "optShow": "현재 설정된 자격 증명 상태 표시",
       "header": "🔑 자격 증명 상태",
       "notSet": "미설정",
-      "saved": "✅ 자격 증명 저장: {{path}}"
+      "saved": "✅ 자격 증명 저장: {{path}}",
+      "githubGuideTitle": "🔑 GitHub Personal Access Token 생성 안내",
+      "githubGuideUrl": "https://github.com/settings/tokens → 'Generate new token'",
+      "githubGuideScopes": "필요 권한 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 쓰기"
     },
     "start": {
       "description": "인터랙티브 REPL 모드 시작 (세션 유지, 슬래시 명령어)",

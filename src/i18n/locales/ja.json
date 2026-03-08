@@ -50,7 +50,10 @@
       "optShow": "現在の認証情報ステータスを表示",
       "header": "🔑 認証情報ステータス",
       "notSet": "未設定",
-      "saved": "✅ 認証情報を保存しました: {{path}}"
+      "saved": "✅ 認証情報を保存しました: {{path}}",
+      "githubGuideTitle": "🔑 GitHub Personal Access Token 作成ガイド",
+      "githubGuideUrl": "https://github.com/settings/tokens → 'Generate new token'",
+      "githubGuideScopes": "必要な権限 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 書き込み"
     },
     "start": {
       "description": "インタラクティブREPLモード開始（セッション維持、スラッシュコマンド）",

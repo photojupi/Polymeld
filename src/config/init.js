@@ -78,6 +78,12 @@ export async function initProjectConfig() {
  * 대화형 자격 증명 입력
  */
 export async function runAuthPrompt() {
+  // GitHub 토큰 생성 안내
+  console.log(chalk.bold(`\n${t("cli.auth.githubGuideTitle")}`));
+  console.log(chalk.gray(`  ${t("cli.auth.githubGuideUrl")}`));
+  console.log(chalk.gray(`  ${t("cli.auth.githubGuideScopes")}`));
+  console.log();
+
   const answers = await inquirer.prompt([
     {
       type: "input",

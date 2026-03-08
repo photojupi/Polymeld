@@ -50,7 +50,10 @@
       "optShow": "Show current credential status",
       "header": "🔑 Credential Status",
       "notSet": "not set",
-      "saved": "✅ Credentials saved: {{path}}"
+      "saved": "✅ Credentials saved: {{path}}",
+      "githubGuideTitle": "🔑 GitHub Personal Access Token Setup",
+      "githubGuideUrl": "https://github.com/settings/tokens → 'Generate new token'",
+      "githubGuideScopes": "Required scopes — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects write"
     },
     "start": {
       "description": "Start interactive REPL mode (session-persistent, slash commands)",
