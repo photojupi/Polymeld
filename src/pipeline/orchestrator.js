@@ -349,7 +349,7 @@ export class PipelineOrchestrator {
     const requirement = this.state.project.requirement || "";
 
     // 사용 가능한 역할 목록 (ID만 전달하여 AI가 정확한 ID를 반환하도록 유도)
-    const availableRoles = Object.keys(this.config.personas).join(", ");
+    const availableRoles = Object.keys(this.config.personas || {}).join(", ");
 
     const result = await this.team.lead.breakdownTasks({
       designDecisions,

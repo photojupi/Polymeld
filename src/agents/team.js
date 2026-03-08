@@ -23,7 +23,7 @@ export class Team {
   }
 
   _initAgents() {
-    const personas = this.config.personas;
+    const personas = this.config.personas || {};
     const defaultThinking = this.config.pipeline?.thinking_budget;
     for (const [id, persona] of Object.entries(personas)) {
       const merged = { id, ...persona };

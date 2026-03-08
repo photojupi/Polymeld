@@ -181,7 +181,7 @@ program
 
     // 페르소나별 모델 배정 현황
     console.log(chalk.bold(`\n${t("cli.testModels.personaHeader")}\n`));
-    for (const [id, persona] of Object.entries(config.personas)) {
+    for (const [id, persona] of Object.entries(config.personas || {})) {
       const modelAvailable = available.includes(persona.model);
       const status = modelAvailable ? "✅" : "❌";
       const imageTag = persona.image_model

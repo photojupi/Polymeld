@@ -4,7 +4,7 @@ import { t } from "../../i18n/index.js";
 export function teamCommand(session) {
   console.log(chalk.bold(`\n  ${t("repl.team.header")}\n`));
 
-  const personas = session.config.personas;
+  const personas = session.config.personas || {};
   for (const [id, persona] of Object.entries(personas)) {
     const modelColor =
       persona.model === "claude" ? chalk.hex("#D4A574") :
