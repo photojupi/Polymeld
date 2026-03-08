@@ -58,8 +58,11 @@ export class Session {
         const resolved = expandHome(configPath);
         const ws = new LocalWorkspace(resolved, { autoInit: true });
         const envRepo = process.env.GITHUB_REPO;
-        if (envRepo && !ws.getRemoteRepo()) {
-          ws.addRemote("origin", `https://github.com/${envRepo}.git`);
+        if (envRepo) {
+          if (!ws.getRemoteRepo()) {
+            ws.addRemote("origin", `https://github.com/${envRepo}.git`);
+          }
+          // autoInit 레포는 remote 히스토리가 없을 수 있으므로 항상 fetch
           ws.fetchOrigin();
         }
         if (this._validateWorkspaceRemote(ws)) {
