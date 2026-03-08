@@ -60,6 +60,7 @@ export class Session {
         const envRepo = process.env.GITHUB_REPO;
         if (envRepo && !ws.getRemoteRepo()) {
           ws.addRemote("origin", `https://github.com/${envRepo}.git`);
+          ws.fetchOrigin();
         }
         if (this._validateWorkspaceRemote(ws)) {
           this.workspace = ws;
