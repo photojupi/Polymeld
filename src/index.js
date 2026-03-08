@@ -273,6 +273,8 @@ if (userArgs.length === 0) {
   if (!hasGlobalConfig()) {
     const completed = await runOnboarding();
     if (!completed) process.exit(0);
+    loadCredentials();
+    detectGitHubRepo();
   }
 
   const config = loadConfig();

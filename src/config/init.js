@@ -93,12 +93,6 @@ export async function runAuthPrompt() {
     },
     {
       type: "input",
-      name: "GITHUB_REPO",
-      message: `GitHub Repository (owner/repo) [${t("cli.init.repoAutoDetect")}]:`,
-      default: process.env.GITHUB_REPO || "",
-    },
-    {
-      type: "input",
       name: "ANTHROPIC_API_KEY",
       message: `Anthropic API Key (${t("cli.init.optional")}):`,
       default: process.env.ANTHROPIC_API_KEY || "",

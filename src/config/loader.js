@@ -8,6 +8,7 @@ import { execFileSync } from "child_process";
 import crossSpawn from "cross-spawn";
 import os from "os";
 import chalk from "chalk";
+import inquirer from "inquirer";
 import { t } from "../i18n/index.js";
 import { getGlobalConfigDir, getProjectConfigDir } from "./paths.js";
 import { isRepoAutoDetected } from "./credentials.js";
@@ -200,11 +201,48 @@ function probeCliAuth(cli) {
  */
 async function checkGitHub() {
   const token = process.env.GITHUB_TOKEN;
-  const repo = process.env.GITHUB_REPO;
+  let repo = process.env.GITHUB_REPO;
 
-  if (!token && !repo) return { ok: false, reason: t("config.tokenRepoMissing") };
   if (!token) return { ok: false, reason: t("config.tokenMissing") };
-  if (!repo) return { ok: false, reason: t("config.repoMissing") };
+
+  if (!repo) {
+    // git remote에서 감지 실패 — 사용자에게 리포 주소 입력 요청
+    process.stdout.write("\n");
+    console.log(chalk.yellow(`  ${t("config.repoPrompt")}`));
+    const { repoInput } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "repoInput",
+        message: `GitHub Repository (owner/repo):`,
+        validate: (v) => /^[\w.-]+\/[\w.-]+$/.test(v.trim()) || t("config.repoPromptHint"),
+      },
+    ]);
+    const trimmed = repoInput.trim();
+
+    // git 초기화 및 remote 설정
+    try {
+      if (!fs.existsSync(path.join(process.cwd(), ".git"))) {
+        execFileSync("git", ["init"], { cwd: process.cwd(), stdio: "pipe" });
+      }
+      try {
+        execFileSync(
+          "git", ["remote", "add", "origin", `https://github.com/${trimmed}.git`],
+          { cwd: process.cwd(), stdio: "pipe" }
+        );
+      } catch {
+        // origin이 이미 존재하면 URL만 업데이트
+        execFileSync(
+          "git", ["remote", "set-url", "origin", `https://github.com/${trimmed}.git`],
+          { cwd: process.cwd(), stdio: "pipe" }
+        );
+      }
+    } catch {
+      // git 미설치 등 — 무시하고 계속
+    }
+
+    process.env.GITHUB_REPO = trimmed;
+    repo = trimmed;
+  }
 
   const headers = { Authorization: `Bearer ${token}`, "User-Agent": "polymeld" };
 

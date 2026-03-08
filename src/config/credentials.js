@@ -9,7 +9,6 @@ import { getGlobalConfigDir } from "./paths.js";
 
 const CREDENTIAL_KEYS = [
   "GITHUB_TOKEN",
-  "GITHUB_REPO",
   "ANTHROPIC_API_KEY",
   "GOOGLE_API_KEY",
   "OPENAI_API_KEY",
