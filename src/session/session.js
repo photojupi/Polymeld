@@ -171,7 +171,7 @@ export class Session {
   async runPipeline(requirement, options = {}) {
     this._ensureTeam();
 
-    const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "semi-auto";
+    const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "full-auto";
 
     // 프로젝트 정보 설정 (title은 워크스페이스 정보에서 자동 파생)
     this.state.project.requirement = requirement;
@@ -241,7 +241,7 @@ export class Session {
       console.log(chalk.gray(`  ${t("session.completedPhases", { phases: completed.join(", ") })}`));
     }
 
-    const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "semi-auto";
+    const interactionMode = options.mode || this.config.pipeline?.interaction_mode || "full-auto";
 
     if (this.github) {
       const ghSpinner = ora(t("repl.githubSpinner")).start();

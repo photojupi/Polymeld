@@ -20,7 +20,7 @@ export class PipelineOrchestrator {
    * @param {import('../state/prompt-assembler.js').PromptAssembler} deps.assembler
    * @param {import('../workspace/local-workspace.js').LocalWorkspace|import('../workspace/noop-workspace.js').NoOpWorkspace} [deps.workspace]
    */
-  constructor(team, github, config, interactionMode = "semi-auto", { state, assembler, workspace, onPhaseSave }) {
+  constructor(team, github, config, interactionMode = "full-auto", { state, assembler, workspace, onPhaseSave }) {
     this.team = team;
     this.github = github;
     this.config = config;

@@ -20,7 +20,7 @@ export class StatusBar {
     const parts = [];
 
     // 인터랙션 모드
-    const mode = session.config.pipeline?.interaction_mode || "semi-auto";
+    const mode = session.config.pipeline?.interaction_mode || "full-auto";
     const colorFn = MODE_COLORS[mode] || chalk.gray;
     parts.push(colorFn(mode));
 

@@ -6,7 +6,7 @@ const MODES = ["full-auto", "semi-auto", "manual"];
 
 export async function modeCommand(session, args) {
   if (!session.config.pipeline) session.config.pipeline = {};
-  const current = session.config.pipeline.interaction_mode || "semi-auto";
+  const current = session.config.pipeline.interaction_mode || "full-auto";
 
   if (!args) {
     const items = MODES.map(m => ({

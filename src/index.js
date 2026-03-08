@@ -54,7 +54,7 @@ program
     await validateConnections(config);
 
     // 인터랙션 모드 결정 (CLI 인자 → config 파일 → 기본값 순)
-    let interactionMode = options.mode || config.pipeline?.interaction_mode || "semi-auto";
+    let interactionMode = options.mode || config.pipeline?.interaction_mode || "full-auto";
     if (options.interactive === false) {
       interactionMode = "full-auto";
     }

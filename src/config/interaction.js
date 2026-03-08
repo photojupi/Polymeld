@@ -9,18 +9,16 @@ import { t } from "../i18n/index.js";
 /**
  * 인터랙션 모드:
  *
- * - full-auto:  모든 확인을 자동으로 통과. CI/CD나 배치 실행에 적합.
- *               에러 발생 시에만 멈춤.
+ * - full-auto:  모든 확인을 자동으로 통과. 에러 발생 시에만 멈춤. (기본값)
  *
  * - semi-auto:  Phase 전환 시에만 확인. Phase 내부 세부사항은 자동 통과.
- *               대부분의 사용에 권장.
  *
  * - manual:     모든 확인 포인트에서 사용자 입력 대기.
  *               처음 사용하거나 세밀한 제어가 필요할 때.
  */
 
 export class InteractionManager {
-  constructor(mode = "semi-auto", options = {}) {
+  constructor(mode = "full-auto", options = {}) {
     this.mode = mode;
     this.timeout = options.timeout || 0;        // auto-proceed timeout (초)
     this.defaultYes = options.defaultYes ?? true; // 타임아웃 시 기본값

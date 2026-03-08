@@ -173,7 +173,7 @@ cli:
   timeout: 600000
 
 pipeline:
-  interaction_mode: semi-auto
+  interaction_mode: full-auto
   thinking_budget: 70
 
 personas:
@@ -220,7 +220,7 @@ function generateProjectTemplate() {
 # 개인 설정: .polymeld/config.local.yaml (.gitignore에 추가)
 
 pipeline:
-  interaction_mode: semi-auto
+  interaction_mode: full-auto
   parallel_development: true
   max_review_retries: 3
   max_qa_retries: 3
