@@ -324,8 +324,10 @@ export class Team {
       return false;
     }
 
-    if (/^\[CONCLUDE\]/i.test(content)) {
-      const stripped = content.replace(/^\[CONCLUDE\]\s*/i, "");
+    // m 플래그: LLM이 전문(preamble) 뒤에 [CONCLUDE]를 쓸 경우를 방어적으로 허용
+    const concludeMatch = content.match(/^\[CONCLUDE\]\s*([\s\S]*)/mi);
+    if (concludeMatch) {
+      const stripped = concludeMatch[1].trim();
       if (stripped.length > 0) {
         // 결론 도출 → 종합 정리로 기록, 조기 종료
         this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content: stripped });

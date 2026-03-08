@@ -532,7 +532,7 @@
         "style": "\"This color palette with this tone would suit the mood\"\n\"Let's create a character sheet first to maintain consistency\""
       }
     },
-    "concludeInstruction": "Please review the discussion so far. If sufficient conclusions have been reached, start with [CONCLUDE] and summarize the final conclusions and action items. If further discussion is needed, suggest focus points for the next round.",
+    "concludeInstruction": "Please review the discussion so far. If sufficient conclusions have been reached, write [CONCLUDE] alone on the very first line of your response, then summarize the final conclusions and action items from the second line onward. If further discussion is needed, suggest focus points for the next round without using [CONCLUDE].",
     "summaryInstruction": "Please synthesize the discussion so far and summarize the final conclusions and action items.",
     "meetingMarkdown": {
       "planning": "Planning Meeting",

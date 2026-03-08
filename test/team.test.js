@@ -65,3 +65,41 @@ describe("Team.normalizeRole", () => {
     assert.equal(team.normalizeRole("  ace_programmer  "), "ace_programmer");
   });
 });
+
+// ─── [CONCLUDE] 정규식 매칭 ──────────────────────────
+
+describe("[CONCLUDE] 정규식 매칭", () => {
+  // _checkMidRoundConclusion에서 사용하는 정규식을 직접 테스트
+  const concludeRegex = /^\[CONCLUDE\]\s*([\s\S]*)/mi;
+
+  function parseConclude(content) {
+    const match = content.match(concludeRegex);
+    if (!match) return null;
+    return match[1].trim();
+  }
+
+  it("정상: [CONCLUDE]가 첫 줄에 위치", () => {
+    const result = parseConclude("[CONCLUDE]\n## 최종 결론\n액션 아이템 정리");
+    assert.equal(result, "## 최종 결론\n액션 아이템 정리");
+  });
+
+  it("전문 포함: [CONCLUDE]가 중간 줄에 위치", () => {
+    const result = parseConclude("논의를 검토했습니다. 결론이 도출됐습니다.\n---\n[CONCLUDE]\n## 최종 결론");
+    assert.equal(result, "## 최종 결론");
+  });
+
+  it("내용 없음: [CONCLUDE]만 존재", () => {
+    const result = parseConclude("[CONCLUDE]");
+    assert.equal(result, "");
+  });
+
+  it("오탐 방지: 인라인 [CONCLUDE] 언급은 매칭하지 않음", () => {
+    const result = parseConclude("아직 [CONCLUDE]를 쓰기엔 이릅니다. 추가 논의가 필요합니다.");
+    assert.equal(result, null);
+  });
+
+  it("대소문자 무시: [conclude]도 매칭", () => {
+    const result = parseConclude("[conclude]\n결론 내용");
+    assert.equal(result, "결론 내용");
+  });
+});
