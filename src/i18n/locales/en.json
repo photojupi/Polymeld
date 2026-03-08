@@ -181,7 +181,7 @@
     "relevantFiles": "Relevant Files",
     "prBody": {
       "changes": "## Changes",
-      "implementation": "{{title}} - {{category}} implementation",
+      "implementation": "{{title}} implementation",
       "relatedIssues": "## Related Issues",
       "contents": "## Implementation Details",
       "taskList": "### Task List",

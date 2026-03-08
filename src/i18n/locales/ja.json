@@ -181,7 +181,7 @@
     "relevantFiles": "関連ファイル",
     "prBody": {
       "changes": "## 変更内容",
-      "implementation": "{{title}} - {{category}} 実装",
+      "implementation": "{{title}} 実装",
       "relatedIssues": "## 関連Issue",
       "contents": "## 実装内容",
       "taskList": "### タスク一覧",
