@@ -382,7 +382,6 @@ export class GitHubClient {
       });
     } catch (e) {
       console.warn("프로젝트 Status 업데이트 실패:", e.message);
-      return;
     }
 
     // 빌트인 Status 필드 동기화 (칸반보드 기본 뷰 반영)
@@ -408,8 +407,8 @@ export class GitHubClient {
             fieldId: this.builtinStatusFieldId,
             optionId: builtinOptionId,
           });
-        } catch {
-          // 빌트인 Status 실패는 무시 — Pipeline이 primary source of truth
+        } catch (e) {
+          console.warn("빌트인 Status 동기화 실패:", e.message);
         }
       }
     }
