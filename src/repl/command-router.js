@@ -85,7 +85,7 @@ export class CommandRouter {
         await resumeCommand(this.session, this.replShell);
         break;
       case "/mode":
-        modeCommand(this.session, args);
+        await modeCommand(this.session, args);
         break;
       case "/help":
         helpCommand();
