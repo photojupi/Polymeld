@@ -48,9 +48,9 @@ export class CommandRouter {
 
   async handleSlash(input) {
     if (input === "/") {
-      // readline이 "/"를 제출하면서 남긴 빈 줄을 지우고
-      // 메뉴가 같은 위치에 표시되도록 커서를 한 줄 위로 이동
-      process.stdout.write("\x1b[A\x1b[2K\r");
+      // readline이 "/" 제출로 남긴 두 줄(프롬프트 줄, 그 위의 상태바 줄)을 소거한다.
+      // \x1b[A = 커서 1줄 위로, \x1b[2K = 현재 줄 전체 삭제, \r = 줄 시작으로 이동
+      process.stdout.write("\x1b[A\x1b[2K\x1b[A\x1b[2K\r");
 
       const cmd = await new SlashMenu(getCommandMenu()).show();
       if (!cmd) return "continue";
