@@ -156,7 +156,7 @@ function generateGlobalTemplate(models) {
 
   const modelEntries = [];
   if (models.includes("claude")) {
-    let entry = "  claude:\n    cli: claude\n    model: claude-sonnet-4-6";
+    let entry = "  claude:\n    cli: claude\n    model: claude-opus-4-6";
     const fb = getFallback("claude");
     if (fb) entry += `\n    fallback: ${fb}`;
     modelEntries.push(entry);
