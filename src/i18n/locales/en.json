@@ -153,6 +153,7 @@
     "qaComment": "🧪 **{{agent}} QA Results** [Attempt {{attempt}}/{{max}}] (`{{model}}`):\n\n{{result}}",
     "qaPassed": "✅ QA passed",
     "qaFailed": "🔄 QA failed - fixes needed (attempt {{attempt}}/{{max}})",
+    "qaFallbackSwitch": "⚠️ Switching from {{from}} to {{to}} model for retry",
     "qaMaxRetries": "⚠️  Maximum QA retry count ({{max}}) reached",
     "qaMaxRetriesConfirm": "{{title}}: QA failed {{max}} times. How should we proceed?",
     "qaSkipComment": "⚠️ **System**: QA failed {{max}} times. Skipping by user decision.",
