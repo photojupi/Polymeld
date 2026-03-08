@@ -10,7 +10,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node --env-file=.env --test 'test/**/*.test.js'"
+    "test": "node --env-file=.env --test --test-concurrency=4 'test/**/*.test.js'",
+    "test:unit": "node --env-file=.env --test 'test/*.test.js'",
+    "test:e2e": "node --env-file=.env --test --test-concurrency=4 'test/e2e/*.test.js'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
