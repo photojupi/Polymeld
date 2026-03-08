@@ -2,159 +2,114 @@
 
 # Polymeld
 
-**Multi-AI Model Development Team Simulation**
+**Orchestrate multiple AI coding agents as a virtual dev team.**
 
-Assign Claude Code, Gemini CLI, and Codex CLI to individual personas, and automate the entire workflow from meetings to design, development, review, QA, and PR creation.
+Assign Claude Code, Gemini CLI, and Codex CLI to individual personas — automate the entire workflow from meetings to design, development, code review, QA, and PR creation.
 
-## Architecture
+## ✨ Features
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Polymeld                               │
-│                  (Node.js Orchestrator)                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  REPL Shell (Interactive)   ←→   Session (Context Mgmt)     │
-│  Status bar, Command menu,       SessionStore (Disk Save)   │
-│  Tab completion, Multi-line      Phase Checkpoint/Resume    │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│  validateConnections: CLI Install → Auth → GitHub + Scopes  │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  PipelineState              PromptAssembler                 │
-│  (Single State Store)       (Per-Phase Token Budget)        │
-│                                                             │
-│  ResponseParser             ModelAdapter                    │
-│  (LLM Response Parsing)    (CLI Abstraction + Thinking Map) │
-│                                                             │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐              │
-│  │ Claude   │    │ Gemini   │    │ Codex    │              │
-│  │ Code CLI │    │ CLI      │    │ CLI      │              │
-│  └────┬─────┘    └────┬─────┘    └────┬─────┘              │
-│       │               │               │                     │
-│  ┌────┴─────────┐ ┌────┴─────────┐ ┌────┴─────────┐       │
-│  │ Archie Stone  │ │ Nova Cruz    │ │ Cody Sharp   │       │
-│  │ (Lead)        │ │ Max Planner  │ │ (Ace)        │       │
-│  │ Sam Shield    │ │ Eve Fielding*│ │ Tess Hunter  │       │
-│  └───────────────┘ │ Iris Bloom*  │ └──────────────┘       │
-│                    └──────────────┘                         │
-│                └─────────────┘                              │
-│  * Uses Nano Banana 2 for image generation                  │
-│  Voluntary [PASS] during meetings for self-regulation       │
-│                                                             │
-├──────────────────────────┬──────────────────────────────────┤
-│   LocalWorkspace         │       GitHub Integration         │
-│   (Local Git Repo Link)  │  Issues │ Comments │ Projects   │
-│   File browse/read/write │  Branches │ PRs │ Commits      │
-│   git branch/commit/push │  Auto-init for empty repos      │
-└──────────────────────────┴──────────────────────────────────┘
-```
+- **🤖 Multi-AI Team** — 8 personas (Tech Lead, Programmer, QA, Designer, etc.) powered by Claude, Gemini, and Codex
+- **🔄 8-Phase Pipeline** — Codebase analysis → Meeting → Task breakdown → Assignment → Development → Code review → QA → PR
+- **⚡ Parallel Development** — Dependency-aware concurrent LLM execution for independent tasks
+- **🖼️ Image Generation** — Personas with `image_model` auto-generate images via Nano Banana 2
+- **📂 Local Workspace** — Reads existing code, writes files directly, manages git branches/commits
+- **🔁 Auto-Fix Loop** — Failed reviews/QA trigger automatic fix → re-review cycles
+- **💬 AI Meetings** — Real-time multi-model discussions with `[PASS]`/`[CONCLUDE]` self-regulation
+- **🔀 Rate Limit Fallback** — CLI → API → fallback model — 3-tier automatic switching
+- **🌐 4-Language i18n** — Full support for English, 한국어, 日本語, 中文
+- **📌 Full GitHub Traceability** — Every step recorded as Issues, Comments, Commits, and PRs
 
-## Installation
+## 🚀 Quick Start
 
 ```bash
+# 1. Install Polymeld
 npm install -g polymeld
-```
 
-## Quick Start
+# 2. Install AI CLIs (only the ones you need)
+npm install -g @anthropic-ai/claude-code   # Claude Code
+npm install -g @google/gemini-cli           # Gemini CLI
+npm install -g @openai/codex                # Codex CLI
 
-```bash
-# 1. Install CLI tools (install only the ones you want to use)
-npm install -g @anthropic-ai/claude-code  # Claude Code
-npm install -g @google/gemini-cli          # Gemini CLI
-npm install -g @openai/codex               # Codex CLI
-
-# 2. Run from your GitHub project folder — the onboarding wizard starts automatically
+# 3. Run from your project folder — onboarding wizard starts automatically
 cd ~/projects/my-app
 polymeld
-# → Model selection → GitHub token creation guide + input → Done!
-# → GITHUB_REPO is auto-detected from your project folder
+# → Model selection → GitHub token setup → Done!
+# → GITHUB_REPO is auto-detected from git remote
 ```
 
-> **GITHUB_REPO auto-detection**: When run from a GitHub project folder, `owner/repo` is automatically extracted from `git remote`. Just set `GITHUB_TOKEN` and you're ready to use it in any project.
+## 📋 Commands
 
-> **First-run onboarding**: Running `polymeld` without arguments will launch the onboarding wizard (model selection → GitHub token creation guide → credential input) if no global config exists, then automatically enter REPL mode.
+| Command | Description |
+|---------|-------------|
+| `polymeld` | Start REPL (onboarding wizard on first run) |
+| `polymeld run "requirement"` | Run full pipeline |
+| `polymeld run "req" --mode semi-auto` | Confirm at each phase |
+| `polymeld meeting kickoff "topic"` | Run kickoff meeting only |
+| `polymeld meeting design "topic" --rounds 3` | Design meeting with N rounds |
+| `polymeld start --resume` | Resume previous session |
+| `polymeld test-models` | Test model connections |
+| `polymeld init --global` | Initialize global config |
+| `polymeld auth` | Manage credentials interactively |
 
-## Configuration
+**REPL Slash Commands:** `/help` `/status` `/history` `/context` `/team` `/mode` `/resume` `/save` `/load` `/exit`
 
-### Environment Variables (.env file)
+## ⚙️ Pipeline
 
-Create a `.env` file in the project root to configure settings (auto-loaded via `dotenv`):
+```
+Phase 0  Codebase Analysis     Analyze existing code structure (if local workspace)
+Phase 1  Planning Meeting      Multi-AI discussion → design decisions
+Phase 2  Task Breakdown        Split into 1-4 hour tasks → GitHub Issues
+Phase 3  Assignment            Match tasks to best-fit personas
+Phase 4  Development           Parallel coding → feature branches → commits
+Phase 5  Code Review           Lead reviews → auto-fix → re-review (×3)
+Phase 6  QA                    Verify → auto-fix → re-verify (×3)
+Phase 7  PR Creation           Auto-create PR linking all artifacts
+```
+
+> **Checkpoints**: Each phase saves a checkpoint. Use `/resume` to restart from any phase.
+
+## 👥 Default Team
+
+| Persona | Role | Model | Image |
+|---------|------|-------|-------|
+| Archie Stone | Tech Lead (Team Lead) | Claude Opus 4.6 | — |
+| Cody Sharp | Ace Programmer | GPT-5.4 | — |
+| Nova Cruz | Creative Programmer | Gemini 3.1 Pro | — |
+| Max Planner | Ace Planner | Gemini 3.1 Pro | — |
+| Sam Shield | Security Expert | Claude Opus 4.6 | — |
+| Eve Fielding | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 |
+| Iris Bloom | Illustrator | Gemini 3.1 Pro | Nano Banana 2 |
+| Tess Hunter | QA Engineer | GPT-5.4 | — |
+
+> All personas join meetings. They self-regulate via `[PASS]` (skip) and `[CONCLUDE]` (end early).
+
+## 🔧 Configuration
+
+### Credentials
 
 ```bash
-# Copy from .env.example
-cp .env.example .env
+polymeld auth                  # Interactive setup
+polymeld auth --show           # Check current status
 ```
+
+Or use `.env` / `~/.polymeld/credentials.yaml`:
 
 ```bash
-# GitHub Personal Access Token
-# - Classic PAT: repo (required) + project (optional, for Projects board) scopes
-# - Fine-grained PAT: Issues, Contents, Pull requests write permissions
-GITHUB_TOKEN=ghp_xxxxx
-GITHUB_REPO=owner/repo            # Target repository (owner/repo format)
+GITHUB_TOKEN=ghp_xxxxx        # Required
+# GITHUB_REPO=owner/repo      # Auto-detected from git remote
 ```
 
-> **Auto-validated on startup**: CLI installation, CLI authentication, GitHub integration, and token scopes are checked sequentially. A warning is shown if the Classic PAT is missing the `project` scope.
+### config.yaml
 
-> Note: API keys for AI CLI tools are managed by each CLI independently (follow each CLI's authentication method).
-
-### Config File Load Order
-
-Configuration is merged hierarchically (lower layers override upper layers):
-
-| Priority | Path | Purpose |
-|----------|------|---------|
-| 1 (highest) | `-c` flag | Uses only the specified file |
-| 2 | `~/.polymeld/config.yaml` | Global settings (shared across all projects) |
-| 3 | `.polymeld/config.yaml` | Project shared settings (git-committed) |
-| 4 | `.polymeld/config.local.yaml` | Project local settings (personal, .gitignore) |
-| 5 | `polymeld.config.yaml` | Legacy compatibility |
-
-### Credentials Management
-
-Credentials are stored securely in `~/.polymeld/credentials.yaml` (file permissions `0600`):
+Config files are merged hierarchically: `-c` flag > `~/.polymeld/config.yaml` (global) > `.polymeld/config.yaml` (project) > `.polymeld/config.local.yaml` (local).
 
 ```yaml
-# ~/.polymeld/credentials.yaml
-GITHUB_TOKEN: ghp_xxxxx
-GITHUB_REPO: owner/repo
-ANTHROPIC_API_KEY: sk-...
-GOOGLE_API_KEY: AIzaSy...
-OPENAI_API_KEY: sk-...
-```
-
-**Load priority**: `.env` (dotenv) → `~/.polymeld/credentials.yaml` → environment variables (`process.env` takes precedence)
-
-> Use `polymeld auth` to input credentials interactively, or `polymeld auth --show` to check current credential status.
-
-### config.yaml Options
-
-#### Project Settings (Local Workspace)
-
-Configure agents to reference existing code and save generated code directly to local files:
-
-```yaml
-# Specify a local Git repo path so agents can reference existing code during development.
-# If not set, the .git in the current directory is auto-detected.
-project:
-  local_path: ~/projects/my-app
-```
-
-> **Auto-detection**: Even without setting `project.local_path`, running Polymeld from the target project directory will auto-detect `.git` and use it as the workspace.
-
-#### Model Definitions
-
-Define the AI models and their CLI mappings:
-
-```yaml
+# Model definitions
 models:
   claude:
     cli: claude
     model: claude-opus-4-6
-    fallback: gemini               # Model to switch to on rate limit
+    fallback: gemini             # Switch on rate limit
   gemini:
     cli: gemini
     model: gemini-3.1-pro-preview
@@ -165,516 +120,59 @@ models:
     fallback: claude
   gemini_image:
     cli: gemini
-    model: gemini-3.1-flash-image    # Nano Banana 2 (specialized for image generation)
-```
+    model: gemini-3.1-flash-image  # Nano Banana 2
 
-#### fallback (Automatic Rate Limit Switching)
-
-Setting the `fallback` field on a model enables automatic switching to an alternate model when a rate limit is hit:
-
-- **CLI → API → fallback** 3-tier priority chain
-- Automatically switches to API key backend when CLI usage is exceeded
-- Falls back to the `fallback` model if API key also hits rate limit
-- Automatically detects rate limit patterns in stderr (`Rate limit reached`, `Resource exhausted`, `usage limit`, etc.)
-
-#### CLI Execution Settings
-
-```yaml
-cli:
-  timeout: 600000          # Default timeout 10 min (milliseconds)
-  timeouts:
-    claude:                # Dual timeout (idle + max)
-      idle: 300000         #   5 min: terminate if no output since last activity (resets on output)
-      max: 1800000         #   30 min: absolute upper limit (prevents infinite loops)
-    gemini: 600000         # Single timeout also supported (10 min)
-    codex:
-      idle: 300000
-      max: 1800000
-  max_turns:
-    claude: 10             # Max agentic loop turns for Claude
-```
-
-> **Dual timeout**: `idle` resets whenever output is detected, preventing premature termination of active processes. `max` is an absolute upper limit to prevent infinite loops. Single numeric values are also supported for backward compatibility.
-
-#### Persona Assignment
-
-Assign a model to each persona. All personas participate in meetings, but voluntarily pass with `[PASS]` when they have nothing to contribute:
-
-```yaml
+# Persona assignment
 personas:
   tech_lead:
     name: Archie Stone
     model: claude
-    thinking_budget: 100      # Per-persona override (0-100)
-
-  ace_programmer:
-    name: Cody Sharp
-    model: codex
-
-  creative_programmer:
-    name: Nova Cruz
-    model: gemini
-
-  qa:
-    name: Tess Hunter
-    model: codex
-    thinking_budget: 70
-
+    thinking_budget: 100         # AI reasoning depth (0-100)
   designer:
     name: Eve Fielding
-    model: gemini             # Gemini 3.1 Pro for conversation/design
-    image_model: gemini_image # Nano Banana 2 for image generation
-```
+    model: gemini
+    image_model: gemini_image    # Enable image generation
 
-#### image_model (Image Generation)
-
-Setting the `image_model` field enables a persona to perform image generation tasks:
-- **Conversation/Design/Review**: Uses the default `model` (e.g., Gemini 3.1 Pro)
-- **Image Generation**: Uses `image_model` (e.g., Nano Banana 2)
-- Auto-detection of image tasks: Triggered by keywords like design, mockup, icon, illustration in the task title/description
-- `image_model` is optional -- without it, the agent operates as text-only
-
-#### thinking_budget (AI Reasoning Depth)
-
-Controls the reasoning depth of AI models on a 0-100 scale:
-
-```yaml
+# Pipeline settings
 pipeline:
-  thinking_budget: 70         # Global default (0-100)
-
-personas:
-  tech_lead:
-    thinking_budget: 100      # Per-persona override
+  parallel_development: true     # Concurrent LLM calls
+  thinking_budget: 50            # Global default (0-100)
+  max_review_retries: 3
+  max_qa_retries: 3
 ```
 
-Per-CLI mapping:
-| CLI | Parameter | Mapping |
-|-----|-----------|---------|
-| Claude | `--effort` | 0-33: low, 34-75: medium, 76-100: high |
-| Codex | `-c model_reasoning_effort` | 0-25: low, 26-60: medium, 61-85: high, 86-100: xhigh |
-| Gemini | (No CLI flag support) | Controlled only via settings.json `thinkingConfig` |
-
-API backend mapping:
-| API | Parameter | Mapping |
-|-----|-----------|---------|
-| Claude (Anthropic) | `thinking.budget_tokens` | 0-33: disabled, 34-75: 4096, 76-100: 16384 |
-| Gemini (Google) | `thinkingConfig.thinkingBudget` | 0-33: 1024, 34-75: 8192, 76-100: 24576 |
-| OpenAI | `reasoning_effort` | 0-25: low, 26-60: medium, 61-100: high |
-
-#### parallel_development (Parallel Execution)
-
-Runs LLM calls concurrently for tasks without dependencies during Phase 4 (Development):
-
-```yaml
-pipeline:
-  parallel_development: true    # Default: true
-```
-
-- `true`: Analyzes the dependency graph and runs independent tasks in parallel batches
-- `false`: Maintains the existing sequential execution mode
-- Git operations (branch creation, commits) are always serialized via a queue to prevent conflicts
-
-#### Fix Loop Settings
-
-Configure the maximum number of automatic retries when Code Review or QA fails:
-
-```yaml
-pipeline:
-  max_review_retries: 3    # Max review → fix → re-review cycles
-  max_qa_retries: 3        # Max QA failure → fix → re-verify cycles
-```
-
-#### Meeting System
-
-**Real-time speech preview**: During meetings, each AI's response is shown in real time via a spinner as it is generated, then permanently displayed upon completion:
-
-```
-⠇ Cody Sharp speaking... This can be solved in O(n log n)
-✓ Cody Sharp: This can be solved in O(n log n). Using divide and conquer...
-```
-
-**Voluntary pass (`[PASS]`)**: When a persona has nothing to contribute on a topic, they automatically skip with `[PASS]`. The pass is recorded in the meeting minutes.
-
-**Early termination (`[CONCLUDE]`)**: When the team lead determines that sufficient discussion has taken place, they can end the meeting early with `[CONCLUDE]`, skipping the remaining rounds.
-
-**Round display**: The round number is displayed at each meeting round transition.
-
-**Auto-generated issue title**: The team lead AI generates a one-line summary as the title for the meeting minutes GitHub Issue.
-
-### Persona Overview (Defaults)
-
-| Persona | Role | Model | Image Model | thinking |
-|---------|------|-------|-------------|----------|
-| Archie Stone | Tech Lead (Team Lead) | Claude Opus 4.6 | - | 100 |
-| Cody Sharp | Ace Programmer | GPT-5.4 | - | - |
-| Nova Cruz | Creative Programmer | Gemini 3.1 Pro | - | - |
-| Tess Hunter | QA Engineer | GPT-5.4 | - | 70 |
-| Max Planner | Ace Planner | Gemini 3.1 Pro | - | - |
-| Sam Shield | Security Expert | Claude Opus 4.6 | - | - |
-| Eve Fielding | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
-| Iris Bloom | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | - |
-
-> All personas participate in meetings. On unrelated topics, they voluntarily pass with `[PASS]`, and the team lead can end a meeting early with `[CONCLUDE]`.
-
-## Usage
-
-### Full Pipeline Execution
-```bash
-# Full-auto mode (default) — all phases run automatically
-polymeld run "Implement real-time chat feature"
-
-# Specify interaction mode
-polymeld run "chat feature" --mode full-auto   # Default
-polymeld run "chat feature" --mode semi-auto   # Confirm at each phase
-polymeld run "chat feature" --mode manual      # Manual control
-```
-
-> The project title is automatically derived from the workspace name.
-
-### Run Meetings Only
-```bash
-# Kickoff meeting
-polymeld meeting kickoff "Implement user authentication"
-
-# Technical design meeting (3-round discussion)
-polymeld meeting design "Migrate to microservices architecture" --rounds 3
-```
-
-### Test Model Connections
-```bash
-polymeld test-models
-```
-
-### Interactive REPL Mode
-```bash
-# Start REPL
-polymeld start
-
-# Resume previous session (most recent)
-polymeld start --resume
-
-# Resume a specific session
-polymeld start --resume <sessionId>
-
-# Specify interaction mode
-polymeld start --mode full-auto
-```
-
-In REPL mode, enter your requirements in natural language at the prompt to run the full pipeline.
-After execution completes, you return to the prompt to issue new commands.
-Session context (PipelineState, execution history) is preserved across runs.
-
-**REPL Features:**
-- **Status bar**: Displays current session state in real time at the prompt
-- **Command menu**: Type `/` to show a searchable command menu (inquirer)
-- **Tab completion**: Auto-complete for slash commands
-- **Multi-line input**: Supports pasting multiple lines via Bracketed Paste Mode
-
-**Slash Commands:**
-
-| Command | Description |
-|---------|-------------|
-| `/help` | List available commands |
-| `/status` | Show current session state |
-| `/history` | Show pipeline execution history |
-| `/context` | Inspect PipelineState |
-| `/team` | Show team composition |
-| `/mode` | Change interaction mode (full-auto/semi-auto/manual) |
-| `/resume` | Resume an interrupted pipeline (from phase checkpoint) |
-| `/save` | Save session |
-| `/load [id]` | Restore a session |
-| `/exit` | Exit REPL |
-
-### Initialize Configuration
-```bash
-# Initialize global config (~/.polymeld/ with config.yaml + credentials.yaml)
-polymeld init --global
-
-# Initialize project config (.polymeld/config.yaml)
-polymeld init
-```
-
-### Credentials Management
-```bash
-# Input tokens/API keys interactively
-polymeld auth
-
-# Check current credential status (masked)
-polymeld auth --show
-```
-
-## Local Workspace Integration
-
-When you designate a local Git repository as the workspace, agents **read and reference existing code** for development and **save generated code directly to the local file system**.
-
-### How It Works
-
-| Feature | With Workspace | Without Workspace |
-|---------|---------------|-------------------|
-| Code reference | Existing file structure/content included in LLM prompts | Only design docs referenced |
-| Code saving | Saved directly as local files + `git commit` | Committed via GitHub API |
-| Branch management | Local `git checkout -b` | Branches created via GitHub API |
-| PR creation | Local `git push` then GitHub PR | GitHub API only |
-
-### Workspace Detection Priority
-
-1. `project.local_path` setting in config file
-2. Auto-detection of `.git` in the current directory (excluding Polymeld's own repo)
-3. If not detected, falls back to `NoOpWorkspace` (GitHub API only mode)
-
-> When `local_path` is set, the CLI process runs from that path, allowing agents to directly read and write files in that project.
-
-### Auto-Initialization for Empty GitHub Repos
-
-If the repo specified by `GITHUB_REPO` is empty, it will automatically:
-1. Create an Initial Commit
-2. Set the origin remote using the `GITHUB_REPO` value
-
-No manual initialization required -- it just works out of the box.
-
-### Behavior During Development Phase
-
-When a workspace is linked, Phase 4 (Development) will:
-- Cache the directory structure tree and provide it to the LLM
-- Search for relevant files per task using keyword-based matching to provide code context
-- Auto-create feature branches per task (`feature/{issueNumber}-{sanitized-title}`)
-- Dependency-based parallel execution: Run LLM calls for independent tasks concurrently (Git operations serialized via queue)
-- Save generated code as local files, then `git add` + `git commit`
-- Re-commit locally during Phase 5 (Review) / Phase 6 (QA) fixes
-
-## Pipeline Details
-
-```
-Phase 0: Codebase Analysis (modification mode + local workspace)
-  → Analyze existing codebase structure and patterns
-  → Analysis results used as context in subsequent phases
-
-Phase 1: Planning Meeting
-  → Personas share opinions using their respective AI models
-  → Unrelated personas voluntarily pass with [PASS]
-  → Team lead can end meeting early with [CONCLUDE] after sufficient discussion
-  → Design decisions (designDecisions) injected into subsequent agent prompts
-  → Meeting minutes automatically posted as a GitHub Issue
-
-Phase 2: Task Breakdown
-  → Team lead breaks work into 1-4 hour tasks
-  → Each task created as a GitHub Issue (backlog label)
-
-Phase 3: Assignment
-  → Team lead assigns each task to the most suitable persona
-  → Image tasks are preferentially assigned to agents with image_model
-  → Assignment rationale recorded as an Issue Comment
-
-Phase 4: Development (Dependency-Based Parallel Execution)
-  → Analyzes inter-task dependencies and runs independent tasks in parallel
-  → LLM calls run in parallel; Git operations serialized via queue to prevent conflicts
-  → Image tasks: Generate images using image_model (saved to output/images/)
-  → Committed to feature branches
-  → Progress updated via Issue Comments
-
-Phase 5: Code Review (up to max_review_retries retries)
-  → Team lead reviews code written by other models
-  → ResponseParser extracts APPROVED / CHANGES_REQUESTED verdict
-  → If changes needed, team lead directly writes fix code and re-commits
-  → Review results recorded as Issue Comments
-
-Phase 6: QA (up to max_qa_retries retries)
-  → QA engineer verifies the code
-  → ResponseParser extracts PASS / FAIL verdict
-  → On failure, team lead directly fixes and re-commits
-  → Test results recorded as a table in Issue Comments
-
-Phase 7: PR Creation
-  → Auto-creates a PR linking all artifacts (meeting minutes, reviews, QA results)
-```
-
-> **Phase Checkpoints**: A checkpoint is saved upon each phase completion. If interrupted, use `/resume` to restart from that phase.
-
-## Internal Architecture
-
-### Core Components
-
-| Component | Role | Description |
-|-----------|------|-------------|
-| **PipelineState** | Single State Store | Manages project/task/message/convocation records as explicit fields |
-| **PromptAssembler** | Token Budget Context Assembly | Extracts only the necessary information per task type for LLM prompts (including codebase context) |
-| **ResponseParser** | LLM Response Structured Parsing | JSON extraction + keyword fallback for verdict extraction |
-| **LocalWorkspace** | Local Git Repo Integration | File browse/read/write + git branch/commit/push automation |
-| **validateConnections** | Startup Connection Validation | Real-time display of CLI install → auth → GitHub token/permissions/scopes checks |
-
-### PipelineState Field Catalog
-
-```
-project.requirement     - Original requirement text
-project.title           - Project title (auto-derived from workspace)
-designDecisions         - Design decisions (injected into subsequent agent prompts)
-techStack               - Technology stack
-tasks[]                 - Decomposed task list (includes code/review/QA results)
-completedTasks[]        - Completed tasks
-messages[]              - All inter-agent messages
-codebaseAnalysis        - Phase 0 codebase analysis results
-completedPhases[]       - Completed phase checkpoints (used for resumption)
-github.planningIssue    - GitHub planning Issue number
-```
-
-### PromptAssembler -- Per-Phase Token Budget
-
-| Phase | Method | Budget | Rationale |
-|-------|--------|--------|-----------|
-| Meeting | `forMeeting()` | 8,000 chars | Balance needed due to extensive prior remarks |
-| Coding | `forCoding()` | 12,000 chars | Code quality first (maximum budget) |
-| Fix | `forFix()` | 10,000 chars | Feedback + design context |
-| Review | `forReview()` | 6,000 chars | Code delivered separately |
-| QA | `forQA()` | 4,000 chars | Only review results needed |
-| Image | `forImageGeneration()` | 6,000 chars | Image generation prompt |
-
-### ResponseParser -- LLM Response Parsing
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `parseTasks()` | Phase 2 task breakdown | Structured task array |
-| `parseReviewVerdict()` | Phase 5 code review | APPROVED / CHANGES_REQUESTED |
-| `parseQAVerdict()` | Phase 6 QA | PASS / FAIL |
-
-### Project Structure
-
-```
-src/
-├── index.js                    # CLI entry point (Commander.js) + dotenv loading
-├── i18n/
-│   ├── index.js                # i18next initialization + t() translation function
-│   ├── detect-locale.js        # OS locale auto-detection (LC_ALL → LANG → Intl)
-│   └── locales/
-│       ├── en.json             # English
-│       ├── ko.json             # 한국어
-│       ├── ja.json             # 日本語
-│       └── zh-CN.json          # 中文(简体)
-├── config/
-│   ├── loader.js               # YAML config loader (hierarchical merge) + CLI/GitHub validation
-│   ├── init.js                 # Interactive setup wizard (global/project)
-│   ├── credentials.js          # Credentials management (~/.polymeld/credentials.yaml)
-│   ├── paths.js                # Cross-platform path utilities
-│   └── interaction.js          # Interaction mode management
-├── models/
-│   ├── adapter.js              # CLI abstraction (claude/gemini/codex) + thinking mapping
-│   └── response-parser.js      # LLM response structured parsing
-├── agents/
-│   ├── agent.js                # Individual agent (persona)
-│   └── team.js                 # Team manager ([PASS]-based autonomous participation)
-├── state/
-│   ├── pipeline-state.js       # Single state store (with phase checkpoints)
-│   └── prompt-assembler.js     # Per-phase token budget context assembler
-├── pipeline/
-│   └── orchestrator.js         # 8-Phase pipeline (Phase 0~7 + parallel execution + checkpoints)
-├── workspace/
-│   ├── local-workspace.js      # Local Git repo (file browse/read/write + git CLI)
-│   └── noop-workspace.js       # No-op client when workspace is not configured
-├── repl/
-│   ├── repl-shell.js           # REPL loop (status bar + command menu)
-│   ├── command-router.js       # Slash command routing + tab completion
-│   ├── status-bar.js           # Status bar rendering
-│   ├── slash-menu.js           # Inline searchable slash menu (direct stdin handling)
-│   ├── paste-detect-stream.js  # Bracketed Paste Mode (multi-line input)
-│   └── commands/               # Slash command handlers
-│       ├── help.js
-│       ├── status.js
-│       ├── history.js
-│       ├── context.js
-│       ├── team.js
-│       ├── mode.js
-│       ├── resume.js
-│       ├── save.js
-│       └── load.js
-├── session/
-│   ├── session.js              # Session (PipelineState + workspace + execution history)
-│   └── session-store.js        # Session disk save/restore
-└── github/
-    └── client.js               # GitHub API (Issues, PRs, Projects) + empty repo auto-init
-test/
-├── response-parser.test.js     # ResponseParser unit tests (incl. multilingual keyword matching)
-├── pipeline-state.test.js      # PipelineState unit tests
-├── prompt-assembler.test.js    # PromptAssembler unit tests
-├── paste-detect-stream.test.js # Bracketed Paste Mode tests
-├── slash-menu.test.js          # Slash menu inline search tests
-├── i18n.test.js                # Translation key sync validation (4-language parity)
-└── team.test.js                # Team persona normalization tests
-```
-
-## What Gets Recorded on GitHub
-
-Every step is recorded on GitHub for full traceability:
-
-- **Meeting minutes**: Issue (meeting-notes label)
-- **Tasks**: Issue (backlog → todo → in-progress → done)
-- **Assignment records**: Issue Comment
-- **Development logs**: Issue Comment + Commit
-- **Image generation results**: Issue Comment (file path + text description)
-- **Inter-persona discussions**: Issue Comment
-- **Code reviews**: Issue Comment
-- **QA results**: Issue Comment
-- **Final deliverables**: Pull Request
-
-Each record is tagged with the AI CLI that performed it (e.g., `[claude]`, `[gemini]`, `[codex]`).
-
-## Claude Code Integration
-
-This CLI can also be invoked from within Claude Code:
-
-```bash
-# From inside Claude Code
-polymeld run "requirements" --no-interactive
-```
-
-Or register it in CLAUDE.md:
-```markdown
-## Polymeld
-When given project requirements, run the Polymeld CLI:
-`polymeld run "requirements" --no-interactive`
-```
-
-## Persona Customization
-
-You can add or modify personas in your `config.yaml`:
+### Custom Personas
 
 ```yaml
 personas:
   devops:
-    name: 최배포
+    name: Alex Deploy
     role: DevOps Engineer
     model: codex
-    description: "Obsessed with CI/CD and infrastructure automation. Strives for deployment pipeline perfection."
+    description: "CI/CD and infrastructure automation specialist"
     expertise:
-      - CI/CD pipeline construction
+      - CI/CD pipelines
       - Container orchestration
-      - Infrastructure automation
-
-  concept_artist:
-    name: 이컨셉
-    role: Concept Artist
-    model: gemini              # Text model for discussion/planning
-    image_model: gemini_image  # Image model for image generation
-    description: "Specialist in concept art and visual design"
-    expertise:
-      - Concept art creation
-      - Character/environment design
 ```
 
-> All personas participate in meetings, but voluntarily pass with `[PASS]` on unrelated topics. No separate on_demand configuration is needed.
+## 🌐 Multilingual Support
 
-## Multilingual Support (i18n)
+| Language | Flag | Auto-detect |
+|----------|------|-------------|
+| English | `--lang en` | OS locale |
+| 한국어 | `--lang ko` | OS locale |
+| 日本語 | `--lang ja` | OS locale |
+| 中文(简体) | `--lang zh-CN` | OS locale |
 
-All text -- CLI UI, AI system prompts, GitHub comments, and more -- is available in 4 languages:
+AI response parsing is also multilingual — verdicts like `APPROVED`/`승인`/`承認`/`批准` are recognized across all languages.
 
-| Language | Code | How to Set |
-|----------|------|------------|
-| 한국어 | `ko` | `--lang ko` or OS locale |
-| English | `en` | `--lang en` or OS locale |
-| 日本語 | `ja` | `--lang ja` or OS locale |
-| 中文(简体) | `zh-CN` | `--lang zh-CN` or OS locale |
+## Claude Code Integration
 
-**Locale detection priority**: `--lang` flag → environment variables (`LC_ALL`, `LC_MESSAGES`, `LANG`) → `Intl` API → `en` (default)
+```bash
+polymeld run "requirements" --no-interactive
+```
 
-AI response parsing is also multilingual: Code review verdicts (`APPROVED`/`승인`/`承認`/`批准`), QA verdicts (`PASS`/`합격`/`合格`/`通过`), and others are recognized regardless of language.
+Or register in `CLAUDE.md` for automatic invocation.
 
 ## License
 
