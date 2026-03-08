@@ -63,37 +63,24 @@ npm install -g polymeld
 ## 快速开始
 
 ```bash
-# 1. 安装 CLI 工具（如未安装）
+# 1. 安装 CLI 工具（只需安装你要使用的模型）
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 3. 初始设置（交互式向导）
-polymeld init --global      # 全局配置 + 凭证输入
-# 或不带参数运行，会自动启动引导向导：
+# 2. 首次运行 — 引导向导会自动启动
 polymeld
+# → 模型选择 → GitHub Token 创建指南 + 输入 → 完成！
+# → GITHUB_REPO 会从项目文件夹自动检测
 
-# 4.（可选）关联本地工作区
-# 在目标项目目录中运行即可自动检测：
-cd ~/projects/my-app && polymeld start
-# 或在配置文件中指定：
-#   project:
-#     local_path: ~/projects/my-app
-
-# 5. 验证配置（CLI 认证 + GitHub 集成自动验证）
-polymeld test-models
-
-# 6. 运行！
+# 3. 在 GitHub 项目文件夹中运行！
+cd ~/projects/my-app
 polymeld run "实现用户认证功能（邮箱/密码 + OAuth）"
-
-# 7. 指定语言（可选，未指定时自动检测 OS 区域设置）
-polymeld run "聊天功能" --lang en   # English
-polymeld run "聊天功能" --lang ja   # 日本語
-polymeld run "聊天功能" --lang zh-CN # 中文(简体)
-
 ```
 
-> **首次运行引导**：不带参数运行 `polymeld` 时，如果不存在全局配置，将引导完成引导向导（模型选择 → 凭证输入），然后自动进入 REPL 模式。
+> **GITHUB_REPO 自动检测**：在 GitHub 项目文件夹中运行时，会自动从 `git remote` 提取 `owner/repo`。只需设置 `GITHUB_TOKEN`，即可在任何项目中直接使用。
+
+> **首次运行引导**：不带参数运行 `polymeld` 时，如果不存在全局配置，将引导完成引导向导（模型选择 → GitHub Token 创建指南 → 凭证输入），然后自动进入 REPL 模式。
 
 ## 配置
 

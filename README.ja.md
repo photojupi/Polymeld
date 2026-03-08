@@ -63,37 +63,24 @@ npm install -g polymeld
 ## クイックスタート
 
 ```bash
-# 1. CLIツールのインストール（未インストールの場合）
+# 1. CLIツールのインストール（使用するモデルのみインストール）
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 3. 初期設定（対話型ウィザード）
-polymeld init --global      # グローバル設定 + 認証情報の入力
-# または引数なしで実行するとオンボーディングウィザードが自動起動します：
+# 2. 初回実行 — オンボーディングウィザードが自動起動します
 polymeld
+# → モデル選択 → GitHubトークン作成ガイド + 入力 → 完了！
+# → GITHUB_REPOはプロジェクトフォルダから自動検出されます
 
-# 4.（オプション）ローカルワークスペース連携
-# 対象プロジェクトのディレクトリで実行すると自動検出：
-cd ~/projects/my-app && polymeld start
-# または設定ファイルに明示：
-#   project:
-#     local_path: ~/projects/my-app
-
-# 5. 設定確認（CLI認証 + GitHub連携の自動検証）
-polymeld test-models
-
-# 6. 実行！
+# 3. GitHubプロジェクトフォルダで実行！
+cd ~/projects/my-app
 polymeld run "ユーザー認証機能の実装（メール/パスワード + OAuth）"
-
-# 7. 言語指定（オプション、未指定時はOSロケールを自動検出）
-polymeld run "チャット機能" --lang en   # English
-polymeld run "チャット機能" --lang ja   # 日本語
-polymeld run "チャット機能" --lang zh-CN # 中文(简体)
-
 ```
 
-> **初回起動時のオンボーディング**: `polymeld`を引数なしで実行すると、グローバル設定が存在しない場合、オンボーディングウィザード（モデル選択 → 認証情報入力）を案内した後、REPLモードに自動遷移します。
+> **GITHUB_REPO自動検出**: GitHubプロジェクトフォルダで実行すると、`git remote`から`owner/repo`を自動抽出します。`GITHUB_TOKEN`を設定するだけで、どのプロジェクトでもすぐに使えます。
+
+> **初回起動時のオンボーディング**: `polymeld`を引数なしで実行すると、グローバル設定が存在しない場合、オンボーディングウィザード（モデル選択 → GitHubトークン作成ガイド → 認証情報入力）を案内した後、REPLモードに自動遷移します。
 
 ## 設定
 

@@ -62,37 +62,24 @@ npm install -g polymeld
 ## Quick Start
 
 ```bash
-# 1. Install CLI tools (if not already installed)
+# 1. Install CLI tools (install only the ones you want to use)
 npm install -g @anthropic-ai/claude-code  # Claude Code
 npm install -g @google/gemini-cli          # Gemini CLI
 npm install -g @openai/codex               # Codex CLI
 
-# 3. Initial setup (interactive wizard)
-polymeld init --global      # Global config + credentials setup
-# Or run without arguments to start the onboarding wizard automatically:
+# 2. First run — the onboarding wizard starts automatically
 polymeld
+# → Model selection → GitHub token creation guide + input → Done!
+# → GITHUB_REPO is auto-detected from your project folder
 
-# 4. (Optional) Local workspace integration
-# Run from your target project directory for auto-detection:
-cd ~/projects/my-app && polymeld start
-# Or specify in your config file:
-#   project:
-#     local_path: ~/projects/my-app
-
-# 5. Verify configuration (CLI auth + GitHub integration auto-validated)
-polymeld test-models
-
-# 6. Run!
+# 3. Run from your GitHub project folder!
+cd ~/projects/my-app
 polymeld run "Implement user authentication (email/password + OAuth)"
-
-# 7. Specify language (optional; auto-detects OS locale if not set)
-polymeld run "chat feature" --lang en   # English
-polymeld run "chat feature" --lang ja   # 日本語
-polymeld run "chat feature" --lang zh-CN # 中文(简体)
-
 ```
 
-> **First-run onboarding**: Running `polymeld` without arguments will launch the onboarding wizard (model selection → credential input) if no global config exists, then automatically enter REPL mode.
+> **GITHUB_REPO auto-detection**: When run from a GitHub project folder, `owner/repo` is automatically extracted from `git remote`. Just set `GITHUB_TOKEN` and you're ready to use it in any project.
+
+> **First-run onboarding**: Running `polymeld` without arguments will launch the onboarding wizard (model selection → GitHub token creation guide → credential input) if no global config exists, then automatically enter REPL mode.
 
 ## Configuration
 
