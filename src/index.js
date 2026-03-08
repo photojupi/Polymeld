@@ -159,7 +159,7 @@ program
     console.log(chalk.bold(`\n${t("cli.testModels.header")}\n`));
 
     const available = adapter.getAvailableModels();
-    for (const modelKey of Object.keys(config.models)) {
+    for (const modelKey of Object.keys(config.models || {})) {
       const isAvailable = available.includes(modelKey);
       const status = isAvailable ? chalk.green(t("cli.testModels.connected")) : chalk.red(t("cli.testModels.notConnected"));
       console.log(`  ${modelKey}: ${status}`);

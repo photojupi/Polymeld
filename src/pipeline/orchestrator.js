@@ -636,7 +636,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     const qaAgent = this.team.qa;
     const lead = this.team.lead;
     const maxRetries = this.config.pipeline?.max_qa_retries || 3;
-    const fallbackKey = this.config.models[qaAgent.modelKey]?.fallback;
+    const fallbackKey = this.config.models?.[qaAgent.modelKey]?.fallback;
 
     for (const task of this.state.tasks) {
       if (!task.code) continue;

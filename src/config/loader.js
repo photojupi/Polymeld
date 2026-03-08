@@ -437,7 +437,7 @@ export async function validateConnections(config) {
     const apiOnly = [];
 
     for (const [id, persona] of Object.entries(config.personas || {})) {
-      const modelConfig = config.models[persona.model];
+      const modelConfig = (config.models || {})[persona.model];
       const name = t(`agent.personas.${id}.name`, { defaultValue: persona.name });
       if (modelConfig && missingClis.includes(modelConfig.cli)) {
         if (hasApiKey(modelConfig.cli)) {

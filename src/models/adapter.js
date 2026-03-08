@@ -326,7 +326,7 @@ export class ModelAdapter {
    * 3. fallback 모델 (1, 2 모두 rate limit 시)
    */
   async chat(modelKey, systemPrompt, userMessage, options = {}) {
-    const modelConfig = this.config.models[modelKey];
+    const modelConfig = this.config.models?.[modelKey];
     if (!modelConfig) {
       throw new Error(t("adapter.modelNotFound", { key: modelKey }));
     }
@@ -387,7 +387,7 @@ export class ModelAdapter {
     // 3. fallback 모델 시도 (rate limit이었을 때만)
     if (lastError && modelConfig.fallback && !options._isFallback) {
       const fbKey = modelConfig.fallback;
-      if (this.config.models[fbKey]) {
+      if (this.config.models?.[fbKey]) {
         console.log(t("adapter.rateLimitFallback", { from: modelKey, to: fbKey }));
         return this.chat(fbKey, systemPrompt, userMessage, { ...options, _isFallback: true });
       }
@@ -613,7 +613,7 @@ export class ModelAdapter {
    * Gemini image model의 JSON 응답에서 base64 이미지를 추출하여 파일로 저장
    */
   async generateImage(modelKey, systemPrompt, imageRequest, options = {}) {
-    const modelConfig = this.config.models[modelKey];
+    const modelConfig = this.config.models?.[modelKey];
     if (!modelConfig) {
       throw new Error(t("adapter.modelNotFound", { key: modelKey }));
     }
@@ -693,7 +693,7 @@ export class ModelAdapter {
     if (this._availableCache) return this._availableCache;
 
     const available = [];
-    for (const [key, modelConfig] of Object.entries(this.config.models)) {
+    for (const [key, modelConfig] of Object.entries(this.config.models || {})) {
       if (isCliInstalled(modelConfig.cli) || this._hasApiKey(modelConfig.cli)) {
         available.push(key);
       }
@@ -713,7 +713,7 @@ export class ModelAdapter {
     };
 
     const status = {};
-    for (const [key, modelConfig] of Object.entries(this.config.models)) {
+    for (const [key, modelConfig] of Object.entries(this.config.models || {})) {
       const cli = modelConfig.cli;
       status[key] = {
         cli,
