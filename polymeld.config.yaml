@@ -40,8 +40,8 @@ models:
     fallback: claude             # Switch to Claude Opus on rate limit
   gemini_image:
     cli: gemini
-    model: gemini-3.1-flash-image
-    # Nano Banana 2 - Image generation/editing specialized model
+    model: gemini-3.1-flash-image-preview
+    # Nano Banana 2 - Image generation/editing specialized model (requires GOOGLE_API_KEY)
 
 # CLI execution settings
 cli:

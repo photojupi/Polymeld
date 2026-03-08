@@ -113,7 +113,7 @@ GITHUB_TOKEN=ghp_xxxxx        # 필수
 
 # API 키 (선택 — 프로바이더별 API 백엔드 활성화)
 ANTHROPIC_API_KEY=sk-...       # Claude API
-GOOGLE_API_KEY=AIzaSy...       # Gemini API
+GOOGLE_API_KEY=AIzaSy...       # Gemini API (이미지 생성 시 필수)
 OPENAI_API_KEY=sk-...          # OpenAI API
 ```
 
@@ -138,7 +138,7 @@ models:
     fallback: claude
   gemini_image:
     cli: gemini
-    model: gemini-3.1-flash-image  # Nano Banana 2
+    model: gemini-3.1-flash-image-preview  # Nano Banana 2 (GOOGLE_API_KEY 필수)
 
 # 페르소나 배정
 personas:

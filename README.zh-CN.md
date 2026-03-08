@@ -113,7 +113,7 @@ GITHUB_TOKEN=ghp_xxxxx        # 必需
 
 # API 密钥（可选 — 按提供商启用 API 后端）
 ANTHROPIC_API_KEY=sk-...       # Claude API
-GOOGLE_API_KEY=AIzaSy...       # Gemini API
+GOOGLE_API_KEY=AIzaSy...       # Gemini API（图片生成必需）
 OPENAI_API_KEY=sk-...          # OpenAI API
 ```
 
@@ -138,7 +138,7 @@ models:
     fallback: claude
   gemini_image:
     cli: gemini
-    model: gemini-3.1-flash-image  # Nano Banana 2
+    model: gemini-3.1-flash-image-preview  # Nano Banana 2（需要 GOOGLE_API_KEY）
 
 # 角色分配
 personas:

@@ -128,6 +128,28 @@ export class PipelineOrchestrator {
     console.log(chalk.gray("\u2500".repeat(50)) + "\n");
   }
 
+  _formatMetaLine(meta) {
+    if (!meta) return null;
+    const colorFn = (m) =>
+      m.includes("claude") ? chalk.hex("#D4A574")
+        : m.includes("gemini") ? chalk.hex("#4285F4")
+          : chalk.hex("#10A37F");
+    const label = meta.backend === "api" ? "API" : "CLI";
+    const model = meta.model || "-";
+    let tokenStr = "-";
+    if (meta.usage) {
+      const inp = meta.usage.inputTokens?.toLocaleString() || "0";
+      const out = meta.usage.outputTokens?.toLocaleString() || "0";
+      tokenStr = `${inp} → ${out} ${t("pipeline.metaTokens")}`;
+    }
+    return chalk.dim("  ╰ ") + chalk.dim(`${label} · `) + colorFn(model)(model) + chalk.dim(` · ${tokenStr}`);
+  }
+
+  _printMeta(meta) {
+    const line = this._formatMetaLine(meta);
+    if (line) console.log(line);
+  }
+
   async _phase(name, fn, { phaseId } = {}) {
     // 이미 완료된 Phase → 스킵
     if (phaseId && this.state.isPhaseComplete(phaseId)) {
@@ -215,7 +237,7 @@ export class PipelineOrchestrator {
     };
 
     return {
-      onSpeak: ({ phase, agent, content, round, totalRounds }) => {
+      onSpeak: ({ phase, agent, content, round, totalRounds, meta }) => {
         if (phase === "round_start") {
           persist(chalk.cyan("●"), chalk.cyan(t("pipeline.roundLabel", { round, total: totalRounds })));
         } else if (phase === "speaking") {
@@ -223,12 +245,14 @@ export class PipelineOrchestrator {
           spinner.text = t("pipeline.speaking", { agent });
         } else if (phase === "spoke" && content) {
           printSpeechPreview(agent, content);
+          if (meta) { const ml = this._formatMetaLine(meta); if (ml) { spinner.clear(); process.stderr.write(ml + "\n"); spinner.render(); } }
         } else if (phase === "passed") {
           persist(chalk.yellow("–"), t("pipeline.passed", { agent }));
         } else if (phase === "empty_response") {
           persist(chalk.yellow("⚠"), t("pipeline.emptyResponse", { agent }));
         } else if (phase === "summary" && content) {
           printSpeechPreview(agent, content, { symbol: chalk.cyan("★"), label: t("pipeline.summary", { agent }) });
+          if (meta) { const ml = this._formatMetaLine(meta); if (ml) { spinner.clear(); process.stderr.write(ml + "\n"); spinner.render(); } }
         }
       },
       onStream: ({ agent, chunk }) => {
@@ -359,6 +383,7 @@ export class PipelineOrchestrator {
     });
 
     spinner.succeed(t("pipeline.taskBreakdownComplete"));
+    this._printMeta(result.meta);
 
     let parsed = ResponseParser.parseTasks(result.tasks);
     if (!parsed.success) {
@@ -589,6 +614,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       const reviewBundle = this.assembler.forReview(this.state, { taskId: task.id });
       const result = await lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown");
       spinner.succeed(`  ${t("pipeline.reviewComplete")}`);
+      this._printMeta(result.meta);
 
       task.review = result.review;
 
@@ -633,6 +659,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
       const preSnapshot = this._takeFileSnapshot();
       const fixResult = await lead.writeCode(leadFixBundle);
       fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+      this._printMeta(fixResult?.meta);
 
       if (fixResult) {
         task.code = fixResult.code;
@@ -728,6 +755,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         try {
           const result = await qaAgent.runQA(qaBundle, { modelOverride: useModelOverride });
           spinner.succeed(`  ${t("pipeline.qaComplete")}`);
+          this._printMeta(result.meta);
           qaResult = result.qaResult;
         } catch (error) {
           spinner.fail(`  ${t("pipeline.qaComplete")}`);
@@ -787,6 +815,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
           const preSnapshot = this._takeFileSnapshot();
           const fixResult = await lead.writeCode(leadFixBundle);
           fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+          this._printMeta(fixResult?.meta);
 
           if (fixResult) {
             task.code = fixResult.code;
@@ -1020,6 +1049,7 @@ ${this.team
     }
 
     fixSpinner.succeed(`  ${t(labels.spinnerDone, { agent: agent?.name })}`);
+    this._printMeta(fixResult?.meta);
   }
 
   /**
@@ -1173,6 +1203,7 @@ ${this.team
     const contextBundle = this.assembler.forCoding(this.state, { agentId: agent.id, taskId: task.id, codebaseContext });
     const result = await agent.writeCode(contextBundle);
     spinner.succeed(`  ${t("pipeline.codingComplete", { agent: agent.name })}`);
+    this._printMeta(result.meta);
 
     task.code = result.code;
 
@@ -1278,6 +1309,7 @@ ${this.team
         imageSpinner.succeed(
           `  ${t("pipeline.imageComplete", { agent: agent.name, count: imageResult.images.length })}`
         );
+        this._printMeta(imageResult.meta);
 
         task.images = {
           images: imageResult.images,

@@ -166,7 +166,7 @@ function generateGlobalTemplate(models) {
     const fb = getFallback("gemini");
     if (fb) entry += `\n    fallback: ${fb}`;
     modelEntries.push(entry);
-    modelEntries.push("  gemini_image:\n    cli: gemini\n    model: gemini-3.1-flash-image");
+    modelEntries.push("  gemini_image:\n    cli: gemini\n    model: gemini-3.1-flash-image-preview");
   }
   if (models.includes("codex")) {
     let entry = "  codex:\n    cli: codex\n    model: gpt-5.4";

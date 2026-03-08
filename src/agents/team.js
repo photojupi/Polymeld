@@ -173,7 +173,7 @@ export class Team {
 
         roundLog.speeches.push(speech);
 
-        onSpeak({ phase: "spoke", agent: agent.name, content: speech.content });
+        onSpeak({ phase: "spoke", agent: agent.name, content: speech.content, meta: speech.meta });
       }
 
       // 중간 라운드: 팀장 결론 확인 (결론 시 조기 종료)
@@ -332,7 +332,7 @@ export class Team {
         // 결론 도출 → 종합 정리로 기록, 조기 종료
         this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content: stripped });
         roundLog.speeches.push({ ...checkResponse, content: stripped, isSummary: true });
-        onSpeak({ phase: "summary", agent: this.lead.name, content: stripped });
+        onSpeak({ phase: "summary", agent: this.lead.name, content: stripped, meta: checkResponse.meta });
         return true;
       }
       // [CONCLUDE]만 있고 내용 없음
@@ -350,7 +350,7 @@ export class Team {
     // 결론 안 냄 → 방향 제시 발언으로 기록
     this.state.broadcastMessage({ from: this.lead.id, type: "meeting_speech", content });
     roundLog.speeches.push(checkResponse);
-    onSpeak({ phase: "spoke", agent: this.lead.name, content });
+    onSpeak({ phase: "spoke", agent: this.lead.name, content, meta: checkResponse.meta });
     return false;
   }
 
@@ -395,6 +395,7 @@ export class Team {
         phase: "summary",
         agent: this.lead.name,
         content: summary.content,
+        meta: summary.meta,
       });
     }
   }

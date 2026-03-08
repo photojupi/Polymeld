@@ -113,7 +113,7 @@ GITHUB_TOKEN=ghp_xxxxx        # Required
 
 # API keys (optional — enables API backend per provider)
 ANTHROPIC_API_KEY=sk-...       # Claude API
-GOOGLE_API_KEY=AIzaSy...       # Gemini API
+GOOGLE_API_KEY=AIzaSy...       # Gemini API (required for image generation)
 OPENAI_API_KEY=sk-...          # OpenAI API
 ```
 
@@ -138,7 +138,7 @@ models:
     fallback: claude
   gemini_image:
     cli: gemini
-    model: gemini-3.1-flash-image  # Nano Banana 2
+    model: gemini-3.1-flash-image-preview  # Nano Banana 2 (requires GOOGLE_API_KEY)
 
 # Persona assignment
 personas:

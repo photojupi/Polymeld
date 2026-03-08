@@ -75,6 +75,17 @@ export class CliError extends Error {
   }
 }
 
+/**
+ * chat() 반환값. String을 상속하여 기존 문자열 사용 코드와 호환되면서
+ * .meta로 백엔드/모델/토큰 메타데이터에 접근할 수 있다.
+ */
+export class ChatResult extends String {
+  constructor(text, meta) {
+    super(text);
+    this.meta = meta; // { backend: "cli"|"api", model: string, usage: { inputTokens, outputTokens } | null }
+  }
+}
+
 export class ModelAdapter {
   constructor(config) {
     this.config = config;
@@ -436,7 +447,7 @@ export class ModelAdapter {
       timeout: this.config.cli?.timeouts?.claude,
       onData,
     });
-    return this._normalizeOutput(raw, "claude");
+    return new ChatResult(this._normalizeOutput(raw, "claude"), { backend: "cli", model, usage: null });
   }
 
   /**
@@ -458,7 +469,7 @@ export class ModelAdapter {
       timeout: this.config.cli?.timeouts?.gemini,
       onData,
     });
-    return this._normalizeOutput(raw, "gemini");
+    return new ChatResult(this._normalizeOutput(raw, "gemini"), { backend: "cli", model, usage: null });
   }
 
   /**
@@ -485,7 +496,7 @@ export class ModelAdapter {
       timeout: this.config.cli?.timeouts?.codex,
       onData,
     });
-    return this._normalizeOutput(raw, "codex");
+    return new ChatResult(this._normalizeOutput(raw, "codex"), { backend: "cli", model, usage: null });
   }
 
   // ─── API 기반 chat 메서드 ─────────────────────────────
@@ -521,7 +532,10 @@ export class ModelAdapter {
       .map((b) => b.text)
       .join("");
     if (!text) throw new Error(t("adapter.noOutput"));
-    return text;
+    const usage = response.usage
+      ? { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }
+      : null;
+    return new ChatResult(text, { backend: "api", model, usage });
   }
 
   /**
@@ -553,7 +567,10 @@ export class ModelAdapter {
 
     const text = response.text;
     if (text == null) throw new Error(t("adapter.noOutput"));
-    return text;
+    const usage = response.usageMetadata
+      ? { inputTokens: response.usageMetadata.promptTokenCount, outputTokens: response.usageMetadata.candidatesTokenCount }
+      : null;
+    return new ChatResult(text, { backend: "api", model, usage });
   }
 
   /**
@@ -585,7 +602,10 @@ export class ModelAdapter {
     const response = await client.chat.completions.create(params);
     const content = response.choices?.[0]?.message?.content;
     if (content == null) throw new Error(t("adapter.noOutput"));
-    return content;
+    const usage = response.usage
+      ? { inputTokens: response.usage.prompt_tokens, outputTokens: response.usage.completion_tokens }
+      : null;
+    return new ChatResult(content, { backend: "api", model, usage });
   }
 
   // ─── 특화 호출 메서드 (기존 유지) ─────────────────────
@@ -607,8 +627,8 @@ export class ModelAdapter {
   }
 
   /**
-   * 이미지 생성 특화 호출
-   * Gemini image model의 JSON 응답에서 base64 이미지를 추출하여 파일로 저장
+   * 이미지 생성 특화 호출 (Gemini API 전용)
+   * GOOGLE_API_KEY 필수 — OAuth CLI로는 이미지 모델 접근 불가
    */
   async generateImage(modelKey, systemPrompt, imageRequest, options = {}) {
     const modelConfig = this.config.models?.[modelKey];
@@ -618,68 +638,69 @@ export class ModelAdapter {
     if (modelConfig.cli !== "gemini") {
       throw new Error(t("adapter.imageOnlyGemini", { cli: modelConfig.cli }));
     }
+    if (!this._hasApiKey("gemini")) {
+      throw new Error(t("adapter.imageRequiresApiKey"));
+    }
 
     const outputDir = options.outputDir || "./output/images";
-    return this._generateImageGemini(modelConfig.model, systemPrompt, imageRequest, outputDir);
+    return this._generateImageGeminiApi(modelConfig.model, systemPrompt, imageRequest, outputDir);
   }
 
   /**
-   * Gemini CLI로 이미지 생성 호출 (JSON 모드)
+   * Gemini API로 이미지 생성 호출
    */
-  async _generateImageGemini(model, systemPrompt, userMessage, outputDir) {
-    const prompt = systemPrompt
-      ? this._buildCombinedPrompt(systemPrompt, userMessage)
-      : userMessage;
+  async _generateImageGeminiApi(model, systemPrompt, userMessage, outputDir) {
+    const client = await this._getApiClient("gemini");
 
-    const args = ["--output-format", "json"];
-    if (model) args.push("-m", model);
+    const config = { responseModalities: ["TEXT", "IMAGE"] };
+    if (systemPrompt) config.systemInstruction = systemPrompt;
 
-    const raw = await this._spawnCli("gemini", args, prompt, {
-      timeout: this.config.cli?.timeouts?.gemini_image || 600000,
+    const response = await client.models.generateContent({
+      model,
+      contents: userMessage,
+      config,
     });
 
-    return this._parseImageResponse(raw, outputDir);
+    const result = this._parseApiImageResponse(response, outputDir);
+    const usage = response.usageMetadata
+      ? { inputTokens: response.usageMetadata.promptTokenCount, outputTokens: response.usageMetadata.candidatesTokenCount }
+      : null;
+    result.meta = { backend: "api", model, usage };
+    return result;
   }
 
   /**
-   * Gemini CLI JSON 응답에서 이미지 데이터와 텍스트를 추출
+   * Gemini API 응답에서 이미지 데이터와 텍스트를 추출
    */
-  _parseImageResponse(rawJson, outputDir) {
+  _parseApiImageResponse(response, outputDir) {
     const images = [];
     let text = "";
 
-    try {
-      const response = JSON.parse(rawJson);
-      const parts = response?.candidates?.[0]?.content?.parts
-        || response?.parts
-        || [];
+    const parts = response?.candidates?.[0]?.content?.parts || [];
 
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
-
-      let imageIndex = 0;
-      for (const part of parts) {
-        if (part.text) {
-          text += part.text;
-        } else if (part.inlineData) {
-          imageIndex++;
-          const mimeType = part.inlineData.mimeType || "image/png";
-          const ext = mimeType.includes("jpeg") ? "jpg" : "png";
-          const filename = `generated_${Date.now()}_${imageIndex}.${ext}`;
-          const filePath = path.join(outputDir, filename);
-
-          const buffer = Buffer.from(part.inlineData.data, "base64");
-          fs.writeFileSync(filePath, buffer);
-
-          images.push({ path: filePath, mimeType });
-        }
-      }
-    } catch {
-      text = this._normalizeOutput(rawJson, "gemini");
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    return { images, text };
+    let imageIndex = 0;
+    for (const part of parts) {
+      if (part.text) {
+        text += part.text;
+      } else if (part.inlineData) {
+        imageIndex++;
+        const mimeType = part.inlineData.mimeType || "image/png";
+        const ext = mimeType.includes("jpeg") ? "jpg" : "png";
+        const filename = `generated_${Date.now()}_${imageIndex}.${ext}`;
+        const filePath = path.join(outputDir, filename);
+
+        const buffer = Buffer.from(part.inlineData.data, "base64");
+        fs.writeFileSync(filePath, buffer);
+
+        images.push({ path: filePath, mimeType });
+      }
+    }
+
+    return { images, textResponse: text };
   }
 
   // ─── 모델 상태 조회 ───────────────────────────────────

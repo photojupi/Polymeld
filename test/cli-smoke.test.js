@@ -5,6 +5,10 @@ import { isCliInstalled, probeCliAuth } from "../src/config/loader.js";
 import { ModelAdapter } from "../src/models/adapter.js";
 import { initI18n } from "../src/i18n/index.js";
 
+// NOTE: These tests invoke real CLI backends (gemini, claude, codex).
+// Each test may take 30-60+ seconds depending on network and model response times.
+// Image generation tests require GOOGLE_API_KEY in .env (loaded via --env-file=.env).
+
 before(async () => {
   await initI18n("ko");
 });
@@ -125,6 +129,27 @@ describe("Gemini 코드 생성", { skip: !geminiOk }, () => {
     const clean = adapter._normalizeOutput(raw, "gemini");
     assert.ok(clean.length > 0, "정규화 후 빈 문자열");
     assert.ok(!/^[━─]+$/m.test(clean), "구분선이 남아있음");
+  });
+});
+
+// ─── Tier 4: 이미지 생성 (API 전용) ──────────────────
+
+const hasGoogleApiKey = !!process.env.GOOGLE_API_KEY;
+
+describe("Gemini 이미지 생성 (API)", { skip: !hasGoogleApiKey }, () => {
+  it("간단한 이미지 프롬프트에 inlineData 포함 응답", { timeout: 120000 }, async () => {
+    const { GoogleGenAI } = await import("@google/genai");
+    const client = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+
+    const response = await client.models.generateContent({
+      model: "gemini-3.1-flash-image-preview",
+      contents: "Generate a 32x32 solid red square image",
+      config: { responseModalities: ["TEXT", "IMAGE"] },
+    });
+
+    const parts = response?.candidates?.[0]?.content?.parts || [];
+    const hasImage = parts.some((p) => p.inlineData);
+    assert.ok(hasImage, "이미지 데이터(inlineData)가 응답에 없음");
   });
 });
 

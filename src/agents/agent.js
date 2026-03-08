@@ -73,6 +73,7 @@ export class Agent {
       role: this.role,
       model: modelKey,
       content: response,
+      meta: response.meta,
     };
   }
 
@@ -110,6 +111,7 @@ export class Agent {
       role: this.role,
       model: modelKey,
       code: response,
+      meta: response.meta,
     };
   }
 
@@ -140,6 +142,7 @@ export class Agent {
       role: this.role,
       model: modelKey,
       review: response,
+      meta: response.meta,
     };
   }
 
@@ -187,6 +190,7 @@ ${t("agent.qaExecutionInstruction")}`;
       role: this.role,
       model: modelKey,
       qaResult: response,
+      meta: response.meta,
     };
   }
 
@@ -218,6 +222,7 @@ ${t("agent.qaExecutionInstruction")}`;
       role: this.role,
       model: modelKey,
       tasks: response,
+      meta: response.meta,
     };
   }
 
@@ -260,7 +265,8 @@ ${t("agent.qaExecutionInstruction")}`;
       role: this.role,
       model: this.imageModelKey,
       images: result.images,
-      textResponse: result.text,
+      textResponse: result.textResponse,
+      meta: result.meta,
     };
   }
 }
