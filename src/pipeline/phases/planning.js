@@ -50,6 +50,7 @@ function meetingCallbacks(spinner) {
         if (meta) { const ml = formatMetaLine(meta); if (ml) { spinner.clear(); process.stderr.write(ml + "\n"); spinner.render(); } }
       } else if (phase === "passed") {
         persist(chalk.yellow("–"), t("pipeline.passed", { agent }));
+        if (meta) { const ml = formatMetaLine(meta); if (ml) { spinner.clear(); process.stderr.write(ml + "\n"); spinner.render(); } }
       } else if (phase === "empty_response") {
         persist(chalk.yellow("⚠"), t("pipeline.emptyResponse", { agent }));
       } else if (phase === "summary" && content) {

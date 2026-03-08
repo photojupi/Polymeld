@@ -148,7 +148,7 @@ export class Team {
 
         // [PASS] 응답이면 broadcastMessage 스킵, 회의록에만 기록
         if (/^\[PASS\]/i.test(speech.content.trim())) {
-          onSpeak({ phase: "passed", agent: agent.name });
+          onSpeak({ phase: "passed", agent: agent.name, meta: speech.meta });
           roundLog.speeches.push({
             agent: agent.name,
             role: agent.role,
