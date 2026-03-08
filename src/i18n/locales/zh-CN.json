@@ -153,6 +153,7 @@
     "qaComment": "🧪 **{{agent}} QA结果** [第{{attempt}}/{{max}}次]（`{{model}}`）:\n\n{{result}}",
     "qaPassed": "✅ QA通过",
     "qaFailed": "🔄 QA失败 - 需要修改（第{{attempt}}/{{max}}次）",
+    "qaFallbackSwitch": "⚠️ 从 {{from}} 切换到 {{to}} 模型重试",
     "qaMaxRetries": "⚠️  已达最大QA重试次数（{{max}}）",
     "qaMaxRetriesConfirm": "{{title}}: QA失败 {{max}} 次。如何处理？",
     "qaSkipComment": "⚠️ **系统**: QA失败 {{max}} 次。根据用户决定跳过。",

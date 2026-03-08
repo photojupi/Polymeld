@@ -630,11 +630,13 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     }
   }
 
-  // ─── Phase 6: QA (실패 시 팀장 직접 수정) ─────────────────────
+  // ─── Phase 6: QA (재시도 + fallback 모델 전환) ────────────────
 
   async phaseQA() {
     const qaAgent = this.team.qa;
     const lead = this.team.lead;
+    const maxRetries = this.config.pipeline?.max_qa_retries || 3;
+    const fallbackKey = this.config.models[qaAgent.modelKey]?.fallback;
 
     for (const task of this.state.tasks) {
       if (!task.code) continue;
@@ -660,73 +662,140 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         taskId: task.id,
       });
 
-      // 1) QA 실행
-      console.log(chalk.cyan(`\n${t("pipeline.qaLabel", { title: task.title })}`));
+      let passed = false;
 
-      const spinner = ora(
-        `  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: qaAgent.modelKey })}`
-      ).start();
-      const qaBundle = this.assembler.forQA(this.state, { taskId: task.id });
-      const result = await qaAgent.runQA(qaBundle);
-      spinner.succeed(`  ${t("pipeline.qaComplete")}`);
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        // ── 모델 결정: 1회차 = 원본, 2회차+ = fallback ──
+        const useModelOverride = (attempt >= 2 && fallbackKey) ? fallbackKey : null;
+        const currentModel = useModelOverride || qaAgent.modelKey;
 
-      task.qa = result.qaResult;
+        // ── 헤더 출력 ──
+        if (attempt === 1) {
+          console.log(chalk.cyan(`\n${t("pipeline.qaLabel", { title: task.title })}`));
+        } else {
+          console.log(chalk.cyan(`\n${t("pipeline.qaRetryLabel", { attempt, max: maxRetries, title: task.title })}`));
+          if (attempt === 2 && useModelOverride) {
+            console.log(chalk.yellow(`  ${t("pipeline.qaFallbackSwitch", { from: qaAgent.modelKey, to: useModelOverride })}`));
+          }
+        }
 
-      await this.github.addComment(
-        task.issueNumber,
-        t("pipeline.qaComment", { agent: qaAgent.name, attempt: 1, max: 1, model: qaAgent.modelKey, result: result.qaResult })
-      );
+        // ── QA 실행 (try-catch로 타임아웃 포착) ──
+        let qaResult = null;
+        let qaTimedOut = false;
+        let qaErrorMsg = null;
+        const qaBundle = this.assembler.forQA(this.state, { taskId: task.id });
 
-      // 2) 결과 판정
-      const hasFail = this._qaNeedsFix(result.qaResult);
-      task.qaVerdict = hasFail ? "fail" : "pass";
-
-      this.state.addMessage({
-        from: "qa",
-        to: task.assignedAgentId,
-        type: "qa_result",
-        content: result.qaResult,
-        taskId: task.id,
-      });
-
-      if (!hasFail) {
-        // 통과
-        task.qaPassed = true;
-        task.qaAttempts = 1;
-        console.log(chalk.green(`  ${t("pipeline.qaPassed")}`));
-      } else {
-        // 3) QA 실패 → 팀장이 직접 수정
-        console.log(chalk.yellow(`  ${t("pipeline.qaFailed", { attempt: 1, max: 1 })}`));
-
-        const fixSpinner = ora(
-          `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
+        const spinner = ora(
+          `  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: currentModel })}`
         ).start();
 
-        const leadFixBundle = {
-          systemContext: `${qaBundle.systemContext}\n\n${t("promptAssembler.qaFeedback")}\n${result.qaResult}`,
-          taskDescription: task.description || "",
-          acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
-          currentCode: task.code,
-        };
-        const fixResult = await lead.writeCode(leadFixBundle);
-        fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+        try {
+          const result = await qaAgent.runQA(qaBundle, { modelOverride: useModelOverride });
+          spinner.succeed(`  ${t("pipeline.qaComplete")}`);
+          qaResult = result.qaResult;
+        } catch (error) {
+          spinner.fail(`  ${t("pipeline.qaComplete")}`);
+          console.log(chalk.red(`    ${error.message}`));
+          qaTimedOut = true;
+          qaErrorMsg = error.message;
+        }
 
-        if (fixResult) {
-          task.code = fixResult.code;
-          await this._recommitCode(
-            task,
-            fixResult.code,
-            `fix: lead direct fix for QA feedback on ${task.title} (#${task.issueNumber})`
-          );
+        // ── 결과 저장 & GitHub 코멘트 ──
+        if (qaResult) {
+          task.qa = qaResult;
           await this.github.addComment(
             task.issueNumber,
-            t("pipeline.qaLeadFixComment", { agent: lead.name, model: lead.modelKey })
+            t("pipeline.qaComment", { agent: qaAgent.name, attempt, max: maxRetries, model: currentModel, result: qaResult })
           );
         }
 
-        task.qaPassed = true;
-        task.qaAttempts = 1;
-        console.log(chalk.green(`  ${t("pipeline.qaPassed")}`));
+        // ── 판정 ──
+        const hasFail = qaTimedOut || (qaResult != null && this._qaNeedsFix(qaResult));
+        task.qaVerdict = hasFail ? "fail" : "pass";
+
+        this.state.addMessage({
+          from: "qa",
+          to: task.assignedAgentId,
+          type: "qa_result",
+          content: qaResult || qaErrorMsg || "QA error",
+          taskId: task.id,
+        });
+
+        if (!hasFail) {
+          // ✅ QA 통과
+          task.qaPassed = true;
+          task.qaAttempts = attempt;
+          console.log(chalk.green(`  ${t("pipeline.qaPassed")}`));
+          passed = true;
+          break;
+        }
+
+        // ❌ QA 실패
+        console.log(chalk.yellow(`  ${t("pipeline.qaFailed", { attempt, max: maxRetries })}`));
+
+        // 마지막 시도면 수정 없이 루프 종료
+        if (attempt >= maxRetries) break;
+
+        // ── 코드 수정: QA FAIL일 때만 (타임아웃이면 모델만 전환) ──
+        if (!qaTimedOut) {
+          const fixSpinner = ora(
+            `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
+          ).start();
+
+          const leadFixBundle = {
+            systemContext: `${qaBundle.systemContext}\n\n${t("promptAssembler.qaFeedback")}\n${qaResult}`,
+            taskDescription: task.description || "",
+            acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
+            currentCode: task.code,
+          };
+          const fixResult = await lead.writeCode(leadFixBundle);
+          fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+
+          if (fixResult) {
+            task.code = fixResult.code;
+            await this._recommitCode(
+              task,
+              fixResult.code,
+              `fix: lead direct fix for QA feedback on ${task.title} (#${task.issueNumber})`
+            );
+            await this.github.addComment(
+              task.issueNumber,
+              t("pipeline.qaFixComment", { agent: lead.name, model: lead.modelKey, attempt })
+            );
+          }
+        }
+        // → 다음 attempt (fallback 모델로)
+      }
+
+      // ── 모든 시도 소진 시 사용자 확인 ──
+      if (!passed) {
+        console.log(chalk.yellow(`  ${t("pipeline.qaMaxRetries", { max: maxRetries })}`));
+
+        const { action } = await this.interaction.confirmWarning(
+          t("pipeline.qaMaxRetriesConfirm", { title: task.title, max: maxRetries }),
+          "warning"
+        );
+
+        if (action === "abort") {
+          throw new Error("Pipeline aborted by user");
+        } else if (action === "skip") {
+          await this.github.addComment(
+            task.issueNumber,
+            t("pipeline.qaSkipComment", { max: maxRetries })
+          );
+          await this.github.updateLabels(task.issueNumber, [], ["qa"]);
+          task.qaPassed = false;
+          task.qaAttempts = maxRetries;
+          continue; // Done 처리 건너뛰기
+        } else {
+          // proceed / retry → 재시도 이미 소진되었으므로 현재 상태로 강제 통과
+          await this.github.addComment(
+            task.issueNumber,
+            t("pipeline.qaProceedComment", { max: maxRetries })
+          );
+          task.qaPassed = true;
+          task.qaAttempts = maxRetries;
+        }
       }
 
       // Done 처리

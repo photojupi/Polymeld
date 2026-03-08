@@ -153,6 +153,7 @@
     "qaComment": "🧪 **{{agent}} QA 결과** [시도 {{attempt}}/{{max}}] (`{{model}}`):\n\n{{result}}",
     "qaPassed": "✅ QA 통과",
     "qaFailed": "🔄 QA 실패 - 수정 필요 (시도 {{attempt}}/{{max}})",
+    "qaFallbackSwitch": "⚠️ {{from}} → {{to}} 모델로 전환하여 재시도",
     "qaMaxRetries": "⚠️  최대 QA 재시도 횟수({{max}}) 도달",
     "qaMaxRetriesConfirm": "{{title}}: QA {{max}}회 실패. 어떻게 처리할까요?",
     "qaSkipComment": "⚠️ **시스템**: QA {{max}}회 실패. 사용자 결정으로 건너뜁니다.",

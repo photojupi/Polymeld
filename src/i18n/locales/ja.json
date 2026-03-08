@@ -153,6 +153,7 @@
     "qaComment": "🧪 **{{agent}} QA結果** [試行 {{attempt}}/{{max}}]（`{{model}}`）:\n\n{{result}}",
     "qaPassed": "✅ QA通過",
     "qaFailed": "🔄 QA失敗 - 修正必要（試行 {{attempt}}/{{max}}）",
+    "qaFallbackSwitch": "⚠️ {{from}} → {{to}} モデルに切り替えて再試行",
     "qaMaxRetries": "⚠️  最大QA再試行回数（{{max}}）に到達",
     "qaMaxRetriesConfirm": "{{title}}: QA {{max}}回失敗。どのように処理しますか？",
     "qaSkipComment": "⚠️ **システム**: QA {{max}}回失敗。ユーザーの判断でスキップします。",
