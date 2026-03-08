@@ -275,8 +275,12 @@ export class LocalWorkspace {
     } catch {
       // 없으면 새로 생성
       const baseRef = base || this.getCurrentBranch();
+      const remoteRef = `origin/${baseRef}`;
       if (this._isValidRef(baseRef)) {
         this._git(["checkout", "-b", name, baseRef]);
+      } else if (this._isValidRef(remoteRef)) {
+        // 로컬 브랜치 없고 remote만 있는 경우 (git init + fetch 직후)
+        this._git(["checkout", "-b", name, remoteRef]);
       } else {
         // 빈 레포(커밋 없음) 또는 base ref가 존재하지 않는 경우
         this._git(["checkout", "-b", name]);
@@ -312,6 +316,14 @@ export class LocalWorkspace {
       this._git(["remote", "add", name, url]);
     } catch {
       // 이미 존재하는 경우 무시
+    }
+  }
+
+  fetchOrigin() {
+    try {
+      this._git(["fetch", "origin"]);
+    } catch {
+      // fetch 실패 시 무시 (네트워크 없음, 빈 remote 등)
     }
   }
 
