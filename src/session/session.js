@@ -193,6 +193,8 @@ export class Session {
       const ghSpinner = ora(t("repl.githubSpinner")).start();
       try {
         await this._ensureGitHubReady();
+        // ensureInitialCommit()이 main을 생성했을 수 있으므로 재 fetch
+        if (this.workspace?.isLocal) this.workspace.fetchOrigin();
         ghSpinner.succeed(t("repl.githubReady"));
       } catch (err) {
         ghSpinner.fail();
@@ -245,6 +247,8 @@ export class Session {
       const ghSpinner = ora(t("repl.githubSpinner")).start();
       try {
         await this._ensureGitHubReady();
+        // ensureInitialCommit()이 main을 생성했을 수 있으므로 재 fetch
+        if (this.workspace?.isLocal) this.workspace.fetchOrigin();
         ghSpinner.succeed(t("repl.githubReady"));
       } catch (err) {
         ghSpinner.fail();
