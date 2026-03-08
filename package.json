@@ -1,7 +1,7 @@
 {
   "name": "polymeld",
-  "version": "0.1.3",
-  "description": "멀티 AI 모델 기반 개발팀 시뮬레이션 CLI - Claude Code, Gemini CLI, Codex CLI 협업",
+  "version": "0.1.4",
+  "description": "Multi-AI dev team simulation CLI — orchestrate Claude Code, Gemini CLI & Codex CLI",
   "type": "module",
   "main": "src/index.js",
   "bin": {
