@@ -95,7 +95,7 @@ export async function runAuthPrompt() {
     {
       type: "input",
       name: "GOOGLE_API_KEY",
-      message: `Google API Key (${t("cli.init.optional")}):`,
+      message: `Gemini API Key — ${t("cli.init.imageGeneration")} (${t("cli.init.optional")}):`,
       default: process.env.GOOGLE_API_KEY || "",
     },
     {

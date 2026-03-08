@@ -42,7 +42,8 @@
       "projectExists": "Project config already exists: {{path}}",
       "projectCreated": "✅ Project config created: {{path}}",
       "gitignoreHint": "💡 Add to .gitignore: .polymeld/config.local.yaml, .polymeld/sessions/",
-      "optional": "optional"
+      "optional": "optional",
+      "imageGeneration": "for image generation"
     },
     "auth": {
       "description": "Manage credentials (API keys, GitHub token)",

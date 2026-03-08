@@ -42,7 +42,8 @@
       "projectExists": "プロジェクト設定は既に存在します: {{path}}",
       "projectCreated": "✅ プロジェクト設定を作成しました: {{path}}",
       "gitignoreHint": "💡 .gitignoreに追加してください: .polymeld/config.local.yaml, .polymeld/sessions/",
-      "optional": "任意"
+      "optional": "任意",
+      "imageGeneration": "画像生成用"
     },
     "auth": {
       "description": "認証情報の管理（APIキー、GitHubトークン）",

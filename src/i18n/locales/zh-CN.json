@@ -42,7 +42,8 @@
       "projectExists": "项目配置已存在: {{path}}",
       "projectCreated": "✅ 项目配置已创建: {{path}}",
       "gitignoreHint": "💡 请添加到 .gitignore: .polymeld/config.local.yaml, .polymeld/sessions/",
-      "optional": "可选"
+      "optional": "可选",
+      "imageGeneration": "用于图片生成"
     },
     "auth": {
       "description": "管理凭证（API密钥、GitHub令牌）",

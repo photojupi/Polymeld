@@ -42,7 +42,8 @@
       "projectExists": "프로젝트 설정이 이미 존재합니다: {{path}}",
       "projectCreated": "✅ 프로젝트 설정 생성: {{path}}",
       "gitignoreHint": "💡 .gitignore에 추가하세요: .polymeld/config.local.yaml, .polymeld/sessions/",
-      "optional": "선택사항"
+      "optional": "선택사항",
+      "imageGeneration": "이미지 생성용"
     },
     "auth": {
       "description": "자격 증명 관리 (API 키, GitHub 토큰)",
