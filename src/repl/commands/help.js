@@ -4,6 +4,7 @@ import { t } from "../../i18n/index.js";
 export function helpCommand() {
   console.log(chalk.bold(`\n  ${t("repl.help.header")}\n`));
   console.log(chalk.bold(`  ${t("repl.help.slashCommands")}`));
+  console.log(`  /mode [mode]  ${t("repl.help.cmdMode")}`);
   console.log(`  /status       ${t("repl.help.cmdStatus")}`);
   console.log(`  /history      ${t("repl.help.cmdHistory")}`);
   console.log(`  /team         ${t("repl.help.cmdTeam")}`);

@@ -11,11 +11,13 @@ import { teamCommand } from "./commands/team.js";
 import { contextCommand } from "./commands/context.js";
 import { helpCommand } from "./commands/help.js";
 import { resumeCommand } from "./commands/resume.js";
+import { modeCommand } from "./commands/mode.js";
 import { t } from "../i18n/index.js";
 
 function getCommandMenu() {
   return [
     { name: `/resume   — ${t("repl.commandMenu.resume")}`, value: "/resume" },
+    { name: `/mode     — ${t("repl.commandMenu.mode")}`, value: "/mode" },
     { name: `/status   — ${t("repl.commandMenu.status")}`, value: "/status" },
     { name: `/context  — ${t("repl.commandMenu.context")}`, value: "/context" },
     { name: `/history  — ${t("repl.commandMenu.history")}`, value: "/history" },
@@ -81,6 +83,9 @@ export class CommandRouter {
         break;
       case "/resume":
         await resumeCommand(this.session, this.replShell);
+        break;
+      case "/mode":
+        modeCommand(this.session, args);
         break;
       case "/help":
         helpCommand();

@@ -69,7 +69,7 @@ export class ReplShell {
       this._cleanupBracketedPaste = cleanup;
     }
 
-    const commands = ["/status", "/history", "/save", "/load", "/team", "/context", "/resume", "/help", "/exit", "/quit"];
+    const commands = ["/status", "/history", "/save", "/load", "/team", "/context", "/resume", "/mode", "/help", "/exit", "/quit"];
     this.rl = readline.createInterface({
       input: inputStream,
       output: process.stdout,
