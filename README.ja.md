@@ -36,11 +36,12 @@ Claude Code、Gemini CLI、Codex CLIを各ペルソナに割り当て、
 │  │ Code CLI │    │ CLI      │    │ CLI      │              │
 │  └────┬─────┘    └────┬─────┘    └────┬─────┘              │
 │       │               │               │                     │
-│  ┌────┴────┐   ┌──────┴──────┐  ┌─────┴─────┐             │
-│  │ 김아키   │   │ 류창작      │  │ 한코딩    │              │
-│  │ (リーダー)│   │ 강기획      │  │ (エース)  │              │
-│  │ 안보안   │   │ 윤경험*     │  │ 정테스트  │              │
-│  └─────────┘   │ 그림솔*     │  └──────────┘              │
+│  ┌────┴──────┐  ┌────┴──────┐  ┌────┴──────┐              │
+│  │ 設楽 匠    │  │ 新堂 創   │  │ 源 鋭太   │              │
+│  │ (リーダー) │  │ 計良 望   │  │ (エース)  │              │
+│  │ 守山 盾    │  │ 美濃 花*  │  │ 検見 守   │              │
+│  └────────────┘  │ 彩川いろは*│  └───────────┘             │
+│                  └───────────┘                              │
 │                └─────────────┘                              │
 │  * 画像生成時に Nano Banana 2 を使用                        │
 │  会議中 [PASS] で自発的に参加を調整                         │
@@ -219,25 +220,25 @@ cli:
 ```yaml
 personas:
   tech_lead:
-    name: 김아키
+    name: 設楽 匠
     model: claude
     thinking_budget: 100      # ペルソナ別オーバーライド（0-100）
 
   ace_programmer:
-    name: 한코딩
+    name: 源 鋭太
     model: codex
 
   creative_programmer:
-    name: 류창작
+    name: 新堂 創
     model: gemini
 
   qa:
-    name: 정테스트
+    name: 検見 守
     model: codex
     thinking_budget: 100
 
   designer:
-    name: 윤경험
+    name: 美濃 花
     model: gemini             # 対話/設計時 Gemini 3.1 Pro
     image_model: gemini_image # 画像生成時 Nano Banana 2
 ```
@@ -295,8 +296,8 @@ pipeline:
 **リアルタイム発言プレビュー**: 会議中、各AIの応答が生成される過程をspinnerにリアルタイム表示し、完了後に内容を永続出力します：
 
 ```
-⠇ 한코딩 発言中... この部分はO(n log n)で解けます
-✓ 한코딩: この部分はO(n log n)で解けます。分割統治法で...
+⠇ 源 鋭太 発言中... この部分はO(n log n)で解けます
+✓ 源 鋭太: この部分はO(n log n)で解けます。分割統治法で...
 ```
 
 **自発的パス（`[PASS]`）**: ペルソナが該当トピックに貢献する内容がなければ`[PASS]`で自動スキップされます。議事録にパス記録が残ります。
@@ -311,14 +312,14 @@ pipeline:
 
 | ペルソナ | 役割 | モデル | 画像モデル | thinking |
 |---------|------|------|-----------|----------|
-| 김아키 | Tech Lead (リーダー) | Claude Opus 4.6 | - | 100 |
-| 한코딩 | Ace Programmer | GPT-5.4 | - | - |
-| 류창작 | Creative Programmer | Gemini 3.1 Pro | - | - |
-| 정테스트 | QA Engineer | GPT-5.4 | - | 100 |
-| 강기획 | Ace Planner | Gemini 3.1 Pro | - | - |
-| 안보안 | Security Expert | Claude Opus 4.6 | - | - |
-| 윤경험 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
-| 그림솔 | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | - |
+| 設楽 匠 | Tech Lead (リーダー) | Claude Opus 4.6 | - | 100 |
+| 源 鋭太 | Ace Programmer | GPT-5.4 | - | - |
+| 新堂 創 | Creative Programmer | Gemini 3.1 Pro | - | - |
+| 検見 守 | QA Engineer | GPT-5.4 | - | 100 |
+| 計良 望 | Ace Planner | Gemini 3.1 Pro | - | - |
+| 守山 盾 | Security Expert | Claude Opus 4.6 | - | - |
+| 美濃 花 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
+| 彩川 いろは | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | - |
 
 > 全ペルソナが会議に参加します。関連のないトピックでは`[PASS]`で自発的にパスし、リーダーは`[CONCLUDE]`で会議を早期終了できます。
 

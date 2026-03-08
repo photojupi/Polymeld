@@ -188,7 +188,7 @@ program
         ? chalk.gray(` + image:${persona.image_model}`)
         : "";
       console.log(
-        `  ${status} ${persona.name} (${persona.role}) → ${persona.model}${imageTag}`
+        `  ${status} ${t(`agent.personas.${id}`, { defaultValue: persona.name })} (${persona.role}) → ${persona.model}${imageTag}`
       );
     }
   });

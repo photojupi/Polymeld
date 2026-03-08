@@ -35,11 +35,12 @@ Assign Claude Code, Gemini CLI, and Codex CLI to individual personas, and automa
 │  │ Code CLI │    │ CLI      │    │ CLI      │              │
 │  └────┬─────┘    └────┬─────┘    └────┬─────┘              │
 │       │               │               │                     │
-│  ┌────┴────┐   ┌──────┴──────┐  ┌─────┴─────┐             │
-│  │ 김아키   │   │ 류창작      │  │ 한코딩    │              │
-│  │ (Lead)   │   │ 강기획      │  │ (Ace)     │              │
-│  │ 안보안   │   │ 윤경험*     │  │ 정테스트  │              │
-│  └─────────┘   │ 그림솔*     │  └──────────┘              │
+│  ┌────┴─────────┐ ┌────┴─────────┐ ┌────┴─────────┐       │
+│  │ Archie Stone  │ │ Nova Cruz    │ │ Cody Sharp   │       │
+│  │ (Lead)        │ │ Max Planner  │ │ (Ace)        │       │
+│  │ Sam Shield    │ │ Eve Fielding*│ │ Tess Hunter  │       │
+│  └───────────────┘ │ Iris Bloom*  │ └──────────────┘       │
+│                    └──────────────┘                         │
 │                └─────────────┘                              │
 │  * Uses Nano Banana 2 for image generation                  │
 │  Voluntary [PASS] during meetings for self-regulation       │
@@ -218,25 +219,25 @@ Assign a model to each persona. All personas participate in meetings, but volunt
 ```yaml
 personas:
   tech_lead:
-    name: 김아키
+    name: Archie Stone
     model: claude
     thinking_budget: 100      # Per-persona override (0-100)
 
   ace_programmer:
-    name: 한코딩
+    name: Cody Sharp
     model: codex
 
   creative_programmer:
-    name: 류창작
+    name: Nova Cruz
     model: gemini
 
   qa:
-    name: 정테스트
+    name: Tess Hunter
     model: codex
     thinking_budget: 100
 
   designer:
-    name: 윤경험
+    name: Eve Fielding
     model: gemini             # Gemini 3.1 Pro for conversation/design
     image_model: gemini_image # Nano Banana 2 for image generation
 ```
@@ -294,8 +295,8 @@ pipeline:
 **Real-time speech preview**: During meetings, each AI's response is shown in real time via a spinner as it is generated, then permanently displayed upon completion:
 
 ```
-⠇ 한코딩 speaking... This can be solved in O(n log n)
-✓ 한코딩: This can be solved in O(n log n). Using divide and conquer...
+⠇ Cody Sharp speaking... This can be solved in O(n log n)
+✓ Cody Sharp: This can be solved in O(n log n). Using divide and conquer...
 ```
 
 **Voluntary pass (`[PASS]`)**: When a persona has nothing to contribute on a topic, they automatically skip with `[PASS]`. The pass is recorded in the meeting minutes.
@@ -310,14 +311,14 @@ pipeline:
 
 | Persona | Role | Model | Image Model | thinking |
 |---------|------|-------|-------------|----------|
-| 김아키 | Tech Lead (Team Lead) | Claude Opus 4.6 | - | 100 |
-| 한코딩 | Ace Programmer | GPT-5.4 | - | - |
-| 류창작 | Creative Programmer | Gemini 3.1 Pro | - | - |
-| 정테스트 | QA Engineer | GPT-5.4 | - | 100 |
-| 강기획 | Ace Planner | Gemini 3.1 Pro | - | - |
-| 안보안 | Security Expert | Claude Opus 4.6 | - | - |
-| 윤경험 | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
-| 그림솔 | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | - |
+| Archie Stone | Tech Lead (Team Lead) | Claude Opus 4.6 | - | 100 |
+| Cody Sharp | Ace Programmer | GPT-5.4 | - | - |
+| Nova Cruz | Creative Programmer | Gemini 3.1 Pro | - | - |
+| Tess Hunter | QA Engineer | GPT-5.4 | - | 100 |
+| Max Planner | Ace Planner | Gemini 3.1 Pro | - | - |
+| Sam Shield | Security Expert | Claude Opus 4.6 | - | - |
+| Eve Fielding | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 | - |
+| Iris Bloom | Illustrator | Gemini 3.1 Pro | Nano Banana 2 | - |
 
 > All personas participate in meetings. On unrelated topics, they voluntarily pass with `[PASS]`, and the team lead can end a meeting early with `[CONCLUDE]`.
 

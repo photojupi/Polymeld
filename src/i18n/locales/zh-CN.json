@@ -432,6 +432,16 @@
     "imagePrompt": "## 图片生成请求\n{{prompt}}\n\n请根据以上描述生成图片。体现{{name}}（{{role}}）的设计感和专业性。",
     "generateTitlePrompt": "你负责为项目命名。将给定的需求概括为一行中文标题（50字以内）。只输出标题。",
     "noResponse": "（无响应）",
+    "personas": {
+      "tech_lead": "林架构",
+      "ace_programmer": "韩码杰",
+      "creative_programmer": "刘创新",
+      "qa": "郑测安",
+      "designer": "尹悦然",
+      "ace_planner": "姜策远",
+      "security_expert": "安盾强",
+      "illustrator": "画灵秀"
+    },
     "concludeInstruction": "请回顾目前为止的讨论。如果已达成充分的结论，请以 [CONCLUDE] 开头总结最终结论和行动项。如果还需要进一步讨论，请提出下一轮需要重点关注的要点。",
     "summaryInstruction": "请综合目前为止的讨论，总结最终结论和行动项。",
     "meetingMarkdown": {

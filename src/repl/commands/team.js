@@ -11,7 +11,8 @@ export function teamCommand(session) {
       persona.model === "gemini" ? chalk.hex("#4285F4") :
       chalk.hex("#10A37F");
     const imageTag = persona.image_model ? chalk.gray(` + ${persona.image_model}`) : "";
-    console.log(`  ${persona.name} (${persona.role}): ${modelColor(persona.model)}${imageTag}`);
+    const name = t(`agent.personas.${id}`, { defaultValue: persona.name });
+    console.log(`  ${name} (${persona.role}): ${modelColor(persona.model)}${imageTag}`);
   }
   console.log();
 }

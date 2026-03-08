@@ -432,6 +432,16 @@
     "imagePrompt": "## 이미지 생성 요청\n{{prompt}}\n\n위 설명에 맞는 이미지를 생성해주세요. {{name}}({{role}})의 디자인 감각과 전문성을 반영합니다.",
     "generateTitlePrompt": "당신은 프로젝트 제목을 짓는 역할입니다. 주어진 요구사항을 한국어 한 줄 제목(50자 이내)으로 요약하세요. 제목만 출력하세요.",
     "noResponse": "(응답 없음)",
+    "personas": {
+      "tech_lead": "김아키",
+      "ace_programmer": "한코딩",
+      "creative_programmer": "류창작",
+      "qa": "정테스트",
+      "designer": "윤경험",
+      "ace_planner": "강기획",
+      "security_expert": "안보안",
+      "illustrator": "그림솔"
+    },
     "concludeInstruction": "지금까지의 논의를 검토해주세요. 충분히 결론이 도출되었다면 [CONCLUDE]로 시작하여 최종 결론과 액션 아이템을 정리해주세요. 아직 추가 논의가 필요하다면 다음 라운드에서 집중할 포인트를 제시해주세요.",
     "summaryInstruction": "지금까지의 논의를 종합하여 최종 결론과 액션 아이템을 정리해주세요.",
     "meetingMarkdown": {

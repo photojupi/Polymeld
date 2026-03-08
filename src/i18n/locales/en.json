@@ -432,6 +432,16 @@
     "imagePrompt": "## Image Generation Request\n{{prompt}}\n\nPlease generate an image matching the above description. Reflect {{name}}'s ({{role}}) design sensibility and expertise.",
     "generateTitlePrompt": "You are responsible for naming projects. Summarize the given requirements into a one-line English title (under 50 characters). Output only the title.",
     "noResponse": "(no response)",
+    "personas": {
+      "tech_lead": "Archie Stone",
+      "ace_programmer": "Cody Sharp",
+      "creative_programmer": "Nova Cruz",
+      "qa": "Tess Hunter",
+      "designer": "Eve Fielding",
+      "ace_planner": "Max Planner",
+      "security_expert": "Sam Shield",
+      "illustrator": "Iris Bloom"
+    },
     "concludeInstruction": "Please review the discussion so far. If sufficient conclusions have been reached, start with [CONCLUDE] and summarize the final conclusions and action items. If further discussion is needed, suggest focus points for the next round.",
     "summaryInstruction": "Please synthesize the discussion so far and summarize the final conclusions and action items.",
     "meetingMarkdown": {

@@ -8,7 +8,8 @@ import { t } from "../i18n/index.js";
 export class Agent {
   constructor(personaConfig, modelAdapter) {
     this.id = personaConfig.id; // e.g., "tech_lead"
-    this.name = personaConfig.name; // e.g., "김아키"
+    // i18n 이름 우선, 없으면 config name fallback
+    this.name = t(`agent.personas.${personaConfig.id}`, { defaultValue: personaConfig.name });
     this.role = personaConfig.role; // e.g., "Tech Lead"
     this.modelKey = personaConfig.model; // e.g., "claude"
     this.imageModelKey = personaConfig.image_model || null; // e.g., "gemini_image"
