@@ -253,6 +253,7 @@
     "repoAutoDetected": "자동감지",
     "tokenAuthFailed": "토큰 인증 실패",
     "repoAccessDenied": "리포지토리 접근 불가 ({{repo}})",
+    "repoRetryPrompt": "리포지토리 이름을 다시 입력하시겠습니까?",
     "repoWriteDenied": "리포지토리 쓰기 권한 없음 ({{repo}})",
     "scopeRepoMissing": "'repo' 또는 'public_repo' 스코프 없음 — 일부 기능이 제한될 수 있습니다",
     "scopeProjectMissing": "'project' 스코프 없음 — GitHub Projects 기능이 제한됩니다",

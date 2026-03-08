@@ -253,6 +253,7 @@
     "repoAutoDetected": "auto-detected",
     "tokenAuthFailed": "Token authentication failed",
     "repoAccessDenied": "Repository access denied ({{repo}})",
+    "repoRetryPrompt": "Would you like to re-enter the repository name?",
     "repoWriteDenied": "Repository write access denied ({{repo}})",
     "scopeRepoMissing": "'repo' or 'public_repo' scope not found — some features may be limited",
     "scopeProjectMissing": "'project' scope not found — GitHub Projects features will be limited",
