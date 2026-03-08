@@ -10,12 +10,13 @@ Assign Claude Code, Gemini CLI, and Codex CLI to individual personas — automat
 
 - **🤖 Multi-AI Team** — 8 personas (Tech Lead, Programmer, QA, Designer, etc.) powered by Claude, Gemini, and Codex
 - **🔄 8-Phase Pipeline** — Codebase analysis → Meeting → Task breakdown → Assignment → Development → Code review → QA → PR
+- **🛠️ CLI + API Dual Backend** — Each model works via CLI or API SDK — use whichever is available, or both
 - **⚡ Parallel Development** — Dependency-aware concurrent LLM execution for independent tasks
 - **🖼️ Image Generation** — Personas with `image_model` auto-generate images via Nano Banana 2
 - **📂 Local Workspace** — Reads existing code, writes files directly, manages git branches/commits
 - **🔁 Auto-Fix Loop** — Failed reviews/QA trigger automatic fix → re-review cycles
 - **💬 AI Meetings** — Real-time multi-model discussions with `[PASS]`/`[CONCLUDE]` self-regulation
-- **🔀 Rate Limit Fallback** — CLI → API → fallback model — 3-tier automatic switching
+- **🔀 3-Tier Rate Limit Fallback** — CLI → API key → fallback model — automatic switching on rate limit
 - **🌐 4-Language i18n** — Full support for English, 한국어, 日本語, 中文
 - **📌 Full GitHub Traceability** — Every step recorded as Issues, Comments, Commits, and PRs
 
@@ -85,6 +86,18 @@ Phase 7  PR Creation           Auto-create PR linking all artifacts
 
 ## 🔧 Configuration
 
+### Backend Priority
+
+Each model supports **two backends** that switch automatically:
+
+| Priority | Backend | When Used |
+|----------|---------|----------|
+| 1st | **CLI** (claude / gemini / codex) | Installed and available |
+| 2nd | **API SDK** (Anthropic / Google GenAI / OpenAI) | CLI rate-limited, or CLI not installed |
+| 3rd | **Fallback model** | Both CLI and API rate-limited |
+
+> CLI only, API only, or both — Polymeld works with whatever you have. Set `api_model` to use a different model for API calls.
+
 ### Credentials
 
 ```bash
@@ -97,6 +110,11 @@ Or use `.env` / `~/.polymeld/credentials.yaml`:
 ```bash
 GITHUB_TOKEN=ghp_xxxxx        # Required
 # GITHUB_REPO=owner/repo      # Auto-detected from git remote
+
+# API keys (optional — enables API backend per provider)
+ANTHROPIC_API_KEY=sk-...       # Claude API
+GOOGLE_API_KEY=AIzaSy...       # Gemini API
+OPENAI_API_KEY=sk-...          # OpenAI API
 ```
 
 ### config.yaml

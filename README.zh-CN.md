@@ -10,12 +10,13 @@
 
 - **🤖 多 AI 团队** — 8 个角色（技术负责人、程序员、QA、设计师等）分别由 Claude、Gemini、Codex 驱动
 - **🔄 8 阶段流水线** — 代码库分析 → 会议 → 任务分解 → 分配 → 开发 → 代码评审 → QA → PR
+- **🛠️ CLI + API 双后端** — 每个模型通过 CLI 或 API SDK 运行 — 有哪个用哪个，或两者兼用
 - **⚡ 并行开发** — 分析依赖关系，独立任务同时执行
 - **🖼️ 图像生成** — 配置 `image_model` 后通过 Nano Banana 2 自动生成图像
 - **📂 本地工作区** — 读取现有代码、直接创建文件、自动管理 git 分支/提交
 - **🔁 自动修复循环** — 评审/QA 失败时自动修复 → 重新验证
 - **💬 AI 会议** — 实时多模型讨论，通过 `[PASS]`/`[CONCLUDE]` 自主调节
-- **🔀 Rate Limit 回退** — CLI → API → 备用模型 — 3 级自动切换
+- **🔀 3 级 Rate Limit 回退** — CLI → API key → 备用模型 — rate limit 时自动切换
 - **🌐 4 语言 i18n** — 完整支持 English、한국어、日本語、中文
 - **📌 GitHub 完整可追溯** — 全过程记录为 Issues、Comments、Commits 和 PR
 
@@ -85,6 +86,18 @@ Phase 7  PR 创建             自动创建包含所有记录链接的 PR
 
 ## 🔧 配置
 
+### 后端优先级
+
+每个模型支持自动切换的**双后端**：
+
+| 优先级 | 后端 | 使用条件 |
+|--------|------|----------|
+| 第 1 | **CLI**（claude / gemini / codex） | 已安装且可用时 |
+| 第 2 | **API SDK**（Anthropic / Google GenAI / OpenAI） | CLI rate limit 或未安装 CLI 时 |
+| 第 3 | **Fallback 模型** | CLI 和 API 均 rate limit 时 |
+
+> 仅 CLI、仅 API、或两者兼有 — 有什么用什么。设置 `api_model` 可为 API 调用指定不同的模型。
+
 ### 凭证
 
 ```bash
@@ -97,6 +110,11 @@ polymeld auth --show           # 查看当前状态
 ```bash
 GITHUB_TOKEN=ghp_xxxxx        # 必需
 # GITHUB_REPO=owner/repo      # 从 git remote 自动检测
+
+# API 密钥（可选 — 按提供商启用 API 后端）
+ANTHROPIC_API_KEY=sk-...       # Claude API
+GOOGLE_API_KEY=AIzaSy...       # Gemini API
+OPENAI_API_KEY=sk-...          # OpenAI API
 ```
 
 ### config.yaml
