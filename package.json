@@ -32,6 +32,14 @@
     "README.md",
     ".env.example"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/photojupi/Polymeld.git"
+  },
+  "homepage": "https://github.com/photojupi/Polymeld",
+  "bugs": {
+    "url": "https://github.com/photojupi/Polymeld/issues"
+  },
   "engines": {
     "node": ">=18"
   }
