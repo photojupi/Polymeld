@@ -88,7 +88,7 @@ export async function runAuthPrompt() {
     {
       type: "input",
       name: "GITHUB_REPO",
-      message: "GitHub Repository (owner/repo):",
+      message: `GitHub Repository (owner/repo) [${t("cli.init.repoAutoDetect")}]:`,
       default: process.env.GITHUB_REPO || "",
     },
     {

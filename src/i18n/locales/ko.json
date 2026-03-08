@@ -42,7 +42,8 @@
       "projectExists": "프로젝트 설정이 이미 존재합니다: {{path}}",
       "projectCreated": "✅ 프로젝트 설정 생성: {{path}}",
       "gitignoreHint": "💡 .gitignore에 추가하세요: .polymeld/config.local.yaml, .polymeld/sessions/",
-      "optional": "선택사항"
+      "optional": "선택사항",
+      "repoAutoDetect": "미입력 시 프로젝트 폴더에서 자동감지"
     },
     "auth": {
       "description": "자격 증명 관리 (API 키, GitHub 토큰)",
@@ -224,7 +225,7 @@
     "githubConnected": "✅ {{label}} 연동됨 ({{repo}})",
     "githubFailed": "❌ {{label}} {{reason}}",
     "githubRequired": "GitHub 연동이 필요합니다. 아래 사항을 확인해주세요:",
-    "githubStep1": "1. GITHUB_TOKEN, GITHUB_REPO가 설정되어 있는지 (polymeld auth 또는 .env)",
+    "githubStep1": "1. GITHUB_TOKEN이 설정되어 있는지 확인 (polymeld auth 또는 .env). GITHUB_REPO는 프로젝트 폴더에서 자동 감지됩니다.",
     "githubStep2": "2. 토큰에 Issues, Contents, Pull requests 쓰기 권한이 있는지",
     "githubStep3": "3. 토큰이 해당 리포지토리에 접근 가능한지",
     "githubStep4": "4. Classic PAT: 'repo' + 'project' 스코프 / Fine-grained PAT: Issues·Contents·Pull requests·Projects 쓰기 권한",
@@ -240,9 +241,10 @@
     "timeout": "응답 시간 초과",
     "authFailed": "인증 실패",
     "inputFailed": "입력 실패",
-    "tokenRepoMissing": "GITHUB_TOKEN, GITHUB_REPO 미설정",
+    "tokenRepoMissing": "GITHUB_TOKEN 미설정 (GITHUB_REPO는 프로젝트 폴더에서 자동감지 가능)",
     "tokenMissing": "GITHUB_TOKEN 미설정",
-    "repoMissing": "GITHUB_REPO 미설정",
+    "repoMissing": "GITHUB_REPO 미설정 (자동감지 실패 — GitHub 프로젝트 폴더에서 실행하세요)",
+    "repoAutoDetected": "자동감지",
     "tokenAuthFailed": "토큰 인증 실패",
     "repoAccessDenied": "리포지토리 접근 불가 ({{repo}})",
     "repoWriteDenied": "리포지토리 쓰기 권한 없음 ({{repo}})",

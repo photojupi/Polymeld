@@ -42,7 +42,8 @@
       "projectExists": "项目配置已存在: {{path}}",
       "projectCreated": "✅ 项目配置已创建: {{path}}",
       "gitignoreHint": "💡 请添加到 .gitignore: .polymeld/config.local.yaml, .polymeld/sessions/",
-      "optional": "可选"
+      "optional": "可选",
+      "repoAutoDetect": "未输入时从项目文件夹自动检测"
     },
     "auth": {
       "description": "管理凭证（API密钥、GitHub令牌）",
@@ -224,7 +225,7 @@
     "githubConnected": "✅ {{label}} 已关联（{{repo}}）",
     "githubFailed": "❌ {{label}} {{reason}}",
     "githubRequired": "需要GitHub集成。请检查以下事项:",
-    "githubStep1": "1. 确认 GITHUB_TOKEN 和 GITHUB_REPO 已设置（polymeld auth 或 .env）",
+    "githubStep1": "1. 确认 GITHUB_TOKEN 已设置（polymeld auth 或 .env）。GITHUB_REPO 会从项目文件夹自动检测。",
     "githubStep2": "2. 确认令牌具有 Issues、Contents、Pull requests 的写入权限",
     "githubStep3": "3. 确认令牌可以访问该仓库",
     "githubStep4": "4. Classic PAT: 'repo' + 'project' 范围 / Fine-grained PAT: Issues、Contents、Pull requests、Projects 写入权限",
@@ -240,9 +241,10 @@
     "timeout": "响应超时",
     "authFailed": "认证失败",
     "inputFailed": "输入失败",
-    "tokenRepoMissing": "GITHUB_TOKEN 和 GITHUB_REPO 未设置",
+    "tokenRepoMissing": "GITHUB_TOKEN 未设置（GITHUB_REPO 可从项目文件夹自动检测）",
     "tokenMissing": "GITHUB_TOKEN 未设置",
-    "repoMissing": "GITHUB_REPO 未设置",
+    "repoMissing": "GITHUB_REPO 未设置（自动检测失败 — 请在GitHub项目文件夹中运行）",
+    "repoAutoDetected": "自动检测",
     "tokenAuthFailed": "令牌认证失败",
     "repoAccessDenied": "仓库访问被拒绝（{{repo}}）",
     "repoWriteDenied": "仓库写入权限被拒绝（{{repo}}）",

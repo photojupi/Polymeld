@@ -5,10 +5,11 @@
 // PipelineState + PromptAssembler 기반 아키텍처
 
 import "dotenv/config";
-import { loadCredentials } from "./config/credentials.js";
+import { loadCredentials, detectGitHubRepo } from "./config/credentials.js";
 import { initI18n, t } from "./i18n/index.js";
 
 loadCredentials();
+detectGitHubRepo();
 await initI18n();
 
 import { Command } from "commander";
