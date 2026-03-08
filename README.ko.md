@@ -46,8 +46,7 @@ polymeld
 | `polymeld` | REPL 시작 (첫 실행 시 온보딩 위저드) |
 | `polymeld run "요구사항"` | 전체 파이프라인 실행 |
 | `polymeld run "요구사항" --mode semi-auto` | Phase마다 확인 |
-| `polymeld meeting kickoff "주제"` | 킥오프 미팅만 실행 |
-| `polymeld meeting design "주제" --rounds 3` | N 라운드 설계 미팅 |
+| `polymeld meeting "주제"` | 미팅만 실행 |
 | `polymeld start --resume` | 이전 세션 재개 |
 | `polymeld test-models` | 모델 연결 테스트 |
 | `polymeld init --global` | 글로벌 설정 초기화 |

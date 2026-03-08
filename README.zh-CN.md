@@ -46,8 +46,7 @@ polymeld
 | `polymeld` | 启动 REPL（首次运行时引导向导） |
 | `polymeld run "需求"` | 运行完整流水线 |
 | `polymeld run "需求" --mode semi-auto` | 每个 Phase 确认 |
-| `polymeld meeting kickoff "主题"` | 仅运行启动会议 |
-| `polymeld meeting design "主题" --rounds 3` | N 轮设计会议 |
+| `polymeld meeting "主题"` | 仅运行会议 |
 | `polymeld start --resume` | 恢复上一个会话 |
 | `polymeld test-models` | 测试模型连接 |
 | `polymeld init --global` | 初始化全局配置 |

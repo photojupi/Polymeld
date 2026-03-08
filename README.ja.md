@@ -46,8 +46,7 @@ polymeld
 | `polymeld` | REPL起動（初回実行時はオンボーディングウィザード） |
 | `polymeld run "要件"` | 全パイプライン実行 |
 | `polymeld run "要件" --mode semi-auto` | Phaseごとに確認 |
-| `polymeld meeting kickoff "トピック"` | キックオフミーティングのみ実行 |
-| `polymeld meeting design "トピック" --rounds 3` | Nラウンドの設計ミーティング |
+| `polymeld meeting "トピック"` | ミーティングのみ実行 |
 | `polymeld start --resume` | 前回のセッションを再開 |
 | `polymeld test-models` | モデル接続テスト |
 | `polymeld init --global` | グローバル設定の初期化 |

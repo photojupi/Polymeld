@@ -46,8 +46,7 @@ polymeld
 | `polymeld` | Start REPL (onboarding wizard on first run) |
 | `polymeld run "requirement"` | Run full pipeline |
 | `polymeld run "req" --mode semi-auto` | Confirm at each phase |
-| `polymeld meeting kickoff "topic"` | Run kickoff meeting only |
-| `polymeld meeting design "topic" --rounds 3` | Design meeting with N rounds |
+| `polymeld meeting "topic"` | Run meeting only |
 | `polymeld start --resume` | Resume previous session |
 | `polymeld test-models` | Test model connections |
 | `polymeld init --global` | Initialize global config |
