@@ -473,6 +473,12 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
     // 원본 브랜치 기록 (태스크별 feature 브랜치의 base)
     const baseBranch = this.workspace?.isLocal ? this.workspace.getCurrentBranch() : null;
 
+    // 통합 브랜치: 모든 태스크가 하나의 브랜치에 커밋
+    const projectTitle = this.state.project.title || "project";
+    const slug = projectTitle.replace(/[^a-zA-Z0-9가-힣]/g, "-").substring(0, 30);
+    const issueNum = this.state.github.planningIssue || "0";
+    const integrationBranch = `feature/${issueNum}-${slug}`;
+
     if (!parallelEnabled) {
       // 순차 폴백: 기존 동작과 동일
       for (const task of this.state.tasks) {
@@ -480,7 +486,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
           if (task.code) console.log(chalk.gray(`  ${t("pipeline.devSkipped", { title: task.title })}`));
           continue;
         }
-        await this._developTask(task, { treeCache, baseBranch });
+        await this._developTask(task, { treeCache, baseBranch, integrationBranch });
       }
       return;
     }
@@ -509,7 +515,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
         // 순환 의존성 또는 실패한 태스크의 후속 작업
         console.log(chalk.yellow(`\n  ${t("pipeline.parallelWaiting", { count: remaining.length })}`));
         for (const task of remaining) {
-          await this._developTask(task, { treeCache, baseBranch });
+          await this._developTask(task, { treeCache, baseBranch, integrationBranch });
           completedIds.add(task.id);
         }
         break;
@@ -523,7 +529,7 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
       // LLM 호출 병렬 + Git 작업 큐
       const results = await Promise.allSettled(
-        readyTasks.map(task => this._developTask(task, { treeCache, baseBranch }))
+        readyTasks.map(task => this._developTask(task, { treeCache, baseBranch, integrationBranch }))
       );
 
       for (let i = 0; i < readyTasks.length; i++) {
@@ -748,45 +754,36 @@ ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}
 
   async phasePR() {
     const projectTitle = this.state.project.title || "";
+    const tasks = this.state.completedTasks;
+    if (tasks.length === 0) return;
 
-    // 카테고리별로 그룹화하여 PR 생성
-    const groups = {};
-    for (const task of this.state.completedTasks) {
-      const cat = task.category || "feature";
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(task);
+    // 통합 브랜치명 (모든 태스크가 동일 브랜치)
+    const branchName = tasks[0].branchName;
+
+    // 로컬 워크스페이스: PR 생성 전 push
+    if (this.workspace?.isLocal) {
+      try {
+        this.workspace.gitPush(branchName);
+        console.log(chalk.gray(`  ${t("pipeline.pushLog", { branch: branchName })}`));
+      } catch (e) {
+        console.log(chalk.yellow(`  ${t("pipeline.pushSkipped", { message: e.message })}`));
+      }
     }
 
-    for (const [category, tasks] of Object.entries(groups)) {
-      // 태스크에 저장된 branchName 사용, 없으면 기존 방식 폴백
-      const branchName = tasks[0].branchName || `feature/${tasks[0].issueNumber}-${category}`;
+    const closesIssues = tasks
+      .map((task) => `Closes #${task.issueNumber}`)
+      .join("\n");
+    const taskSummary = tasks
+      .map(
+        (task) =>
+          `- **${task.title}** [${task.category || "feature"}] (${task.assignedAgent?.name} / ${task.assignedAgent?.modelKey})`
+      )
+      .join("\n");
 
-      // 로컬 워크스페이스: PR 생성 전 push
-      if (this.workspace?.isLocal) {
-        try {
-          this.workspace.gitPush(branchName);
-          console.log(chalk.gray(`  ${t("pipeline.pushLog", { branch: branchName })}`));
-        } catch (e) {
-          console.log(chalk.yellow(`  ${t("pipeline.pushSkipped", { message: e.message })}`));
-        }
-      }
+    const communicationLog = this.state.exportMessageLog();
 
-      const closesIssues = tasks
-        .map((task) => `Closes #${task.issueNumber}`)
-        .join("\n");
-      const taskSummary = tasks
-        .map(
-          (task) =>
-            `- **${task.title}** (${task.assignedAgent?.name} / ${task.assignedAgent?.modelKey})`
-        )
-        .join("\n");
-
-      const communicationLog = this.state.exportMessageLog({
-        taskId: tasks[0].id,
-      });
-
-      const body = `${t("pipeline.prBody.changes")}
-${t("pipeline.prBody.implementation", { title: projectTitle, category })}
+    const body = `${t("pipeline.prBody.changes")}
+${t("pipeline.prBody.implementation", { title: projectTitle })}
 
 ${t("pipeline.prBody.relatedIssues")}
 ${closesIssues}
@@ -821,17 +818,16 @@ ${this.team
   .map((a) => `> - ${a.name} (${a.role}): \`${a.modelKey}\``)
   .join("\n")}`;
 
-      const spinner = ora(t("pipeline.prSpinner", { category })).start();
-      try {
-        const pr = await this.github.createPR(
-          `feat: ${projectTitle} - ${category}`,
-          body,
-          branchName
-        );
-        spinner.succeed(t("pipeline.prCreated", { number: pr.number, url: this.github.prUrl(pr.number) }));
-      } catch (e) {
-        spinner.fail(t("pipeline.prSkipped", { category, message: e.message }));
-      }
+    const spinner = ora(t("pipeline.prSpinner", { category: projectTitle })).start();
+    try {
+      const pr = await this.github.createPR(
+        `feat: ${projectTitle}`,
+        body,
+        branchName
+      );
+      spinner.succeed(t("pipeline.prCreated", { number: pr.number, url: this.github.prUrl(pr.number) }));
+    } catch (e) {
+      spinner.fail(t("pipeline.prSkipped", { category: projectTitle, message: e.message }));
     }
   }
 
@@ -950,7 +946,7 @@ ${this.team
    * 개별 태스크 개발 (LLM 호출 + Git 작업)
    * phaseDevelopment에서 병렬/순차 모두에서 사용
    */
-  async _developTask(task, { treeCache, baseBranch }) {
+  async _developTask(task, { treeCache, baseBranch, integrationBranch }) {
     const agent = task.assignedAgent;
     if (!agent) return;
 
@@ -966,10 +962,8 @@ ${this.team
       t("pipeline.devStartComment", { agent: agent.name, model: agent.modelKey })
     );
 
-    // 브랜치명 생성
-    const branchName = `feature/${task.issueNumber}-${task.title
-      .replace(/[^a-zA-Z0-9가-힣]/g, "-")
-      .substring(0, 30)}`;
+    // 통합 브랜치 사용 (모든 태스크가 하나의 브랜치에 커밋)
+    const branchName = integrationBranch;
     task.branchName = branchName;
 
     // 코드베이스 맥락 조립
