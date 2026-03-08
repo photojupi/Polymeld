@@ -50,7 +50,10 @@
       "optShow": "显示当前凭证状态",
       "header": "🔑 凭证状态",
       "notSet": "未设置",
-      "saved": "✅ 凭证已保存: {{path}}"
+      "saved": "✅ 凭证已保存: {{path}}",
+      "githubGuideTitle": "🔑 GitHub Personal Access Token 创建指南",
+      "githubGuideUrl": "https://github.com/settings/tokens → 'Generate new token'",
+      "githubGuideScopes": "所需权限 — Classic PAT: repo, project / Fine-grained PAT: Issues·Contents·Pull requests·Projects 写入"
     },
     "start": {
       "description": "启动交互式REPL模式（会话保持，斜杠命令）",
