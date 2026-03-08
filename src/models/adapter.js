@@ -359,8 +359,8 @@ export class ModelAdapter {
    * Claude Code: --system-prompt 플래그 지원, stdin으로 메시지 전달
    * --max-turns로 무한 에이전트 루프 방지
    */
-  async _chatClaude(model, systemPrompt, userMessage, thinkingBudget, onData) {
-    const args = ["-p", "--output-format", "text"];
+  async _chatClaude(model, systemPrompt, userMessage, thinkingBudget) {
+    const args = ["-p", "--output-format", "json"];
     if (model) args.push("--model", model);
     if (systemPrompt) args.push("--system-prompt", systemPrompt);
 
@@ -370,33 +370,67 @@ export class ModelAdapter {
 
     args.push(...this._resolveThinkingArgs("claude", thinkingBudget));
 
+    const cfgTimeout = this.config.cli?.timeouts?.claude;
     const raw = await this._spawnCli("claude", args, userMessage, {
-      timeout: this.config.cli?.timeouts?.claude,
-      onData,
+      timeout: typeof cfgTimeout === "object" ? { ...cfgTimeout, idle: 0 } : cfgTimeout,
     });
-    return new ChatResult(this._normalizeOutput(raw, "claude"), { backend: "cli", model, usage: null });
+
+    let text, usage = null;
+    try {
+      const json = JSON.parse(raw);
+      text = json.result || this._normalizeOutput(raw, "claude");
+      if (json.usage) {
+        usage = {
+          inputTokens: (json.usage.input_tokens || 0)
+            + (json.usage.cache_read_input_tokens || 0)
+            + (json.usage.cache_creation_input_tokens || 0),
+          outputTokens: json.usage.output_tokens || 0,
+        };
+      }
+    } catch {
+      text = this._normalizeOutput(raw, "claude");
+    }
+    return new ChatResult(text, { backend: "cli", model, usage });
   }
 
   /**
    * Gemini CLI: stdin pipe로 프롬프트 전달 (안전한 방식)
    * 최신 Gemini CLI(v0.28+)는 stdin/pipe 입력을 정식 지원
    */
-  async _chatGemini(model, systemPrompt, userMessage, thinkingBudget, onData) {
+  async _chatGemini(model, systemPrompt, userMessage, thinkingBudget) {
     const prompt = systemPrompt
       ? this._buildCombinedPrompt(systemPrompt, userMessage)
       : userMessage;
 
     // stdin pipe 방식: 셸 이스케이핑 불필요, 보안 안전
-    const args = ["--output-format", "text"];
+    const args = ["--output-format", "json"];
     if (model) args.push("-m", model);
 
     args.push(...this._resolveThinkingArgs("gemini", thinkingBudget));
 
+    const cfgTimeout = this.config.cli?.timeouts?.gemini;
     const raw = await this._spawnCli("gemini", args, prompt, {
-      timeout: this.config.cli?.timeouts?.gemini,
-      onData,
+      timeout: typeof cfgTimeout === "object" ? { ...cfgTimeout, idle: 0 } : cfgTimeout,
     });
-    return new ChatResult(this._normalizeOutput(raw, "gemini"), { backend: "cli", model, usage: null });
+
+    let text, usage = null;
+    try {
+      const json = JSON.parse(raw);
+      text = json.response || this._normalizeOutput(raw, "gemini");
+      if (json.stats?.models) {
+        let totalInput = 0, totalOutput = 0;
+        for (const m of Object.values(json.stats.models)) {
+          totalInput += m.tokens?.input || 0;
+          totalOutput += m.tokens?.candidates || 0;
+        }
+        if (totalInput || totalOutput) {
+          usage = { inputTokens: totalInput, outputTokens: totalOutput };
+        }
+      }
+    } catch {
+      text = this._normalizeOutput(raw, "gemini");
+    }
+    return new ChatResult(text, { backend: "cli", model, usage });
   }
 
   /**
@@ -405,7 +439,7 @@ export class ModelAdapter {
    * --full-auto: 승인 프롬프트 없이 workspace-write 샌드박스로 자동 실행
    * --skip-git-repo-check: 임의 디렉토리에서 실행 가능
    */
-  async _chatCodex(model, systemPrompt, userMessage, thinkingBudget, onData) {
+  async _chatCodex(model, systemPrompt, userMessage, thinkingBudget) {
     const prompt = systemPrompt
       ? this._buildCombinedPrompt(systemPrompt, userMessage)
       : userMessage;
@@ -414,16 +448,43 @@ export class ModelAdapter {
       "exec",
       "--skip-git-repo-check",
       "--full-auto",
+      "--json",
     ];
     if (model) args.push("-m", model);
 
     args.push(...this._resolveThinkingArgs("codex", thinkingBudget));
 
+    const cfgTimeout = this.config.cli?.timeouts?.codex;
     const raw = await this._spawnCli("codex", args, prompt, {
-      timeout: this.config.cli?.timeouts?.codex,
-      onData,
+      timeout: typeof cfgTimeout === "object" ? { ...cfgTimeout, idle: 0 } : cfgTimeout,
     });
-    return new ChatResult(this._normalizeOutput(raw, "codex"), { backend: "cli", model, usage: null });
+
+    let text = "", usage = null;
+    try {
+      const lines = raw.split("\n").filter(l => l.trim());
+      for (const line of lines) {
+        try {
+          const ev = JSON.parse(line);
+          if (ev.type === "turn.completed" && ev.usage) {
+            if (!usage) usage = { inputTokens: 0, outputTokens: 0 };
+            usage.inputTokens += ev.usage.input_tokens || 0;
+            usage.outputTokens += ev.usage.output_tokens || 0;
+          }
+          // agent message 텍스트 수집
+          if (ev.type === "item.completed" && ev.item?.type === "agent_message") {
+            const parts = ev.item.content ?? ev.item.parts ?? [];
+            for (const p of parts) {
+              if (typeof p === "string") text += p;
+              else if (p.text) text += p.text;
+            }
+          }
+        } catch { /* 개별 줄 파싱 실패 무시 */ }
+      }
+      if (!text.trim()) text = this._normalizeOutput(raw, "codex");
+    } catch {
+      text = this._normalizeOutput(raw, "codex");
+    }
+    return new ChatResult(text.trim(), { backend: "cli", model, usage });
   }
 
   // ─── API 기반 chat 메서드 ─────────────────────────────
