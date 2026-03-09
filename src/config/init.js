@@ -215,6 +215,8 @@ pipeline:
   thinking_budget: 25
   # Enable dependency-based parallel execution in Development phase
   parallel_development: true
+  # Max concurrent LLM calls per phase (dev/review/QA)
+  max_parallel: 3
   # Max code review retry count
   max_review_retries: 3
   # Max QA retry count
@@ -378,6 +380,7 @@ function generateProjectTemplate() {
 pipeline:
   interaction_mode: full-auto
   parallel_development: true
+  max_parallel: 3
   max_review_retries: 3
   max_qa_retries: 3
 `;

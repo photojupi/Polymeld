@@ -10,6 +10,7 @@ import {
   isImageTask, printMeta, parseFilePathsFromResponse, parseMultiFileResponse,
   getReadyTasks, enqueueGit,
 } from "../helpers.js";
+import { pMapSettled } from "../../utils/concurrency.js";
 
 // ─── Phase 4: 개발 ───────────────────────────────────
 
@@ -71,8 +72,11 @@ export async function phaseDevelopment(ctx) {
       ));
     }
 
-    const results = await Promise.allSettled(
-      readyTasks.map(task => developTask(ctx, task, { treeCache, baseBranch, integrationBranch }))
+    const maxParallel = ctx.config.pipeline?.max_parallel || 3;
+    const results = await pMapSettled(
+      readyTasks,
+      task => developTask(ctx, task, { treeCache, baseBranch, integrationBranch }),
+      maxParallel
     );
 
     for (let i = 0; i < readyTasks.length; i++) {

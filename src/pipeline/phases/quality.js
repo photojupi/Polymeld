@@ -10,6 +10,7 @@ import {
   takeFileSnapshot, recommitCode,
 } from "../helpers.js";
 import { truncateCode } from "../../state/prompt-assembler.js";
+import { pMapSettled } from "../../utils/concurrency.js";
 
 // ─── Phase 5: 코드 리뷰 (LLM 병렬 + 수정 직렬) ─────────────
 
@@ -43,27 +44,26 @@ export async function phaseCodeReview(ctx) {
 
   const useSpinner = tasksToReview.length === 1;
 
-  const reviewResults = await Promise.allSettled(
-    tasksToReview.map(task => {
-      console.log(chalk.cyan(`\n${t("pipeline.reviewLabel", { title: task.title })}`));
-      const spinner = useSpinner
-        ? ora(`  ${t("pipeline.reviewSpinner", { agent: lead.name, model: lead.modelKey })}`).start()
-        : null;
-      const reviewBundle = ctx.assembler.forReview(ctx.state, { taskId: task.id });
-      return lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown")
-        .then(result => {
-          if (spinner) spinner.succeed(`  ${t("pipeline.reviewComplete")}`);
-          else console.log(chalk.green(`  [${task.title}] ${t("pipeline.reviewComplete")}`));
-          printMeta(result.meta);
-          return { ...result, reviewBundle };
-        })
-        .catch(err => {
-          if (spinner) spinner.fail(`  ${t("pipeline.reviewComplete")}`);
-          else console.log(chalk.red(`  [${task.title}] ${t("pipeline.reviewComplete")}`));
-          throw err;
-        });
-    })
-  );
+  const maxParallel = ctx.config.pipeline?.max_parallel || 3;
+  const reviewResults = await pMapSettled(tasksToReview, task => {
+    console.log(chalk.cyan(`\n${t("pipeline.reviewLabel", { title: task.title })}`));
+    const spinner = useSpinner
+      ? ora(`  ${t("pipeline.reviewSpinner", { agent: lead.name, model: lead.modelKey })}`).start()
+      : null;
+    const reviewBundle = ctx.assembler.forReview(ctx.state, { taskId: task.id });
+    return lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown")
+      .then(result => {
+        if (spinner) spinner.succeed(`  ${t("pipeline.reviewComplete")}`);
+        else console.log(chalk.green(`  [${task.title}] ${t("pipeline.reviewComplete")}`));
+        printMeta(result.meta);
+        return { ...result, reviewBundle };
+      })
+      .catch(err => {
+        if (spinner) spinner.fail(`  ${t("pipeline.reviewComplete")}`);
+        else console.log(chalk.red(`  [${task.title}] ${t("pipeline.reviewComplete")}`));
+        throw err;
+      });
+  }, maxParallel);
 
   // ── Step 2: 결과 처리 직렬 (verdict + 수정 + recommit) ──
   for (let i = 0; i < tasksToReview.length; i++) {
@@ -151,6 +151,7 @@ export async function phaseQA(ctx) {
   const qaAgent = ctx.team.qa;
   const lead = ctx.team.lead;
   const maxRetries = ctx.config.pipeline?.max_qa_retries || 3;
+  const maxParallel = ctx.config.pipeline?.max_parallel || 3;
   const fallbackKey = ctx.config.models?.[qaAgent.modelKey]?.fallback;
 
   // ── Pre-filter ──
@@ -235,26 +236,24 @@ export async function phaseQA(ctx) {
     // Step 1: QA LLM 호출 병렬 실행
     const useSpinner = activeTasks.length === 1;
 
-    const qaResults = await Promise.allSettled(
-      activeTasks.map(task => {
-        const qaBundle = ctx.assembler.forQA(ctx.state, { taskId: task.id });
-        const spinner = useSpinner
-          ? ora(`  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: currentModel })}`).start()
-          : null;
-        return qaAgent.runQA(qaBundle, { modelOverride: useModelOverride })
-          .then(result => {
-            if (spinner) spinner.succeed(`  ${t("pipeline.qaComplete")}`);
-            else console.log(chalk.green(`  [${task.title}] ${t("pipeline.qaComplete")}`));
-            printMeta(result.meta);
-            return result;
-          })
-          .catch(err => {
-            if (spinner) spinner.fail(`  ${t("pipeline.qaComplete")}`);
-            else console.log(chalk.red(`  [${task.title}] ${t("pipeline.qaComplete")}`));
-            throw err;
-          });
-      })
-    );
+    const qaResults = await pMapSettled(activeTasks, task => {
+      const qaBundle = ctx.assembler.forQA(ctx.state, { taskId: task.id });
+      const spinner = useSpinner
+        ? ora(`  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: currentModel })}`).start()
+        : null;
+      return qaAgent.runQA(qaBundle, { modelOverride: useModelOverride })
+        .then(result => {
+          if (spinner) spinner.succeed(`  ${t("pipeline.qaComplete")}`);
+          else console.log(chalk.green(`  [${task.title}] ${t("pipeline.qaComplete")}`));
+          printMeta(result.meta);
+          return result;
+        })
+        .catch(err => {
+          if (spinner) spinner.fail(`  ${t("pipeline.qaComplete")}`);
+          else console.log(chalk.red(`  [${task.title}] ${t("pipeline.qaComplete")}`));
+          throw err;
+        });
+    }, maxParallel);
 
     // Step 2: 결과 처리 직렬 (verdict + 수정 + recommit)
     const stillFailed = [];
