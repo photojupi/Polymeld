@@ -581,6 +581,7 @@
     "imageNoApiKey": "Image generation requires either GOOGLE_API_KEY or OPENAI_API_KEY.",
     "imageRequiresGeminiKey": "Image generation with Gemini requires GOOGLE_API_KEY. Get one from Google AI Studio: https://aistudio.google.com/apikey",
     "imageRoutedToGpt": "Transparent image requested → using GPT image engine",
+    "transparencyKeywords": "transparent,alpha channel,no background,cutout,isolated,sprite,icon,sticker,logo",
     "notGitRepo": "Not a git repository: {{path}}",
     "installRequired": "{{cli}} installation required",
     "noBackend": "Cannot use model {{key}}: {{cli}} CLI not installed + API key not set",

@@ -667,19 +667,18 @@ export class ModelAdapter {
 
   /**
    * 프롬프트에서 투명 배경 필요 여부를 키워드로 판별
-   * 명시적 투명 키워드 + 특성상 투명 배경이 필요한 에셋 유형
+   * 4개 로케일의 키워드를 모두 합쳐서 검사 (프롬프트 언어 무관)
    */
   _needsTransparency(imageRequest) {
     const text = (imageRequest || "").toLowerCase();
-    const keywords = [
-      // 명시적 투명 요청
-      "transparent", "투명", "alpha channel", "no background",
-      "배경 없", "배경없", "cutout", "isolated",
-      // 특성상 투명 배경이 필요한 에셋 유형
-      "sprite", "스프라이트", "icon", "아이콘",
-      "sticker", "스티커", "logo", "로고",
-    ];
-    return keywords.some(kw => text.includes(kw));
+    const locales = ["en", "ko", "ja", "zh-CN"];
+    for (const lng of locales) {
+      const raw = t("adapter.transparencyKeywords", { lng });
+      if (!raw || raw === "adapter.transparencyKeywords") continue;
+      const keywords = raw.split(",");
+      if (keywords.some(kw => text.includes(kw.trim().toLowerCase()))) return true;
+    }
+    return false;
   }
 
   /**

@@ -581,6 +581,7 @@
     "imageNoApiKey": "이미지 생성에는 GOOGLE_API_KEY 또는 OPENAI_API_KEY가 필요합니다.",
     "imageRequiresGeminiKey": "Gemini 이미지 생성에는 GOOGLE_API_KEY가 필요합니다. Google AI Studio에서 발급받으세요: https://aistudio.google.com/apikey",
     "imageRoutedToGpt": "투명 이미지 요청 → GPT 이미지 엔진 사용",
+    "transparencyKeywords": "투명,배경 없,배경없,스프라이트,아이콘,스티커,로고",
     "notGitRepo": "Git 레포가 아닙니다: {{path}}",
     "installRequired": "{{cli}} 설치 필요",
     "noBackend": "{{key}} 모델을 사용할 수 없습니다: {{cli}} CLI 미설치 + API key 미설정",

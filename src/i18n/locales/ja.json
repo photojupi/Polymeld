@@ -581,6 +581,7 @@
     "imageNoApiKey": "画像生成にはGOOGLE_API_KEYまたはOPENAI_API_KEYが必要です。",
     "imageRequiresGeminiKey": "Gemini画像生成にはGOOGLE_API_KEYが必要です。Google AI Studioで取得してください: https://aistudio.google.com/apikey",
     "imageRoutedToGpt": "透過画像のリクエスト → GPT画像エンジンを使用",
+    "transparencyKeywords": "透明,背景なし,切り抜き,スプライト,アイコン,ステッカー,ロゴ",
     "notGitRepo": "Gitリポジトリではありません: {{path}}",
     "installRequired": "{{cli}} のインストールが必要",
     "noBackend": "モデル {{key}} を使用できません: {{cli}} CLI未インストール + APIキー未設定",

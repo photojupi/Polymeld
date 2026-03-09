@@ -581,6 +581,7 @@
     "imageNoApiKey": "图片生成需要 GOOGLE_API_KEY 或 OPENAI_API_KEY。",
     "imageRequiresGeminiKey": "Gemini 图片生成需要 GOOGLE_API_KEY。请从 Google AI Studio 获取: https://aistudio.google.com/apikey",
     "imageRoutedToGpt": "透明图片请求 → 使用 GPT 图片引擎",
+    "transparencyKeywords": "透明,无背景,没有背景,抠图,精灵,图标,贴纸,标志",
     "notGitRepo": "不是Git仓库: {{path}}",
     "installRequired": "需要安装 {{cli}}",
     "noBackend": "无法使用模型 {{key}}: {{cli}} CLI未安装 + API密钥未设置",
