@@ -19,6 +19,15 @@ const PHASE_BUDGETS = {
 // Claude CLI 시스템 프롬프트 오버헤드를 고려한 안전 한도
 export const CODE_BUDGET = 120000;
 
+/** CODE_BUDGET 초과 시 코드를 절삭하고 AI/사용자에게 알림 */
+export function truncateCode(code) {
+  if (!code || code.length <= CODE_BUDGET) return code;
+  const original = code.length;
+  console.warn(t("promptAssembler.codeTruncated", { original, limit: CODE_BUDGET }));
+  return code.substring(0, CODE_BUDGET)
+    + `\n\n${t("promptAssembler.codeTruncatedNotice", { original, limit: CODE_BUDGET })}`;
+}
+
 export class PromptAssembler {
   /**
    * @param {Object} [options]
@@ -219,13 +228,7 @@ export class PromptAssembler {
     let used = 0;
 
     const task = state.findTask(taskId);
-    let code = task?.code || "";
-    if (code.length > CODE_BUDGET) {
-      const original = code.length;
-      console.warn(t("promptAssembler.codeTruncated", { original, limit: CODE_BUDGET }));
-      code = code.substring(0, CODE_BUDGET)
-        + `\n\n${t("promptAssembler.codeTruncatedNotice", { original, limit: CODE_BUDGET })}`;
-    }
+    const code = truncateCode(task?.code || "");
     const criteria = task?.acceptance_criteria?.join("\n") || "";
 
     // 태스크 설명
@@ -283,12 +286,7 @@ export class PromptAssembler {
     let used = 0;
 
     const task = state.findTask(taskId);
-    let code = task?.code || "";
-    if (code.length > CODE_BUDGET) {
-      console.warn(t("promptAssembler.codeTruncated", { original: code.length, limit: CODE_BUDGET }));
-      code = code.substring(0, CODE_BUDGET)
-        + `\n\n${t("promptAssembler.codeTruncatedNotice", { original: code.length, limit: CODE_BUDGET })}`;
-    }
+    const code = truncateCode(task?.code || "");
     const criteria = task?.acceptance_criteria?.join("\n") || "";
     const taskDescription = task?.description || "";
 

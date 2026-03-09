@@ -9,7 +9,7 @@ import {
   printMeta, reviewNeedsFix, qaNeedsFix,
   takeFileSnapshot, recommitCode,
 } from "../helpers.js";
-import { CODE_BUDGET } from "../../state/prompt-assembler.js";
+import { truncateCode } from "../../state/prompt-assembler.js";
 
 // ─── Phase 5: 코드 리뷰 (LLM 병렬 + 수정 직렬) ─────────────
 
@@ -109,11 +109,7 @@ export async function phaseCodeReview(ctx) {
       const diskContent = ctx.workspace.readFile(task.filePaths[0]);
       if (diskContent) currentCode = diskContent;
     }
-    if (currentCode && currentCode.length > CODE_BUDGET) {
-      console.warn(t("promptAssembler.codeTruncated", { original: currentCode.length, limit: CODE_BUDGET }));
-      currentCode = currentCode.substring(0, CODE_BUDGET)
-        + `\n\n${t("promptAssembler.codeTruncatedNotice", { original: currentCode.length, limit: CODE_BUDGET })}`;
-    }
+    currentCode = truncateCode(currentCode);
     const leadFixBundle = {
       systemContext: `${reviewBundle.systemContext}\n\n${t("promptAssembler.reviewFeedback")}\n${result.review}`,
       taskDescription: task.description || "",
@@ -310,6 +306,7 @@ export async function phaseQA(ctx) {
           const diskContent = ctx.workspace.readFile(task.filePaths[0]);
           if (diskContent) currentCode = diskContent;
         }
+        currentCode = truncateCode(currentCode);
         const qaBundle = ctx.assembler.forQA(ctx.state, { taskId: task.id });
         const leadFixBundle = {
           systemContext: `${qaBundle.systemContext}\n\n${t("promptAssembler.qaFeedback")}\n${qaResult}`,
