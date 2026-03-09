@@ -83,16 +83,16 @@ export class ResponseParser {
     // "개선 필요" / "改善必要" / "需要改进" 제거: 리뷰 형식 헤더와 충돌 가능
     const lower = raw.toLowerCase();
     if (lower.includes("changes requested") || lower.includes("changes_requested") ||
-        lower.includes("수정 필요") || lower.includes("수정이 필요") ||
-        lower.includes("변경 요청") ||
-        lower.includes("修正必要") || lower.includes("変更要求") ||
-        lower.includes("需要修改") || lower.includes("修改请求")) {
+      lower.includes("수정 필요") || lower.includes("수정이 필요") ||
+      lower.includes("변경 요청") ||
+      lower.includes("修正必要") || lower.includes("変更要求") ||
+      lower.includes("需要修改") || lower.includes("修改请求")) {
       return { verdict: "CHANGES_REQUESTED", structured: false };
     }
     if (lower.includes("approved") ||
-        lower.includes("승인") ||
-        lower.includes("承認") ||
-        lower.includes("批准") || lower.includes("已批准")) {
+      lower.includes("승인") ||
+      lower.includes("承認") ||
+      lower.includes("批准") || lower.includes("已批准")) {
       return { verdict: "APPROVED", structured: false };
     }
 
@@ -103,7 +103,7 @@ export class ResponseParser {
   /**
    * QA verdict 파싱
    * @param {string} raw - QA 결과 텍스트
-   * @returns {{ verdict: "PASS"|"FAIL", structured: boolean }}
+   * @returns {{ verdict: "PASS"|"FAIL"|"SKIP", structured: boolean }}
    */
   static parseQAVerdict(raw) {
     // 1차: JSON에서 verdict 필드
@@ -111,23 +111,30 @@ export class ResponseParser {
     if (json?.verdict) {
       const v = json.verdict.toUpperCase();
       if (v.includes("FAIL")) return { verdict: "FAIL", structured: true };
+      if (v.includes("SKIP")) return { verdict: "SKIP", structured: true };
       if (v.includes("PASS")) return { verdict: "PASS", structured: true };
     }
 
     // 2차: 키워드 매칭 폴백 (AI가 어떤 언어로 응답하든 매칭하기 위해 모든 언어 키워드 포함)
     const lower = raw.toLowerCase();
     if (lower.includes("종합: fail") || lower.includes("종합 판정: fail") ||
-        lower.includes("결과: fail") || lower.includes("테스트 실패") ||
-        lower.includes("overall: fail") || lower.includes("verdict: fail") || lower.includes("test failed") ||
-        lower.includes("総合: fail") || lower.includes("総合判定: fail") || lower.includes("テスト失敗") ||
-        lower.includes("综合: fail") || lower.includes("综合判定: fail") || lower.includes("测试失败")) {
+      lower.includes("결과: fail") || lower.includes("테스트 실패") ||
+      lower.includes("overall: fail") || lower.includes("verdict: fail") || lower.includes("test failed") ||
+      lower.includes("総合: fail") || lower.includes("総合判定: fail") || lower.includes("テスト失敗") ||
+      lower.includes("综合: fail") || lower.includes("综合判定: fail") || lower.includes("测试失败")) {
       return { verdict: "FAIL", structured: false };
     }
+    if (lower.includes("실행 불가") || lower.includes("실행할 수 없") ||
+      lower.includes("cannot execute") || lower.includes("not executable") || lower.includes("skip") ||
+      lower.includes("実行不可") || lower.includes("実行できません") ||
+      lower.includes("无法执行") || lower.includes("不可执行")) {
+      return { verdict: "SKIP", structured: false };
+    }
     if (lower.includes("종합: pass") || lower.includes("종합 판정: pass") ||
-        lower.includes("모든 테스트 통과") || lower.includes("전체 통과") ||
-        lower.includes("overall: pass") || lower.includes("verdict: pass") || lower.includes("all tests passed") ||
-        lower.includes("総合: pass") || lower.includes("全テスト合格") || lower.includes("全て通過") ||
-        lower.includes("综合: pass") || lower.includes("所有测试通过") || lower.includes("全部通过")) {
+      lower.includes("모든 테스트 통과") || lower.includes("전체 통과") ||
+      lower.includes("overall: pass") || lower.includes("verdict: pass") || lower.includes("all tests passed") ||
+      lower.includes("総合: pass") || lower.includes("全テスト合格") || lower.includes("全て通過") ||
+      lower.includes("综合: pass") || lower.includes("所有测试通过") || lower.includes("全部通过")) {
       return { verdict: "PASS", structured: false };
     }
 

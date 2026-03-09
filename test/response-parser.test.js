@@ -147,4 +147,17 @@ describe("ResponseParser.parseQAVerdict", () => {
     const result = ResponseParser.parseQAVerdict("코드 품질이 양호합니다.");
     assert.equal(result.verdict, "PASS");
   });
+
+  it("JSON verdict SKIP", () => {
+    const raw = '```json\n{ "verdict": "SKIP", "summary": "실행 불가" }\n```';
+    const result = ResponseParser.parseQAVerdict(raw);
+    assert.equal(result.verdict, "SKIP");
+    assert.equal(result.structured, true);
+  });
+
+  it("키워드 '실행 불가' → SKIP", () => {
+    const result = ResponseParser.parseQAVerdict("이 태스크는 설정 파일 변경이므로 실행 불가합니다.");
+    assert.equal(result.verdict, "SKIP");
+    assert.equal(result.structured, false);
+  });
 });
