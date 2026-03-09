@@ -18,7 +18,7 @@ export function isImageTask(task) {
     "로고", "logo", "와이어프레임", "wireframe",
     "시안", "컨셉", "concept", "에셋", "asset",
     "스프라이트", "sprite", "텍스처", "texture", "렌더링", "render"];
-  const text = `${task.title || ""} ${task.description || ""}`.toLowerCase();
+  const text = `${task.title || ""} ${task.description || ""} ${task.category || ""}`.toLowerCase();
   if (keywords.some(kw => text.includes(kw.toLowerCase()))) return true;
   // "UI"는 단어 경계 매칭 (build, fluid 등 오탐 방지)
   return /\bui\b/i.test(`${task.title || ""} ${task.description || ""}`);
