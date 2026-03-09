@@ -71,13 +71,16 @@ describe("getCredentialStatus", () => {
 describe("saveCredentials & loadCredentials", () => {
   let tmpDir;
   let savedHome;
+  let savedUserProfile;
   const credKeys = ["ANTHROPIC_API_KEY", "GOOGLE_API_KEY"];
   const savedEnv = {};
 
   before(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cred-test-"));
     savedHome = process.env.HOME;
+    savedUserProfile = process.env.USERPROFILE;
     process.env.HOME = tmpDir;
+    process.env.USERPROFILE = tmpDir; // Windows: os.homedir()은 USERPROFILE 우선
     for (const key of credKeys) {
       savedEnv[key] = process.env[key];
     }
@@ -86,6 +89,8 @@ describe("saveCredentials & loadCredentials", () => {
   after(() => {
     if (savedHome !== undefined) process.env.HOME = savedHome;
     else delete process.env.HOME;
+    if (savedUserProfile !== undefined) process.env.USERPROFILE = savedUserProfile;
+    else delete process.env.USERPROFILE;
     for (const key of credKeys) {
       if (savedEnv[key] !== undefined) process.env[key] = savedEnv[key];
       else delete process.env[key];
@@ -124,8 +129,10 @@ describe("saveCredentials & loadCredentials", () => {
   it("credentials.yaml 없으면 loadCredentials는 조용히 반환", () => {
     const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "cred-empty-"));
     process.env.HOME = emptyDir;
+    process.env.USERPROFILE = emptyDir;
     assert.doesNotThrow(() => loadCredentials());
     process.env.HOME = tmpDir; // 복원
+    process.env.USERPROFILE = tmpDir;
     fs.rmSync(emptyDir, { recursive: true, force: true });
   });
 });
