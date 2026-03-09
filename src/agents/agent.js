@@ -203,7 +203,7 @@ ${t("agent.qaExecutionInstruction")}`;
    * @param {string} contextBundle.designDecisions - 설계 결정사항
    * @param {string} contextBundle.requirement - 프로젝트 요구사항
    */
-  async breakdownTasks(contextBundle, { modelOverride } = {}) {
+  async breakdownTasks(contextBundle, { modelOverride, thinkingBudgetOverride } = {}) {
     const modelKey = modelOverride || this.modelKey;
     const systemPrompt = this._buildSystemPrompt(t("agent.taskBreakdownContext"));
 
@@ -218,7 +218,7 @@ ${t("agent.qaExecutionInstruction")}`;
       modelKey,
       systemPrompt,
       prompt,
-      { thinkingBudget: this.thinkingBudget }
+      { thinkingBudget: thinkingBudgetOverride ?? this.thinkingBudget }
     );
 
     return {

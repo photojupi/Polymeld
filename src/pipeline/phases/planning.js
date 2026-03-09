@@ -184,7 +184,7 @@ export async function phaseTaskBreakdown(ctx) {
     requirement,
     availableRoles,
     codebaseAnalysis: ctx.state.codebaseAnalysis || "",
-  });
+  }, { thinkingBudgetOverride: 100 });
 
   spinner.succeed(t("pipeline.taskBreakdownComplete"));
   printMeta(result.meta);
@@ -201,7 +201,7 @@ export async function phaseTaskBreakdown(ctx) {
         ctx.team.lead.modelKey,
         t("agent.taskBreakdownContext"),
         retryPrompt,
-        { thinkingBudget: ctx.team.lead.thinkingBudget }
+        { thinkingBudget: 100 }
       );
       parsed = ResponseParser.parseTasks(retryResponse);
       retryOk = parsed.success;
