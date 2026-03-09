@@ -235,6 +235,72 @@ polymeld run "需求" --no-interactive
 
 注册到 `CLAUDE.md` 即可实现自动调用。
 
+## 🧠 智能体通信架构
+
+智能体之间不会直接对话。所有通信都通过 **PipelineState**（共享状态）和 **PromptAssembler**（上下文中介）进行。
+
+### 架构
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     PipelineState                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │
+│  │ messages  │ │  tasks   │ │  design  │ │ codebase  │  │
+│  │   []      │ │   []     │ │ Decisions│ │ Analysis  │  │
+│  └──────────┘ └──────────┘ └──────────┘ └───────────┘  │
+└────────────────────┬────────────────────────────────────┘
+                     │ read
+              ┌──────┴──────┐
+              │   Prompt    │  在 token 预算内
+              │  Assembler  │  筛选相关上下文
+              └──────┬──────┘
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+     ┌─────────┐ ┌─────────┐ ┌─────────┐
+     │技术主管  │ │ 开发者  │ │   QA    │
+     │ (Claude)│ │(Gemini) │ │(Codex)  │
+     └────┬────┘ └────┬────┘ └────┬────┘
+          │ write      │ write     │ write
+          └────────────┴───────────┘
+                       │
+              写回 PipelineState
+```
+
+### 通信模式
+
+| 模式 | 流向 | 说明 |
+|------|------|------|
+| **会议发言** | 智能体 → `messages[]` → 下一个智能体 | 轮询讨论，每个智能体看到之前的发言后再回应 |
+| **设计 → 代码** | `designDecisions` → 开发者 | 会议成果成为编码上下文 |
+| **代码 → 评审** | `task.code` → 技术主管 | 编写的代码传递给评审者 |
+| **评审 → 修复** | `task.review` → 开发者 | 评审反馈触发修复周期 |
+| **QA → 修复** | `task.qa` → 技术主管 | QA 失败时主管直接修复 |
+
+### 消息流示例
+
+```
+Phase 1 — 会议
+  Archie 发言 → 消息保存 → Nova 读取 → 发言 → ...
+  最终产出: designDecisions, techStack
+
+Phase 4 — 开发
+  PromptAssembler.forCoding()
+    → designDecisions (30%)
+    → codebaseAnalysis (50%)      ← token 预算分配
+    → techStack (剩余)
+  开发者编写代码 → task.code + task.filePaths
+
+Phase 5–6 — 评审 & QA 修复周期
+  Lead.reviewCode(task.code)
+    → 判定: "approved" | "changes_requested"
+    → changes_requested → Lead.writeCode(评审 + 代码)
+  QA.runQA(task.filePaths)
+    → 判定: "pass" | "fail"
+    → fail → Lead.writeCode(QA结果 + 代码) → 重新QA（最多×3）
+```
+
+> 每个智能体只能看到 PromptAssembler 提供的上下文，无法直接访问完整状态。这确保了提示词的针对性，并保持在模型上下文限制之内。
+
 ## 许可证
 
 MIT

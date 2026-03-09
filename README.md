@@ -235,6 +235,72 @@ polymeld run "requirements" --no-interactive
 
 Or register in `CLAUDE.md` for automatic invocation.
 
+## 🧠 Agent Communication Architecture
+
+Agents never talk to each other directly. All communication flows through **PipelineState** (shared state) and **PromptAssembler** (context mediator).
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     PipelineState                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │
+│  │ messages  │ │  tasks   │ │  design  │ │ codebase  │  │
+│  │   []      │ │   []     │ │ Decisions│ │ Analysis  │  │
+│  └──────────┘ └──────────┘ └──────────┘ └───────────┘  │
+└────────────────────┬────────────────────────────────────┘
+                     │ read
+              ┌──────┴──────┐
+              │   Prompt    │  Selects relevant context
+              │  Assembler  │  within token budget
+              └──────┬──────┘
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+     ┌─────────┐ ┌─────────┐ ┌─────────┐
+     │Tech Lead│ │Developer│ │   QA    │
+     │ (Claude)│ │(Gemini) │ │(Codex)  │
+     └────┬────┘ └────┬────┘ └────┬────┘
+          │ write      │ write     │ write
+          └────────────┴───────────┘
+                       │
+              back to PipelineState
+```
+
+### Communication Patterns
+
+| Pattern | Flow | Example |
+|---------|------|---------|
+| **Meeting Speech** | Agent → `messages[]` → next Agent | Round-robin discussion, each agent sees prior speeches |
+| **Design → Code** | `designDecisions` → Developer | Meeting output becomes coding context |
+| **Code → Review** | `task.code` → Tech Lead | Written code passed to reviewer |
+| **Review → Fix** | `task.review` → Developer | Review feedback triggers fix cycle |
+| **QA → Fix** | `task.qa` → Tech Lead | QA failure triggers lead's direct fix |
+
+### Message Flow Example
+
+```
+Phase 1 — Meeting
+  Archie speaks → message saved → Nova reads it → speaks → ...
+  Final output: designDecisions, techStack
+
+Phase 4 — Development
+  PromptAssembler.forCoding()
+    → designDecisions (30%)
+    → codebaseAnalysis (50%)      ← token budget allocation
+    → techStack (remaining)
+  Developer writes code → task.code + task.filePaths
+
+Phase 5–6 — Review & QA Fix Cycle
+  Lead.reviewCode(task.code)
+    → verdict: "approved" | "changes_requested"
+    → if changes_requested → Lead.writeCode(review + code)
+  QA.runQA(task.filePaths)
+    → verdict: "pass" | "fail"
+    → if fail → Lead.writeCode(qa + code) → re-QA (×3 max)
+```
+
+> Each agent only sees what PromptAssembler provides — not the full state. This keeps prompts focused and within model context limits.
+
 ## License
 
 MIT

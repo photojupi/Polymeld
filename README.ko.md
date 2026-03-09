@@ -235,6 +235,72 @@ polymeld run "요구사항" --no-interactive
 
 `CLAUDE.md`에 등록하면 자동 호출도 가능합니다.
 
+## 🧠 에이전트 통신 아키텍처
+
+에이전트들은 서로 직접 대화하지 않습니다. 모든 통신은 **PipelineState**(공유 상태)와 **PromptAssembler**(맥락 중재자)를 통해 이루어집니다.
+
+### 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     PipelineState                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │
+│  │ messages  │ │  tasks   │ │  design  │ │ codebase  │  │
+│  │   []      │ │   []     │ │ Decisions│ │ Analysis  │  │
+│  └──────────┘ └──────────┘ └──────────┘ └───────────┘  │
+└────────────────────┬────────────────────────────────────┘
+                     │ read
+              ┌──────┴──────┐
+              │   Prompt    │  토큰 예산 내에서
+              │  Assembler  │  관련 맥락만 선별
+              └──────┬──────┘
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+     ┌─────────┐ ┌─────────┐ ┌─────────┐
+     │ 테크리드 │ │ 개발자  │ │   QA    │
+     │ (Claude)│ │(Gemini) │ │(Codex)  │
+     └────┬────┘ └────┬────┘ └────┬────┘
+          │ write      │ write     │ write
+          └────────────┴───────────┘
+                       │
+              PipelineState로 기록
+```
+
+### 통신 패턴
+
+| 패턴 | 흐름 | 설명 |
+|------|------|------|
+| **회의 발언** | 에이전트 → `messages[]` → 다음 에이전트 | 라운드 로빈 토론, 이전 발언을 보고 응답 |
+| **설계 → 코드** | `designDecisions` → 개발자 | 회의 결과가 코딩 맥락으로 전달 |
+| **코드 → 리뷰** | `task.code` → 테크리드 | 작성된 코드가 리뷰어에게 전달 |
+| **리뷰 → 수정** | `task.review` → 개발자 | 리뷰 피드백이 수정 사이클 촉발 |
+| **QA → 수정** | `task.qa` → 테크리드 | QA 실패 시 팀장이 직접 수정 |
+
+### 메시지 흐름 예시
+
+```
+Phase 1 — 회의
+  Archie 발언 → 메시지 저장 → Nova가 읽고 → 발언 → ...
+  최종 산출물: designDecisions, techStack
+
+Phase 4 — 개발
+  PromptAssembler.forCoding()
+    → designDecisions (30%)
+    → codebaseAnalysis (50%)      ← 토큰 예산 배분
+    → techStack (나머지)
+  개발자 코드 작성 → task.code + task.filePaths
+
+Phase 5–6 — 리뷰 & QA 수정 사이클
+  Lead.reviewCode(task.code)
+    → 판정: "approved" | "changes_requested"
+    → changes_requested → Lead.writeCode(리뷰 + 코드)
+  QA.runQA(task.filePaths)
+    → 판정: "pass" | "fail"
+    → fail → Lead.writeCode(QA결과 + 코드) → 재QA (최대 ×3)
+```
+
+> 각 에이전트는 PromptAssembler가 제공하는 맥락만 볼 수 있으며, 전체 상태에 직접 접근하지 않습니다. 이를 통해 프롬프트를 집중적이고 모델 컨텍스트 한도 내로 유지합니다.
+
 ## 라이선스
 
 MIT

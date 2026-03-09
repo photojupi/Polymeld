@@ -235,6 +235,72 @@ polymeld run "要件" --no-interactive
 
 `CLAUDE.md`に登録すれば自動呼び出しも可能です。
 
+## 🧠 エージェント通信アーキテクチャ
+
+エージェント同士は直接会話しません。すべての通信は**PipelineState**（共有状態）と**PromptAssembler**（コンテキスト仲介者）を介して行われます。
+
+### アーキテクチャ
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     PipelineState                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │
+│  │ messages  │ │  tasks   │ │  design  │ │ codebase  │  │
+│  │   []      │ │   []     │ │ Decisions│ │ Analysis  │  │
+│  └──────────┘ └──────────┘ └──────────┘ └───────────┘  │
+└────────────────────┬────────────────────────────────────┘
+                     │ read
+              ┌──────┴──────┐
+              │   Prompt    │  トークン予算内で
+              │  Assembler  │  関連コンテキストを選別
+              └──────┬──────┘
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+     ┌─────────┐ ┌─────────┐ ┌─────────┐
+     │テックリード│ │開発者   │ │   QA    │
+     │ (Claude)│ │(Gemini) │ │(Codex)  │
+     └────┬────┘ └────┬────┘ └────┬────┘
+          │ write      │ write     │ write
+          └────────────┴───────────┘
+                       │
+              PipelineStateに記録
+```
+
+### 通信パターン
+
+| パターン | フロー | 説明 |
+|----------|--------|------|
+| **会議発言** | エージェント → `messages[]` → 次のエージェント | ラウンドロビン議論、前の発言を見て応答 |
+| **設計 → コード** | `designDecisions` → 開発者 | 会議の成果がコーディングコンテキストに |
+| **コード → レビュー** | `task.code` → テックリード | 書かれたコードがレビュアーに渡る |
+| **レビュー → 修正** | `task.review` → 開発者 | レビューフィードバックが修正サイクルを発動 |
+| **QA → 修正** | `task.qa` → テックリード | QA失敗時にリードが直接修正 |
+
+### メッセージフロー例
+
+```
+Phase 1 — 会議
+  Archie 発言 → メッセージ保存 → Nova が読む → 発言 → ...
+  最終成果: designDecisions, techStack
+
+Phase 4 — 開発
+  PromptAssembler.forCoding()
+    → designDecisions (30%)
+    → codebaseAnalysis (50%)      ← トークン予算配分
+    → techStack (残り)
+  開発者がコード作成 → task.code + task.filePaths
+
+Phase 5–6 — レビュー & QA修正サイクル
+  Lead.reviewCode(task.code)
+    → 判定: "approved" | "changes_requested"
+    → changes_requested → Lead.writeCode(レビュー + コード)
+  QA.runQA(task.filePaths)
+    → 判定: "pass" | "fail"
+    → fail → Lead.writeCode(QA結果 + コード) → 再QA（最大×3）
+```
+
+> 各エージェントはPromptAssemblerが提供するコンテキストのみを参照し、全体の状態には直接アクセスしません。これによりプロンプトを集中的に保ち、モデルのコンテキスト制限内に収めます。
+
 ## ライセンス
 
 MIT
