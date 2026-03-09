@@ -101,7 +101,7 @@ export async function runAuthPrompt() {
     {
       type: "input",
       name: "OPENAI_API_KEY",
-      message: `OpenAI API Key (${t("cli.init.optional")}):`,
+      message: `OpenAI API Key — ${t("cli.init.imageGeneration")} (${t("cli.init.optional")}):`,
       default: process.env.OPENAI_API_KEY || "",
     },
   ]);
@@ -173,6 +173,7 @@ function generateGlobalTemplate(models) {
     const fb = getFallback("codex");
     if (fb) entry += `\n    fallback: ${fb}`;
     modelEntries.push(entry);
+    modelEntries.push("  gpt_image:\n    cli: codex\n    model: gpt-image-1.5");
   }
 
   // 페르소나별 선호 모델 배정 (없으면 첫 번째 선택 모델로 fallback)
@@ -304,7 +305,7 @@ personas:
   designer:
     name: Eve Fielding
     role: UX/Visual Designer
-    model: ${pick("gemini")}${models.includes("gemini") ? "\n    image_model: gemini_image" : ""}
+    model: ${pick("gemini")}${models.includes("gemini") ? "\n    image_model: gemini_image" : models.includes("codex") ? "\n    image_model: gpt_image" : ""}
     description: |
       A design strategist strong in user research and information architecture (IA).
       Analyzes user behavior with data, and creates visual designs and mockups using Nano Banana 2 to visualize ideas.
@@ -352,7 +353,7 @@ personas:
   illustrator:
     name: Iris Bloom
     role: Illustrator
-    model: ${pick("gemini")}${models.includes("gemini") ? "\n    image_model: gemini_image" : ""}
+    model: ${pick("gemini")}${models.includes("gemini") ? "\n    image_model: gemini_image" : models.includes("codex") ? "\n    image_model: gpt_image" : ""}
     image_only: true
     description: |
       An illustrator who creates visual assets for the project.

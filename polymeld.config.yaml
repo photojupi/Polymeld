@@ -42,6 +42,10 @@ models:
     cli: gemini
     model: gemini-3.1-flash-image-preview
     # Nano Banana 2 - Image generation/editing specialized model (requires GOOGLE_API_KEY)
+  gpt_image:
+    cli: codex
+    model: gpt-image-1.5
+    # GPT Image 1.5 - Transparent PNG / high-quality image generation (requires OPENAI_API_KEY)
 
 # CLI execution settings
 cli:

@@ -622,23 +622,59 @@ export class ModelAdapter {
   }
 
   /**
-   * 이미지 생성 특화 호출 (Gemini API 전용)
-   * GOOGLE_API_KEY 필수 — OAuth CLI로는 이미지 모델 접근 불가
+   * 이미지 생성 특화 호출 (Gemini / GPT 자동 라우팅)
+   * 투명 이미지 요청 + OPENAI_API_KEY 있으면 GPT, 아니면 Gemini
+   * 한쪽 키만 있으면 해당 엔진 사용
    */
   async generateImage(modelKey, systemPrompt, imageRequest, options = {}) {
     const modelConfig = this.config.models?.[modelKey];
     if (!modelConfig) {
       throw new Error(t("adapter.modelNotFound", { key: modelKey }));
     }
-    if (modelConfig.cli !== "gemini") {
-      throw new Error(t("adapter.imageOnlyGemini", { cli: modelConfig.cli }));
-    }
-    if (!this._hasApiKey("gemini")) {
-      throw new Error(t("adapter.imageRequiresApiKey"));
+
+    const engine = this._resolveImageEngine(imageRequest);
+    const outputDir = options.outputDir || "./output/images";
+
+    if (engine === "gpt") {
+      const gptModel = this.config.models?.gpt_image?.model || "gpt-image-1.5";
+      return this._generateImageGptApi(gptModel, systemPrompt, imageRequest, outputDir);
     }
 
-    const outputDir = options.outputDir || "./output/images";
     return this._generateImageGeminiApi(modelConfig.model, systemPrompt, imageRequest, outputDir);
+  }
+
+  /**
+   * 이미지 생성 엔진 결정
+   * 양쪽 키 모두 있으면 투명 키워드로 판별, 한쪽만 있으면 해당 엔진
+   */
+  _resolveImageEngine(imageRequest) {
+    const hasGemini = this._hasApiKey("gemini");
+    const hasOpenAi = this._hasApiKey("codex");
+
+    if (!hasGemini && !hasOpenAi) {
+      throw new Error(t("adapter.imageNoApiKey"));
+    }
+    if (hasGemini && !hasOpenAi) return "gemini";
+    if (!hasGemini && hasOpenAi) return "gpt";
+
+    // 양쪽 모두 있을 때: 투명 이미지 필요 여부로 결정
+    if (this._needsTransparency(imageRequest)) {
+      console.log(t("adapter.imageRoutedToGpt"));
+      return "gpt";
+    }
+    return "gemini";
+  }
+
+  /**
+   * 프롬프트에서 투명 배경 필요 여부를 키워드로 판별
+   */
+  _needsTransparency(imageRequest) {
+    const text = (imageRequest || "").toLowerCase();
+    const keywords = [
+      "transparent", "투명", "alpha channel", "no background",
+      "배경 없", "배경없", "cutout", "isolated",
+    ];
+    return keywords.some(kw => text.includes(kw));
   }
 
   /**
@@ -696,6 +732,58 @@ export class ModelAdapter {
     }
 
     return { images, textResponse: text };
+  }
+
+  /**
+   * GPT Image API로 이미지 생성
+   * 투명 배경 감지 시 background: "transparent", output_format: "png"
+   */
+  async _generateImageGptApi(model, systemPrompt, userMessage, outputDir) {
+    const client = await this._getApiClient("codex");
+
+    const prompt = systemPrompt
+      ? `${systemPrompt}\n\n${userMessage}`
+      : userMessage;
+
+    const params = {
+      model,
+      prompt,
+      n: 1,
+      size: "1024x1024",
+      quality: "auto",
+    };
+
+    if (this._needsTransparency(prompt)) {
+      params.background = "transparent";
+      params.output_format = "png";
+    }
+
+    const response = await client.images.generate(params);
+
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    const images = [];
+    const data = response.data || [];
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      if (item.b64_json) {
+        const filename = `generated_${Date.now()}_${i + 1}.png`;
+        const filePath = path.join(outputDir, filename);
+        const buffer = Buffer.from(item.b64_json, "base64");
+        fs.writeFileSync(filePath, buffer);
+        images.push({ path: filePath, mimeType: "image/png" });
+      } else if (item.url) {
+        // gpt-image-1.5는 항상 b64_json 반환하지만, 다른 모델 fallback 대비
+        images.push({ path: item.url, mimeType: "image/png" });
+      }
+    }
+
+    const usage = response.usage
+      ? { inputTokens: response.usage.input_tokens || 0, outputTokens: response.usage.output_tokens || 0 }
+      : null;
+    return { images, textResponse: "", meta: { backend: "api", model, usage } };
   }
 
   // ─── 모델 상태 조회 ───────────────────────────────────
