@@ -611,13 +611,16 @@
     "designRef": "## 設計参考",
     "designGuideline": "## デザインガイドライン",
     "relatedTask": "## 関連タスク",
+    "codeTruncated": "レビュー用コード切り詰め: {{original}} → {{limit}}文字",
+    "codeTruncatedNotice": "[注意: コードが{{original}}文字から{{limit}}文字に切り詰められました。部分的なレビューです。]",
     "truncated": "...（予算内で切り詰め）"
   },
   "workspace": {
     "notGitRepo": "Gitリポジトリではありません: {{path}}",
     "gitInitFailed": "git init失敗 — .gitが作成されませんでした: {{path}}",
     "noWorkspace": "（ワークスペース未設定）",
-    "truncated": "...（切り詰め）"
+    "truncated": "...（切り詰め）",
+    "gitPushFailed": "⚠️ git push失敗: {{message}}"
   },
   "pipelineState": {
     "noMessageLog": "（通信履歴なし）",
@@ -632,7 +635,9 @@
     "pipelineFieldFailed": "⚠️ Pipelineフィールド設定失敗:",
     "updateLabelsFailed": "⚠️ ラベル更新失敗 (イシュー #{{number}}): {{message}}",
     "closeIssueFailed": "⚠️ イシュークローズ失敗 (#{{number}}): {{message}}",
-    "labelCreateFailed": "⚠️ ラベル '{{name}}' 作成失敗: {{message}}"
+    "labelCreateFailed": "⚠️ ラベル '{{name}}' 作成失敗: {{message}}",
+    "addToProjectFailed": "プロジェクトへのイシュー追加失敗: {{message}}",
+    "updateStatusFailed": "プロジェクトStatus更新失敗: {{message}}"
   },
   "onboarding": {
     "welcome": "🚀 Polymeldへようこそ！",

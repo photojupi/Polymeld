@@ -266,7 +266,7 @@ export class GitHubClient {
       }
       return item;
     } catch (e) {
-      console.warn("프로젝트에 이슈 추가 실패:", e.message);
+      console.warn(t("github.addToProjectFailed", { message: e.message }));
       return null;
     }
   }
@@ -381,7 +381,7 @@ export class GitHubClient {
         optionId,
       });
     } catch (e) {
-      console.warn("프로젝트 Status 업데이트 실패:", e.message);
+      console.warn(t("github.updateStatusFailed", { message: e.message }));
     }
 
     // 빌트인 Status 필드 동기화 (칸반보드 기본 뷰 반영)

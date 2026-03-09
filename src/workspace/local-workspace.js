@@ -379,7 +379,7 @@ export class LocalWorkspace {
       this._git(["push", "-u", "origin", currentBranch]);
     } catch (e) {
       // remote가 설정되지 않은 경우 등 - 경고만
-      console.warn(`  ⚠️ git push 실패: ${e.message || e.stderr}`);
+      console.warn(`  ${t("workspace.gitPushFailed", { message: e.message || e.stderr })}`);
     }
   }
 

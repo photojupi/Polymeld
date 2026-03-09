@@ -611,13 +611,16 @@
     "designRef": "## Design Reference",
     "designGuideline": "## Design Guidelines",
     "relatedTask": "## Related Task",
+    "codeTruncated": "Code truncated for review: {{original}} → {{limit}} chars",
+    "codeTruncatedNotice": "[NOTE: Code was truncated from {{original}} to {{limit}} chars. Review covers partial code only.]",
     "truncated": "...(truncated to fit budget)"
   },
   "workspace": {
     "notGitRepo": "Not a git repository: {{path}}",
     "gitInitFailed": "git init failed — .git was not created: {{path}}",
     "noWorkspace": "(No workspace configured)",
-    "truncated": "...(truncated)"
+    "truncated": "...(truncated)",
+    "gitPushFailed": "⚠️ git push failed: {{message}}"
   },
   "pipelineState": {
     "noMessageLog": "(No communication history)",
@@ -632,7 +635,9 @@
     "pipelineFieldFailed": "⚠️ Pipeline field setup failed:",
     "updateLabelsFailed": "⚠️ Label update failed (issue #{{number}}): {{message}}",
     "closeIssueFailed": "⚠️ Close issue failed (#{{number}}): {{message}}",
-    "labelCreateFailed": "⚠️ Label '{{name}}' creation failed: {{message}}"
+    "labelCreateFailed": "⚠️ Label '{{name}}' creation failed: {{message}}",
+    "addToProjectFailed": "Failed to add issue to project: {{message}}",
+    "updateStatusFailed": "Project status update failed: {{message}}"
   },
   "onboarding": {
     "welcome": "🚀 Welcome to Polymeld!",

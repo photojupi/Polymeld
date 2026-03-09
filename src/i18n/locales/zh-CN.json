@@ -611,13 +611,16 @@
     "designRef": "## 设计参考",
     "designGuideline": "## 设计指南",
     "relatedTask": "## 相关任务",
+    "codeTruncated": "审查用代码截断: {{original}} → {{limit}}字符",
+    "codeTruncatedNotice": "[注意: 代码已从{{original}}字符截断为{{limit}}字符。仅审查部分代码。]",
     "truncated": "...（按预算截断）"
   },
   "workspace": {
     "notGitRepo": "不是Git仓库: {{path}}",
     "gitInitFailed": "git init失败 — .git未创建: {{path}}",
     "noWorkspace": "（未配置工作区）",
-    "truncated": "...（已截断）"
+    "truncated": "...（已截断）",
+    "gitPushFailed": "⚠️ git push失败: {{message}}"
   },
   "pipelineState": {
     "noMessageLog": "（无通信记录）",
@@ -632,7 +635,9 @@
     "pipelineFieldFailed": "⚠️ Pipeline字段设置失败:",
     "updateLabelsFailed": "⚠️ 标签更新失败 (Issue #{{number}}): {{message}}",
     "closeIssueFailed": "⚠️ 关闭Issue失败 (#{{number}}): {{message}}",
-    "labelCreateFailed": "⚠️ 标签 '{{name}}' 创建失败: {{message}}"
+    "labelCreateFailed": "⚠️ 标签 '{{name}}' 创建失败: {{message}}",
+    "addToProjectFailed": "向项目添加Issue失败: {{message}}",
+    "updateStatusFailed": "项目Status更新失败: {{message}}"
   },
   "onboarding": {
     "welcome": "🚀 欢迎使用 Polymeld！",

@@ -611,13 +611,16 @@
     "designRef": "## 설계 참고",
     "designGuideline": "## 디자인 가이드라인",
     "relatedTask": "## 관련 태스크",
+    "codeTruncated": "리뷰용 코드 절삭: {{original}} → {{limit}}자",
+    "codeTruncatedNotice": "[참고: 코드가 {{original}}자에서 {{limit}}자로 절삭되었습니다. 일부 코드만 리뷰됩니다.]",
     "truncated": "...(예산 내 절삭)"
   },
   "workspace": {
     "notGitRepo": "Git 레포가 아닙니다: {{path}}",
     "gitInitFailed": "git init 실패 — .git이 생성되지 않았습니다: {{path}}",
     "noWorkspace": "(워크스페이스 미설정)",
-    "truncated": "...(절삭)"
+    "truncated": "...(절삭)",
+    "gitPushFailed": "⚠️ git push 실패: {{message}}"
   },
   "pipelineState": {
     "noMessageLog": "(소통 이력 없음)",
@@ -632,7 +635,9 @@
     "pipelineFieldFailed": "⚠️ Pipeline 필드 설정 실패:",
     "updateLabelsFailed": "⚠️ 라벨 업데이트 실패 (이슈 #{{number}}): {{message}}",
     "closeIssueFailed": "⚠️ 이슈 닫기 실패 (#{{number}}): {{message}}",
-    "labelCreateFailed": "⚠️ 라벨 '{{name}}' 생성 실패: {{message}}"
+    "labelCreateFailed": "⚠️ 라벨 '{{name}}' 생성 실패: {{message}}",
+    "addToProjectFailed": "프로젝트에 이슈 추가 실패: {{message}}",
+    "updateStatusFailed": "프로젝트 Status 업데이트 실패: {{message}}"
   },
   "onboarding": {
     "welcome": "🚀 Polymeld에 오신 것을 환영합니다!",
