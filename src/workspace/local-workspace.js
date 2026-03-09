@@ -227,8 +227,8 @@ export class LocalWorkspace {
     if (!relativePath || relativePath === "." || relativePath === "/") {
       throw new Error(`Invalid file path: "${relativePath}"`);
     }
-    if (!path.extname(relativePath)) {
-      throw new Error(`Path has no file extension: "${relativePath}"`);
+    if (!path.basename(relativePath)) {
+      throw new Error(`Path has no filename: "${relativePath}"`);
     }
     const fullPath = path.join(this.repoPath, relativePath);
     if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
