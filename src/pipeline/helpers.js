@@ -217,7 +217,11 @@ export function recommitCode(ctx, task, rawCode, commitMessage, preSnapshot) {
           task.filePaths = allPaths;
           task.filePath = allPaths[0];
           ctx.workspace.gitAdd(allPaths);
-        } else {
+        } else if (!preSnapshot) {
+          // No snapshot = first commit path. Safe to write parsed code.
+          // When preSnapshot exists but detected no changes: the agent's
+          // response was text-only — skip to avoid writing wrong content
+          // to an unrelated file (e.g. INI content into a .gd script).
           const paths = task.filePaths || (task.filePath ? [task.filePath] : []);
           if (paths.length === 0) return;
           const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);

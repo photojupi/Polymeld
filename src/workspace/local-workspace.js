@@ -339,7 +339,11 @@ export class LocalWorkspace {
   }
 
   gitAdd(files = ["."]) {
-    this._git(["add", ...files]);
+    const existing = files.filter(f =>
+      f === "." || fs.existsSync(path.join(this.repoPath, f))
+    );
+    if (existing.length === 0) return;
+    this._git(["add", ...existing]);
   }
 
   gitCommit(message) {
