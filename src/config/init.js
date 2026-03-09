@@ -217,6 +217,8 @@ pipeline:
   parallel_development: true
   # Max concurrent LLM calls per phase (dev/review/QA)
   max_parallel: 3
+  # Cooldown between parallel batches in ms (0 = no delay)
+  batch_delay_ms: 2000
   # Max code review retry count
   max_review_retries: 3
   # Max QA retry count
@@ -381,6 +383,7 @@ pipeline:
   interaction_mode: full-auto
   parallel_development: true
   max_parallel: 3
+  batch_delay_ms: 2000
   max_review_retries: 3
   max_qa_retries: 3
 `;

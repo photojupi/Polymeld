@@ -49,6 +49,9 @@ export async function phaseDevelopment(ctx) {
     }
   }
 
+  const maxParallel = ctx.config.pipeline?.max_parallel || 3;
+  const batchDelayMs = ctx.config.pipeline?.batch_delay_ms ?? 0;
+
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const readyTasks = getReadyTasks(ctx.state.tasks, completedIds, failedIds);
@@ -71,12 +74,11 @@ export async function phaseDevelopment(ctx) {
         `\n${t("pipeline.parallelRunning", { count: readyTasks.length, titles: readyTasks.map(task => task.title).join(", ") })}`
       ));
     }
-
-    const maxParallel = ctx.config.pipeline?.max_parallel || 3;
     const results = await pMapSettled(
       readyTasks,
       task => developTask(ctx, task, { treeCache, baseBranch, integrationBranch }),
-      maxParallel
+      maxParallel,
+      batchDelayMs
     );
 
     for (let i = 0; i < readyTasks.length; i++) {
