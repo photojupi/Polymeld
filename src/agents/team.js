@@ -179,7 +179,7 @@ export class Team {
       // 중간 라운드: 팀장 결론 확인 (결론 시 조기 종료)
       let shouldBreak = false;
       if (!isLastRound) {
-        shouldBreak = await this._checkMidRoundConclusion({ topic, roundLog, onSpeak, onStream });
+        shouldBreak = await this._checkMidRoundConclusion({ topic, roundLog, onSpeak, onStream, rounds });
       }
 
       // 팀장 정리 (마지막 라운드)
@@ -294,7 +294,7 @@ export class Team {
    * 중간 라운드에서 팀장의 결론 확인
    * @returns {Promise<boolean>} shouldBreak - true면 회의 조기 종료
    */
-  async _checkMidRoundConclusion({ topic, roundLog, onSpeak, onStream }) {
+  async _checkMidRoundConclusion({ topic, roundLog, onSpeak, onStream, rounds }) {
     onSpeak({ phase: "speaking", agent: this.lead.name, round: roundLog.round });
 
     const checkBundle = this.assembler.forMeeting(this.state, {
@@ -304,7 +304,7 @@ export class Team {
     });
 
     const checkResponse = await this.lead.speak(
-      t("agent.concludeInstruction"),
+      t("agent.concludeInstruction", { round: roundLog.round, totalRounds: rounds }),
       checkBundle,
       { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
     );
