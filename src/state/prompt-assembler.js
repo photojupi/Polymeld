@@ -15,6 +15,10 @@ const PHASE_BUDGETS = {
   image:   6000,
 };
 
+// code 필드 최대 문자 수 (~30K 토큰)
+// Claude CLI 시스템 프롬프트 오버헤드를 고려한 안전 한도
+export const CODE_BUDGET = 120000;
+
 export class PromptAssembler {
   /**
    * @param {Object} [options]
@@ -215,7 +219,13 @@ export class PromptAssembler {
     let used = 0;
 
     const task = state.findTask(taskId);
-    const code = task?.code || "";
+    let code = task?.code || "";
+    if (code.length > CODE_BUDGET) {
+      const original = code.length;
+      console.warn(t("promptAssembler.codeTruncated", { original, limit: CODE_BUDGET }));
+      code = code.substring(0, CODE_BUDGET)
+        + `\n\n${t("promptAssembler.codeTruncatedNotice", { original, limit: CODE_BUDGET })}`;
+    }
     const criteria = task?.acceptance_criteria?.join("\n") || "";
 
     // 태스크 설명
@@ -273,7 +283,12 @@ export class PromptAssembler {
     let used = 0;
 
     const task = state.findTask(taskId);
-    const code = task?.code || "";
+    let code = task?.code || "";
+    if (code.length > CODE_BUDGET) {
+      console.warn(t("promptAssembler.codeTruncated", { original: code.length, limit: CODE_BUDGET }));
+      code = code.substring(0, CODE_BUDGET)
+        + `\n\n${t("promptAssembler.codeTruncatedNotice", { original: code.length, limit: CODE_BUDGET })}`;
+    }
     const criteria = task?.acceptance_criteria?.join("\n") || "";
     const taskDescription = task?.description || "";
 

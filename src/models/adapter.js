@@ -380,6 +380,9 @@ export class ModelAdapter {
     let text, usage = null;
     try {
       const json = JSON.parse(raw);
+      if (json.is_error) {
+        throw new CliError("claude", 0, json.result || "unknown error", raw);
+      }
       text = json.result || this._normalizeOutput(raw, "claude");
       if (json.usage) {
         usage = {
@@ -389,7 +392,8 @@ export class ModelAdapter {
           outputTokens: json.usage.output_tokens || 0,
         };
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof CliError) throw e;
       text = this._normalizeOutput(raw, "claude");
     }
     return new ChatResult(text, { backend: "cli", model, usage });
