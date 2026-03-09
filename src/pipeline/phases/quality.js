@@ -45,6 +45,7 @@ export async function phaseCodeReview(ctx) {
   const useSpinner = tasksToReview.length === 1;
 
   const maxParallel = ctx.config.pipeline?.max_parallel || 3;
+  const batchDelayMs = ctx.config.pipeline?.batch_delay_ms ?? 0;
   const reviewResults = await pMapSettled(tasksToReview, task => {
     console.log(chalk.cyan(`\n${t("pipeline.reviewLabel", { title: task.title })}`));
     const spinner = useSpinner
@@ -63,7 +64,7 @@ export async function phaseCodeReview(ctx) {
         else console.log(chalk.red(`  [${task.title}] ${t("pipeline.reviewComplete")}`));
         throw err;
       });
-  }, maxParallel);
+  }, maxParallel, batchDelayMs);
 
   // ── Step 2: 결과 처리 직렬 (verdict + 수정 + recommit) ──
   for (let i = 0; i < tasksToReview.length; i++) {
@@ -152,6 +153,7 @@ export async function phaseQA(ctx) {
   const lead = ctx.team.lead;
   const maxRetries = ctx.config.pipeline?.max_qa_retries || 3;
   const maxParallel = ctx.config.pipeline?.max_parallel || 3;
+  const batchDelayMs = ctx.config.pipeline?.batch_delay_ms ?? 0;
   const fallbackKey = ctx.config.models?.[qaAgent.modelKey]?.fallback;
 
   // ── Pre-filter ──
@@ -253,7 +255,7 @@ export async function phaseQA(ctx) {
           else console.log(chalk.red(`  [${task.title}] ${t("pipeline.qaComplete")}`));
           throw err;
         });
-    }, maxParallel);
+    }, maxParallel, batchDelayMs);
 
     // Step 2: 결과 처리 직렬 (verdict + 수정 + recommit)
     const stillFailed = [];
