@@ -15,9 +15,9 @@ const PHASE_BUDGETS = {
   image:   6000,
 };
 
-// code 필드 최대 문자 수 (~30K 토큰)
-// Claude CLI 시스템 프롬프트 오버헤드를 고려한 안전 한도
-export const CODE_BUDGET = 120000;
+// code 필드 최대 문자 수 (~100K 토큰)
+// Claude Opus 200K 컨텍스트 윈도우 내 안전 한도
+export const CODE_BUDGET = 400000;
 
 /** CODE_BUDGET 초과 시 코드를 절삭하고 AI/사용자에게 알림 */
 export function truncateCode(code) {

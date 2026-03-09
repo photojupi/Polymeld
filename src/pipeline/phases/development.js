@@ -335,6 +335,7 @@ async function developTask(ctx, task, { treeCache, baseBranch, integrationBranch
  * 멀티 에셋 태스크는 개별 프롬프트로 분해 후 각각 생성
  */
 async function handleImageOnlyTask(ctx, task, agent, { branchName, baseBranch }) {
+  task.imageOnly = true;
   const imageSpinner = ora(`  🎨 ${t("pipeline.imageSpinner", { agent: agent.name })}`).start();
 
   // 태스크를 개별 이미지 프롬프트로 분해

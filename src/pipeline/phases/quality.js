@@ -23,6 +23,12 @@ export async function phaseCodeReview(ctx) {
       console.log(chalk.gray(`  ${t("pipeline.reviewSkipped", { title: task.title })}`));
       continue;
     }
+    if (task.imageOnly) {
+      task.reviewApproved = true;
+      task.reviewVerdict = "skipped";
+      console.log(chalk.gray(`  ${t("pipeline.reviewSkipped", { title: task.title })}`));
+      continue;
+    }
     tasksToReview.push(task);
   }
 
@@ -154,6 +160,18 @@ export async function phaseQA(ctx) {
 
     if (task.qaPassed != null) {
       console.log(chalk.gray(`  ${t("pipeline.qaSkipped", { title: task.title })}`));
+      continue;
+    }
+
+    if (task.imageOnly) {
+      task.qaPassed = true;
+      task.qaAttempts = 0;
+      task.qaVerdict = "skipped";
+      console.log(chalk.gray(`  ${t("pipeline.qaSkipped", { title: task.title })}`));
+      await ctx.github.updateLabels(task.issueNumber, ["done"], ["in-review"]);
+      await ctx.github.closeIssue(task.issueNumber);
+      await ctx.github.setProjectItemStatus(task.projectItemId, "Done");
+      ctx.state.completedTasks.push(task);
       continue;
     }
 
