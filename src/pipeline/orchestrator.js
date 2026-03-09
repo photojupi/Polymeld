@@ -16,7 +16,7 @@ import { phasePR } from "./phases/delivery.js";
 // 하위 호환: helpers에서 re-export (테스트에서 prototype 접근 시 필요)
 export {
   isImageTask, formatMetaLine, printMeta,
-  parseFilePathsFromResponse, getReadyTasks,
+  parseFilePathsFromResponse, parseMultiFileResponse, getReadyTasks,
   reviewNeedsFix, qaNeedsFix,
 } from "./helpers.js";
 

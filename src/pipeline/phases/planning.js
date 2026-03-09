@@ -1,6 +1,7 @@
 // src/pipeline/phases/planning.js
 // Phase 0-3: 코드베이스 분석, 미팅, 태스크 분해, 작업 분배
 
+import path from "path";
 import chalk from "chalk";
 import ora from "ora";
 import { ResponseParser } from "../../models/response-parser.js";
@@ -182,6 +183,7 @@ export async function phaseTaskBreakdown(ctx) {
     designDecisions,
     requirement,
     availableRoles,
+    codebaseAnalysis: ctx.state.codebaseAnalysis || "",
   });
 
   spinner.succeed(t("pipeline.taskBreakdownComplete"));
@@ -215,6 +217,9 @@ export async function phaseTaskBreakdown(ctx) {
   for (let i = 0; i < tasks.length; i++) {
     tasks[i].id = `task-${i + 1}`;
     tasks[i].suitable_role = ctx.team.normalizeRole(tasks[i].suitable_role);
+    tasks[i].target_files = Array.isArray(tasks[i].target_files)
+      ? tasks[i].target_files.filter(f => typeof f === 'string' && !path.isAbsolute(f) && !f.includes('..'))
+      : [];
     if (tasks[i].dependencies?.length) {
       tasks[i].dependencies = tasks[i].dependencies.filter(dep => {
         const n = typeof dep === 'number' ? dep : parseInt(dep, 10);
@@ -249,6 +254,9 @@ ${t("pipeline.taskBody.workInfo")}
 
 ${t("pipeline.taskBody.dependencies")}
 ${depText}
+
+${t("pipeline.taskBody.targetFiles")}
+${task.target_files?.length > 0 ? task.target_files.map(f => `- \`${f}\``).join("\n") : t("pipeline.taskBody.noTargetFiles")}
 
 ${t("pipeline.taskBody.acceptanceCriteria")}
 ${task.acceptance_criteria?.map((c) => `- [ ] ${c}`).join("\n") || "- [ ] TBD"}

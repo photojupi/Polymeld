@@ -7,8 +7,8 @@ import chalk from "chalk";
 import ora from "ora";
 import { t } from "../../i18n/index.js";
 import {
-  isImageTask, printMeta, parseFilePathsFromResponse, getReadyTasks,
-  enqueueGit,
+  isImageTask, printMeta, parseFilePathsFromResponse, parseMultiFileResponse,
+  getReadyTasks, enqueueGit,
 } from "../helpers.js";
 
 // ─── Phase 4: 개발 ───────────────────────────────────
@@ -113,19 +113,52 @@ async function developTask(ctx, task, { treeCache, baseBranch, integrationBranch
   // 코드베이스 맥락 조립
   let codebaseContext = null;
   if (ctx.workspace?.isLocal) {
-    const relevantFiles = ctx.workspace.findRelevantFiles(
-      [task.title, task.category].filter(Boolean),
-    );
-    if (treeCache || relevantFiles.length > 0) {
-      const parts = [];
-      if (treeCache) parts.push(`### ${t("pipeline.directoryStructure")}\n\`\`\`\n${treeCache}\n\`\`\``);
-      if (relevantFiles.length > 0) {
-        parts.push(`### ${t("pipeline.relevantFiles")}\n` + relevantFiles.map(
+    const parts = [];
+    if (treeCache) parts.push(`### ${t("pipeline.directoryStructure")}\n\`\`\`\n${treeCache}\n\`\`\``);
+
+    // P2: target_files 전체 읽기 (최우선)
+    const targetFileContents = [];
+    if (task.target_files?.length) {
+      for (const tf of task.target_files) {
+        const content = ctx.workspace.readFile(tf);
+        if (content) targetFileContents.push({ path: tf, content });
+      }
+      if (targetFileContents.length > 0) {
+        parts.push(`### ${t("pipeline.taskBody.targetFiles")} (full)\n` + targetFileContents.map(
           (f) => `=== ${f.path} ===\n${f.content}`
         ).join("\n\n"));
       }
-      codebaseContext = parts.join("\n\n");
     }
+
+    // 관련 파일 탐색 (target_files와 중복 제거)
+    const targetPaths = new Set(task.target_files || []);
+    let relevantFiles = ctx.workspace.findRelevantFiles(
+      [task.title, task.category].filter(Boolean),
+    ).filter(f => !targetPaths.has(f.path));
+
+    // P5: findRelevantFiles 결과가 부족하면 grepFiles 폴백
+    if (relevantFiles.length < 2) {
+      const keywords = [task.title, task.description || ""].join(" ")
+        .split(/[\s,./]+/).filter(w => w.length >= 2).slice(0, 5);
+      for (const kw of keywords) {
+        if (relevantFiles.length >= 5) break;
+        const hits = ctx.workspace.grepFiles(kw, { maxResults: 3, contextLines: 2 });
+        for (const hit of hits) {
+          if (!relevantFiles.find(f => f.path === hit.path) && !targetPaths.has(hit.path)) {
+            const content = ctx.workspace.readFile(hit.path);
+            if (content) relevantFiles.push({ path: hit.path, content: content.substring(0, 500) });
+          }
+        }
+      }
+    }
+
+    if (relevantFiles.length > 0) {
+      parts.push(`### ${t("pipeline.relevantFiles")}\n` + relevantFiles.map(
+        (f) => `=== ${f.path} ===\n${f.content}`
+      ).join("\n\n"));
+    }
+
+    if (parts.length > 0) codebaseContext = parts.join("\n\n");
   }
 
   // 에이전트 호출 전 파일 상태 스냅샷
@@ -165,10 +198,14 @@ async function developTask(ctx, task, { treeCache, baseBranch, integrationBranch
     detectedFiles = [...new Set([...newFiles, ...changedFiles])];
   }
 
-  // 파일 경로 결정
+  // 파일 경로 결정 (P1: target_files 0순위)
   if (detectedFiles.length > 0) {
     task.filePaths = detectedFiles;
     task.filePath = detectedFiles[0];
+  } else if (task.target_files?.length > 0) {
+    const parsed = parseFilePathsFromResponse(result.code);
+    task.filePaths = [...new Set([...task.target_files, ...parsed])];
+    task.filePath = task.filePaths[0];
   } else {
     const parsed = parseFilePathsFromResponse(result.code);
     if (parsed.length > 0) {
@@ -194,10 +231,22 @@ async function developTask(ctx, task, { treeCache, baseBranch, integrationBranch
         if (detectedFiles.length > 0) {
           ctx.workspace.gitAdd(detectedFiles);
         } else {
-          const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
-          const cleanCode = codeMatch ? codeMatch[1] : result.code;
-          ctx.workspace.writeFile(task.filePath, cleanCode);
-          ctx.workspace.gitAdd([task.filePath]);
+          // P6: 다중 파일 응답 파싱 시도
+          const multiFiles = parseMultiFileResponse(result.code);
+          if (multiFiles.length >= 2) {
+            for (const { filePath: fp, code: fc } of multiFiles) {
+              ctx.workspace.writeFile(fp, fc);
+            }
+            const allPaths = multiFiles.map(f => f.filePath);
+            task.filePaths = allPaths;
+            task.filePath = allPaths[0];
+            ctx.workspace.gitAdd(allPaths);
+          } else {
+            const codeMatch = result.code.match(/```[\w]*\n([\s\S]*?)```/);
+            const cleanCode = codeMatch ? codeMatch[1] : result.code;
+            ctx.workspace.writeFile(task.filePath, cleanCode);
+            ctx.workspace.gitAdd([task.filePath]);
+          }
         }
 
         ctx.workspace.invalidateCache();

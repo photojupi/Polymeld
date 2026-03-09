@@ -209,6 +209,7 @@ ${t("agent.qaExecutionInstruction")}`;
       requirement: contextBundle.requirement,
       designDecisions: contextBundle.designDecisions,
       roles: contextBundle.availableRoles || "ace_programmer, creative_programmer, devops, qa",
+      codebaseAnalysis: contextBundle.codebaseAnalysis || "",
     });
 
     const response = await this.adapter.chat(

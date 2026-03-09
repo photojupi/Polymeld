@@ -66,11 +66,17 @@ export async function phaseCodeReview(ctx) {
       `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
     ).start();
 
+    // P2: 디스크의 실제 파일 내용 사용 (task.code보다 정확)
+    let currentCode = task.code;
+    if (ctx.workspace?.isLocal && task.filePaths?.length) {
+      const diskContent = ctx.workspace.readFile(task.filePaths[0]);
+      if (diskContent) currentCode = diskContent;
+    }
     const leadFixBundle = {
       systemContext: `${reviewBundle.systemContext}\n\n${t("promptAssembler.reviewFeedback")}\n${result.review}`,
       taskDescription: task.description || "",
       acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
-      currentCode: task.code,
+      currentCode,
     };
     const preSnapshot = takeFileSnapshot(ctx.workspace);
     const fixResult = await lead.writeCode(leadFixBundle);
@@ -213,11 +219,17 @@ export async function phaseQA(ctx) {
           `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
         ).start();
 
+        // P2: 디스크의 실제 파일 내용 사용
+        let currentCode = task.code;
+        if (ctx.workspace?.isLocal && task.filePaths?.length) {
+          const diskContent = ctx.workspace.readFile(task.filePaths[0]);
+          if (diskContent) currentCode = diskContent;
+        }
         const leadFixBundle = {
           systemContext: `${qaBundle.systemContext}\n\n${t("promptAssembler.qaFeedback")}\n${qaResult}`,
           taskDescription: task.description || "",
           acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
-          currentCode: task.code,
+          currentCode,
         };
         const preSnapshot = takeFileSnapshot(ctx.workspace);
         const fixResult = await lead.writeCode(leadFixBundle);

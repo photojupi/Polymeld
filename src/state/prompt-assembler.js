@@ -8,7 +8,7 @@ import { t } from "../i18n/index.js";
 // 각 Phase의 정보 필요량에 따라 차등 배분
 const PHASE_BUDGETS = {
   meeting: 8000,   // 이전 발언이 많으므로 여유 확보
-  coding:  12000,  // 코드 퀄리티 직결 → 가장 큰 예산
+  coding:  18000,  // 코드 퀄리티 직결 → 가장 큰 예산 (target_files 전체 읽기 지원)
   review:  6000,   // 코드 자체는 별도 전달, 맥락만
   qa:      4000,   // 리뷰 결과 + 이전 QA만 참조
   fix:     10000,  // 피드백 + 수정 지시 + 설계 모두 필요

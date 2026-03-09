@@ -11,6 +11,7 @@ export class NoOpWorkspace {
   getTree() { return t("workspace.noWorkspace"); }
   readFile() { return ""; }
   findRelevantFiles() { return []; }
+  grepFiles() { return []; }
   writeFile() {}
   getUntrackedFiles() { return []; }
   getModifiedFiles() { return []; }

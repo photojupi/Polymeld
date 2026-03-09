@@ -1,6 +1,7 @@
 // src/pipeline/helpers.js
 // 파이프라인 오케스트레이터 유틸리티 함수 모음
 
+import path from "path";
 import chalk from "chalk";
 import { ResponseParser } from "../models/response-parser.js";
 import { t } from "../i18n/index.js";
@@ -83,6 +84,7 @@ export function parseFilePathsFromResponse(responseText) {
 
   const addIfValid = (p) => {
     if (!p || p.startsWith("/") || p.endsWith("/")) return;
+    if (p.includes("..")) return; // 경로 트래버설 방지
     // 인식 가능한 파일 확장자가 있는 경로만 허용
     if (!FILE_EXT.test(p)) return;
     paths.add(p);
@@ -97,6 +99,28 @@ export function parseFilePathsFromResponse(responseText) {
     addIfValid(m[1]);
   }
   return [...paths];
+}
+
+/**
+ * LLM 응답에서 다중 파일 코드블록 추출
+ * ```lang filepath\ncode\n``` 패턴으로 파일별 분리
+ * @returns {Array<{filePath: string, code: string}>} 2개 이상일 때만 다중 파일
+ */
+export function parseMultiFileResponse(responseText) {
+  if (!responseText) return [];
+  const FILE_EXT = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|sh|bash|zsh|md|json|yaml|yml|toml|css|scss|html|vue|svelte|c|cpp|h|hpp|cs|swift|kt|gd|gdshader|tscn|tres)$/i;
+  const blocks = [];
+
+  // 패턴: ```lang filepath\ncode\n```
+  for (const m of responseText.matchAll(/```\w*\s+([\w./-]+)\n([\s\S]*?)```/g)) {
+    const fp = m[1];
+    const code = m[2];
+    if (fp && FILE_EXT.test(fp) && !path.isAbsolute(fp) && !fp.includes("..")) {
+      blocks.push({ filePath: fp, code });
+    }
+  }
+
+  return blocks.length >= 2 ? blocks : [];
 }
 
 // ─── ctx 의존 헬퍼 ──────────────────────────────────
@@ -183,12 +207,24 @@ export function recommitCode(ctx, task, rawCode, commitMessage, preSnapshot) {
         task.filePath = filesToAdd[0];
         ctx.workspace.gitAdd(filesToAdd);
       } else {
-        const paths = task.filePaths || (task.filePath ? [task.filePath] : []);
-        if (paths.length === 0) return;
-        const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);
-        const cleanCode = codeMatch ? codeMatch[1] : rawCode;
-        ctx.workspace.writeFile(paths[0], cleanCode);
-        ctx.workspace.gitAdd(paths);
+        // P6: 다중 파일 응답 파싱 시도
+        const multiFiles = parseMultiFileResponse(rawCode);
+        if (multiFiles.length >= 2) {
+          for (const { filePath: fp, code: fc } of multiFiles) {
+            ctx.workspace.writeFile(fp, fc);
+          }
+          const allPaths = multiFiles.map(f => f.filePath);
+          task.filePaths = allPaths;
+          task.filePath = allPaths[0];
+          ctx.workspace.gitAdd(allPaths);
+        } else {
+          const paths = task.filePaths || (task.filePath ? [task.filePath] : []);
+          if (paths.length === 0) return;
+          const codeMatch = rawCode.match(/```[\w]*\n([\s\S]*?)```/);
+          const cleanCode = codeMatch ? codeMatch[1] : rawCode;
+          ctx.workspace.writeFile(paths[0], cleanCode);
+          ctx.workspace.gitAdd(paths);
+        }
       }
 
       ctx.workspace.invalidateCache();
