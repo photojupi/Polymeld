@@ -1,5 +1,6 @@
 // src/pipeline/phases/quality.js
 // Phase 5-6: 코드 리뷰 + QA
+// LLM 호출은 병렬, 파일 I/O + Git 작업은 직렬로 실행하여 안전성과 성능을 양립
 
 import chalk from "chalk";
 import ora from "ora";
@@ -9,30 +10,67 @@ import {
   takeFileSnapshot, recommitCode,
 } from "../helpers.js";
 
-// ─── Phase 5: 코드 리뷰 (실패 시 팀장 직접 수정) ─────────────
+// ─── Phase 5: 코드 리뷰 (LLM 병렬 + 수정 직렬) ─────────────
 
 export async function phaseCodeReview(ctx) {
   const lead = ctx.team.lead;
 
+  const tasksToReview = [];
   for (const task of ctx.state.tasks) {
     if (!task.code) continue;
-
-    // 재개 시 이미 리뷰 완료된 태스크 스킵
     if (task.reviewApproved != null) {
       console.log(chalk.gray(`  ${t("pipeline.reviewSkipped", { title: task.title })}`));
       continue;
     }
+    tasksToReview.push(task);
+  }
 
-    // 1) 리뷰 실행
-    console.log(chalk.cyan(`\n${t("pipeline.reviewLabel", { title: task.title })}`));
+  if (tasksToReview.length === 0) return;
 
-    const spinner = ora(
-      `  ${t("pipeline.reviewSpinner", { agent: lead.name, model: lead.modelKey })}`
-    ).start();
-    const reviewBundle = ctx.assembler.forReview(ctx.state, { taskId: task.id });
-    const result = await lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown");
-    spinner.succeed(`  ${t("pipeline.reviewComplete")}`);
-    printMeta(result.meta);
+  // ── Step 1: 리뷰 LLM 호출 병렬 실행 ──
+  if (tasksToReview.length > 1) {
+    console.log(chalk.cyan(
+      `\n${t("pipeline.parallelRunning", { count: tasksToReview.length, titles: tasksToReview.map(task => task.title).join(", ") })}`
+    ));
+  }
+
+  const useSpinner = tasksToReview.length === 1;
+
+  const reviewResults = await Promise.allSettled(
+    tasksToReview.map(task => {
+      console.log(chalk.cyan(`\n${t("pipeline.reviewLabel", { title: task.title })}`));
+      const spinner = useSpinner
+        ? ora(`  ${t("pipeline.reviewSpinner", { agent: lead.name, model: lead.modelKey })}`).start()
+        : null;
+      const reviewBundle = ctx.assembler.forReview(ctx.state, { taskId: task.id });
+      return lead.reviewCode(reviewBundle, task.assignedAgent?.name || "unknown")
+        .then(result => {
+          if (spinner) spinner.succeed(`  ${t("pipeline.reviewComplete")}`);
+          else console.log(chalk.green(`  [${task.title}] ${t("pipeline.reviewComplete")}`));
+          printMeta(result.meta);
+          return { ...result, reviewBundle };
+        })
+        .catch(err => {
+          if (spinner) spinner.fail(`  ${t("pipeline.reviewComplete")}`);
+          else console.log(chalk.red(`  [${task.title}] ${t("pipeline.reviewComplete")}`));
+          throw err;
+        });
+    })
+  );
+
+  // ── Step 2: 결과 처리 직렬 (verdict + 수정 + recommit) ──
+  for (let i = 0; i < tasksToReview.length; i++) {
+    const task = tasksToReview[i];
+    const settled = reviewResults[i];
+
+    if (settled.status === "rejected") {
+      console.log(chalk.red(`  ${t("pipeline.taskFailed", { title: task.title, reason: settled.reason?.message || String(settled.reason) })}`));
+      task.reviewApproved = true;
+      continue;
+    }
+
+    const result = settled.value;
+    const { reviewBundle } = result;
 
     task.review = result.review;
 
@@ -41,7 +79,6 @@ export async function phaseCodeReview(ctx) {
       t("pipeline.reviewComment", { agent: lead.name, attempt: 1, max: 1, model: lead.modelKey, review: result.review })
     );
 
-    // 2) 결과 판정
     const needsFix = reviewNeedsFix(result.review);
     task.reviewVerdict = needsFix ? "changes_requested" : "approved";
 
@@ -59,14 +96,13 @@ export async function phaseCodeReview(ctx) {
       continue;
     }
 
-    // 3) 수정 필요 → 팀장이 직접 수정
+    // 수정 필요 → 팀장이 직접 수정 (파일 I/O 직렬)
     console.log(chalk.yellow(`  ${t("pipeline.reviewChangesRequested", { attempt: 1, max: 1 })}`));
 
     const fixSpinner = ora(
       `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
     ).start();
 
-    // P2: 디스크의 실제 파일 내용 사용 (task.code보다 정확)
     let currentCode = task.code;
     if (ctx.workspace?.isLocal && task.filePaths?.length) {
       const diskContent = ctx.workspace.readFile(task.filePaths[0]);
@@ -101,7 +137,7 @@ export async function phaseCodeReview(ctx) {
   }
 }
 
-// ─── Phase 6: QA (재시도 + fallback 모델 전환) ────────────────
+// ─── Phase 6: QA (attempt별 배치 병렬 + 수정 직렬) ────────────────
 
 export async function phaseQA(ctx) {
   const qaAgent = ctx.team.qa;
@@ -109,16 +145,16 @@ export async function phaseQA(ctx) {
   const maxRetries = ctx.config.pipeline?.max_qa_retries || 3;
   const fallbackKey = ctx.config.models?.[qaAgent.modelKey]?.fallback;
 
+  // ── Pre-filter ──
+  const pendingTasks = [];
   for (const task of ctx.state.tasks) {
     if (!task.code) continue;
 
-    // 재개 시 이미 QA 완료된 태스크 스킵
     if (task.qaPassed != null) {
       console.log(chalk.gray(`  ${t("pipeline.qaSkipped", { title: task.title })}`));
       continue;
     }
 
-    // 실행 기반 QA 불가 시 스킵
     const hasFilePaths = task.filePaths && task.filePaths.length > 0;
     if (!hasFilePaths) {
       console.log(chalk.yellow(`  ${t("pipeline.qaSkippedNoFiles", { title: task.title })}`));
@@ -131,11 +167,7 @@ export async function phaseQA(ctx) {
       continue;
     }
 
-    await ctx.github.updateLabels(
-      task.issueNumber,
-      ["qa"],
-      ["in-review"]
-    );
+    await ctx.github.updateLabels(task.issueNumber, ["qa"], ["in-review"]);
     await ctx.github.setProjectItemStatus(task.projectItemId, "QA");
 
     ctx.state.addMessage({
@@ -146,40 +178,81 @@ export async function phaseQA(ctx) {
       taskId: task.id,
     });
 
-    let passed = false;
+    pendingTasks.push(task);
+  }
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const useModelOverride = (attempt >= 2 && fallbackKey) ? fallbackKey : null;
-      const currentModel = useModelOverride || qaAgent.modelKey;
+  if (pendingTasks.length === 0) return;
 
+  // ── Attempt-batched parallel QA ──
+  let activeTasks = pendingTasks.slice();
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    if (activeTasks.length === 0) break;
+
+    const useModelOverride = (attempt >= 2 && fallbackKey) ? fallbackKey : null;
+    const currentModel = useModelOverride || qaAgent.modelKey;
+
+    // Fallback 모델 전환 안내 (1회)
+    if (attempt === 2 && useModelOverride) {
+      console.log(chalk.yellow(`  ${t("pipeline.qaFallbackSwitch", { from: qaAgent.modelKey, to: useModelOverride })}`));
+    }
+
+    // 태스크별 attempt 라벨
+    for (const task of activeTasks) {
       if (attempt === 1) {
         console.log(chalk.cyan(`\n${t("pipeline.qaLabel", { title: task.title })}`));
       } else {
         console.log(chalk.cyan(`\n${t("pipeline.qaRetryLabel", { attempt, max: maxRetries, title: task.title })}`));
-        if (attempt === 2 && useModelOverride) {
-          console.log(chalk.yellow(`  ${t("pipeline.qaFallbackSwitch", { from: qaAgent.modelKey, to: useModelOverride })}`));
-        }
       }
+    }
+
+    if (activeTasks.length > 1) {
+      console.log(chalk.cyan(
+        `\n${t("pipeline.parallelRunning", { count: activeTasks.length, titles: activeTasks.map(task => task.title).join(", ") })}`
+      ));
+    }
+
+    // Step 1: QA LLM 호출 병렬 실행
+    const useSpinner = activeTasks.length === 1;
+
+    const qaResults = await Promise.allSettled(
+      activeTasks.map(task => {
+        const qaBundle = ctx.assembler.forQA(ctx.state, { taskId: task.id });
+        const spinner = useSpinner
+          ? ora(`  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: currentModel })}`).start()
+          : null;
+        return qaAgent.runQA(qaBundle, { modelOverride: useModelOverride })
+          .then(result => {
+            if (spinner) spinner.succeed(`  ${t("pipeline.qaComplete")}`);
+            else console.log(chalk.green(`  [${task.title}] ${t("pipeline.qaComplete")}`));
+            printMeta(result.meta);
+            return result;
+          })
+          .catch(err => {
+            if (spinner) spinner.fail(`  ${t("pipeline.qaComplete")}`);
+            else console.log(chalk.red(`  [${task.title}] ${t("pipeline.qaComplete")}`));
+            throw err;
+          });
+      })
+    );
+
+    // Step 2: 결과 처리 직렬 (verdict + 수정 + recommit)
+    const stillFailed = [];
+
+    for (let i = 0; i < activeTasks.length; i++) {
+      const task = activeTasks[i];
+      const settled = qaResults[i];
 
       let qaResult = null;
       let qaTimedOut = false;
       let qaErrorMsg = null;
-      const qaBundle = ctx.assembler.forQA(ctx.state, { taskId: task.id });
 
-      const spinner = ora(
-        `  ${t("pipeline.qaSpinner", { agent: qaAgent.name, model: currentModel })}`
-      ).start();
-
-      try {
-        const result = await qaAgent.runQA(qaBundle, { modelOverride: useModelOverride });
-        spinner.succeed(`  ${t("pipeline.qaComplete")}`);
-        printMeta(result.meta);
-        qaResult = result.qaResult;
-      } catch (error) {
-        spinner.fail(`  ${t("pipeline.qaComplete")}`);
-        console.log(chalk.red(`    ${error.message}`));
+      if (settled.status === "rejected") {
         qaTimedOut = true;
-        qaErrorMsg = error.message;
+        qaErrorMsg = settled.reason?.message || String(settled.reason);
+        console.log(chalk.red(`    ${qaErrorMsg}`));
+      } else {
+        qaResult = settled.value.qaResult;
       }
 
       if (qaResult) {
@@ -205,26 +278,33 @@ export async function phaseQA(ctx) {
         task.qaPassed = true;
         task.qaAttempts = attempt;
         console.log(chalk.green(`  ${t("pipeline.qaPassed")}`));
-        passed = true;
-        break;
+
+        await ctx.github.updateLabels(task.issueNumber, ["done"], ["qa"]);
+        await ctx.github.closeIssue(task.issueNumber);
+        await ctx.github.setProjectItemStatus(task.projectItemId, "Done");
+        ctx.state.completedTasks.push(task);
+        continue;
       }
 
       console.log(chalk.yellow(`  ${t("pipeline.qaFailed", { attempt, max: maxRetries })}`));
 
-      if (attempt >= maxRetries) break;
+      if (attempt >= maxRetries) {
+        stillFailed.push(task);
+        continue;
+      }
 
-      // 코드 수정
+      // 수정 직렬 (파일 I/O + Git)
       if (!qaTimedOut) {
         const fixSpinner = ora(
           `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
         ).start();
 
-        // P2: 디스크의 실제 파일 내용 사용
         let currentCode = task.code;
         if (ctx.workspace?.isLocal && task.filePaths?.length) {
           const diskContent = ctx.workspace.readFile(task.filePaths[0]);
           if (diskContent) currentCode = diskContent;
         }
+        const qaBundle = ctx.assembler.forQA(ctx.state, { taskId: task.id });
         const leadFixBundle = {
           systemContext: `${qaBundle.systemContext}\n\n${t("promptAssembler.qaFeedback")}\n${qaResult}`,
           taskDescription: task.description || "",
@@ -249,36 +329,40 @@ export async function phaseQA(ctx) {
           );
         }
       }
+
+      stillFailed.push(task);
     }
 
-    // 모든 시도 소진 시 사용자 확인
-    if (!passed) {
-      console.log(chalk.yellow(`  ${t("pipeline.qaMaxRetries", { max: maxRetries })}`));
+    activeTasks = stillFailed;
+  }
 
-      const { action } = await ctx.interaction.confirmWarning(
-        t("pipeline.qaMaxRetriesConfirm", { title: task.title, max: maxRetries }),
-        "warning"
+  // ── Step 3: 모든 시도 소진 태스크 — 사용자 확인 (순차) ──
+  for (const task of activeTasks) {
+    console.log(chalk.yellow(`  ${t("pipeline.qaMaxRetries", { max: maxRetries })}`));
+
+    const { action } = await ctx.interaction.confirmWarning(
+      t("pipeline.qaMaxRetriesConfirm", { title: task.title, max: maxRetries }),
+      "warning"
+    );
+
+    if (action === "abort") {
+      throw new Error("Pipeline aborted by user");
+    } else if (action === "skip") {
+      await ctx.github.addComment(
+        task.issueNumber,
+        t("pipeline.qaSkipComment", { max: maxRetries })
       );
-
-      if (action === "abort") {
-        throw new Error("Pipeline aborted by user");
-      } else if (action === "skip") {
-        await ctx.github.addComment(
-          task.issueNumber,
-          t("pipeline.qaSkipComment", { max: maxRetries })
-        );
-        await ctx.github.updateLabels(task.issueNumber, [], ["qa"]);
-        task.qaPassed = false;
-        task.qaAttempts = maxRetries;
-        continue;
-      } else {
-        await ctx.github.addComment(
-          task.issueNumber,
-          t("pipeline.qaProceedComment", { max: maxRetries })
-        );
-        task.qaPassed = true;
-        task.qaAttempts = maxRetries;
-      }
+      await ctx.github.updateLabels(task.issueNumber, [], ["qa"]);
+      task.qaPassed = false;
+      task.qaAttempts = maxRetries;
+      continue;
+    } else {
+      await ctx.github.addComment(
+        task.issueNumber,
+        t("pipeline.qaProceedComment", { max: maxRetries })
+      );
+      task.qaPassed = true;
+      task.qaAttempts = maxRetries;
     }
 
     // Done 처리
