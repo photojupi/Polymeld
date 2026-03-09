@@ -6,7 +6,6 @@ import path from "path";
 import { execFileSync } from "child_process";
 import crossSpawn from "cross-spawn";
 import chalk from "chalk";
-import inquirer from "inquirer";
 import { t } from "../i18n/index.js";
 import { isCliInstalled } from "./loader.js";
 import { isRepoAutoDetected } from "./credentials.js";
@@ -78,6 +77,7 @@ export function probeCliAuth(cli) {
  * - 인증, 리포 접근, 쓰기 권한, Issues/PR 접근까지 점검
  */
 async function checkGitHub() {
+  const { default: inquirer } = await import("inquirer");
   const token = process.env.GITHUB_TOKEN;
   let repo = process.env.GITHUB_REPO;
 
