@@ -269,6 +269,48 @@ function hasApiKey(cli) {
 }
 
 /**
+ * API key 유효성 프로브 — 경량 엔드포인트(models 목록)로 인증만 확인
+ * SDK 없이 네이티브 fetch 사용, 10초 타임아웃
+ */
+async function probeApiKey(cli) {
+  const configs = {
+    claude: {
+      url: "https://api.anthropic.com/v1/models",
+      headers: {
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+    },
+    gemini: {
+      url: "https://generativelanguage.googleapis.com/v1beta/models",
+      headers: { "x-goog-api-key": process.env.GOOGLE_API_KEY },
+    },
+    codex: {
+      url: "https://api.openai.com/v1/models",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+    },
+  };
+
+  const cfg = configs[cli];
+  if (!cfg) return { ok: false, reason: "unknown" };
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(cfg.url, { headers: cfg.headers, signal: controller.signal });
+    clearTimeout(timer);
+    return { ok: res.ok, reason: res.ok ? null : `HTTP ${res.status}` };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: err.name === "AbortError" ? t("config.timeout") : t("config.networkFailed"),
+    };
+  }
+}
+
+/**
  * CLI 설치 + 인증 + API key + GitHub 연동 상태를 실시간으로 확인·출력
  *
  * CLI 미설치 + API key 있음 → 경고 후 진행 (API 모드)
@@ -298,8 +340,14 @@ export async function validateConnections(config) {
 
     if (!installed) {
       if (apiKeyAvailable) {
-        // CLI 미설치 + API key 있음 → 경고 (API 모드로 사용 가능)
-        console.log(chalk.yellow(`  ${t("config.notInstalledApiMode", { label })}`));
+        // CLI 미설치 + API key 있음 → API key 유효성 검증
+        rewriteLine(chalk.gray(`  ${t("config.apiKeyChecking", { label })}`));
+        const apiAuth = await probeApiKey(cli);
+        if (apiAuth.ok) {
+          rewriteLine(chalk.green(`  ${t("config.apiKeyConnected", { label })}\n`));
+        } else {
+          rewriteLine(chalk.yellow(`  ${t("config.notInstalledApiKeyFailed", { label })}\n`));
+        }
       } else {
         // CLI 미설치 + API key 없음 → 에러
         console.log(chalk.red(`  ${t("config.notInstalled", { label, command: installCommands[cli] || "" })}`));
@@ -308,12 +356,16 @@ export async function validateConnections(config) {
       continue;
     }
 
-    // "확인 중" 표시 후, 인증 프로브 시작
+    // "확인 중" 표시 후, 인증 프로브 시작 (API key 있으면 병렬 검증)
     rewriteLine(chalk.gray(`  ${t("config.authChecking", { label })}`));
+    const apiKeyPromise = apiKeyAvailable ? probeApiKey(cli) : null;
     authPromises.push(
-      probeCliAuth(cli).then((auth) => {
-        // 프로브 완료 시점에 즉시 결과 출력 (줄바꿈)
-        const apiSuffix = apiKeyAvailable ? ` · ${t("config.apiKeySet")}` : "";
+      probeCliAuth(cli).then(async (auth) => {
+        // API key 검증 결과 대기 (이미 병렬 실행 중이므로 추가 대기 거의 없음)
+        const apiResult = apiKeyPromise ? await apiKeyPromise : null;
+        const apiSuffix = apiResult
+          ? ` · ${t(apiResult.ok ? "config.apiKeyValid" : "config.apiKeyInvalid")}`
+          : "";
         if (auth.ok) {
           rewriteLine(chalk.green(`  ${t("config.connected", { label })}${apiSuffix}\n`));
         } else {
