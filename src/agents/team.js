@@ -99,7 +99,7 @@ export class Team {
    */
   async conductMeeting(topic, context = "", options = {}) {
     const rounds = Math.max(1, options.rounds || 2);
-    const onSpeak = options.onSpeak || (() => {});
+    const onSpeak = options.onSpeak || (() => { });
     const onStream = options.onStream;
 
     const meetingLog = {
@@ -306,7 +306,7 @@ export class Team {
     const checkResponse = await this.lead.speak(
       t("agent.concludeInstruction", { round: roundLog.round, totalRounds: rounds }),
       checkBundle,
-      { onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
+      { skipSpeakInstruction: true, onData: onStream ? (chunk) => onStream({ agent: this.lead.name, chunk }) : undefined }
     );
 
     const content = checkResponse.content.trim();

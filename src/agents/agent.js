@@ -46,7 +46,7 @@ export class Agent {
    * @param {Object} contextBundle - ContextBuilder.buildForMeeting()의 반환값
    * @param {string} contextBundle.context - 조립된 맥락
    */
-  async speak(topic, contextBundle, { modelOverride, onData } = {}) {
+  async speak(topic, contextBundle, { modelOverride, onData, skipSpeakInstruction } = {}) {
     const modelKey = modelOverride || this.modelKey;
     // contextBundle이 문자열인 경우 하위 호환 처리 (직접 context 문자열 전달)
     const context = typeof contextBundle === "string"
@@ -56,7 +56,9 @@ export class Agent {
     const systemPrompt = this._buildSystemPrompt(context);
 
     let userMessage = `${t("agent.currentTopic")}\n${topic}`;
-    userMessage += `\n\n${t("agent.speakInstruction", { name: this.name, role: this.role })}`;
+    if (!skipSpeakInstruction) {
+      userMessage += `\n\n${t("agent.speakInstruction", { name: this.name, role: this.role })}`;
+    }
 
     if (contextBundle?.allowPass) {
       userMessage += `\n\n${t("agent.passConditions")}`;
