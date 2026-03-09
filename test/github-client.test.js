@@ -48,6 +48,7 @@ function createMockClient() {
   client.owner = "test-owner";
   client.repo = "test-repo";
   client._knownLabels = new Set();
+  client._defaultBranch = null;
   client.octokit = {
     rest: {
       issues: {
@@ -59,6 +60,9 @@ function createMockClient() {
       },
       pulls: {
         create: async (params) => ({ data: { number: 10, ...params } }),
+      },
+      repos: {
+        get: async () => ({ data: { default_branch: "main" } }),
       },
       git: {
         getRef: async () => ({ data: { object: { sha: "abc123" } } }),

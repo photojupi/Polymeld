@@ -6,12 +6,12 @@ import { t } from "../i18n/index.js";
 
 /** Pipeline 6단계 → 빌트인 Status 3단계 매핑 */
 const PIPELINE_TO_STATUS = {
-  "Backlog":     "Todo",
-  "Todo":        "Todo",
+  "Backlog": "Todo",
+  "Todo": "Todo",
   "In Progress": "In Progress",
-  "In Review":   "In Progress",
-  "QA":          "In Progress",
-  "Done":        "Done",
+  "In Review": "In Progress",
+  "QA": "In Progress",
+  "Done": "Done",
 };
 
 /**
@@ -19,18 +19,18 @@ const PIPELINE_TO_STATUS = {
  * PipelineOrchestrator가 github 메서드를 호출해도 에러 나지 않음
  */
 export class NoOpGitHub {
-  async ensureLabels() {}
-  async findOrCreateProject() {}
+  async ensureLabels() { }
+  async findOrCreateProject() { }
   async createIssue() { return { number: 0, node_id: "" }; }
-  async addComment() {}
-  async updateLabels() {}
-  async closeIssue() {}
+  async addComment() { }
+  async updateLabels() { }
+  async closeIssue() { }
   async addIssueToProject() { return null; }
-  async configureProjectStatuses() {}
-  async setProjectItemStatus() {}
-  async ensureInitialCommit() {}
-  async createBranch() {}
-  async commitFile() {}
+  async configureProjectStatuses() { }
+  async setProjectItemStatus() { }
+  async ensureInitialCommit() { }
+  async createBranch() { }
+  async commitFile() { }
   async createPR() { return { number: 0 }; }
   issueUrl() { return ""; }
   prUrl() { return ""; }
@@ -44,6 +44,7 @@ export class GitHubClient {
     this.repo = repoName;
     this.projectNumber = null;
     this._knownLabels = new Set();
+    this._defaultBranch = null;
   }
 
   issueUrl(number) {
@@ -462,14 +463,27 @@ export class GitHubClient {
 
   // ─── Repository Initialization ─────────────────────────
 
+  async _getDefaultBranch() {
+    if (!this._defaultBranch) {
+      const { data } = await this.octokit.rest.repos.get({
+        owner: this.owner,
+        repo: this.repo,
+      });
+      this._defaultBranch = data.default_branch;
+    }
+    return this._defaultBranch;
+  }
+
   async ensureInitialCommit() {
+    const defaultBranch = await this._getDefaultBranch();
+
     try {
       await this.octokit.rest.git.getRef({
         owner: this.owner,
         repo: this.repo,
-        ref: "heads/main",
+        ref: `heads/${defaultBranch}`,
       });
-      return;
+      return; // 이미 커밋 존재
     } catch (e) {
       if (e.status !== 409 && e.status !== 404) throw e;
     }
@@ -487,7 +501,8 @@ export class GitHubClient {
 
   // ─── Branches ─────────────────────────────────────────
 
-  async createBranch(branchName, baseBranch = "main") {
+  async createBranch(branchName, baseBranch) {
+    if (!baseBranch) baseBranch = await this._getDefaultBranch();
     try {
       const { data: ref } = await this.octokit.rest.git.getRef({
         owner: this.owner,
