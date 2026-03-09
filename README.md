@@ -12,7 +12,7 @@ Assign Claude Code, Gemini CLI, and Codex CLI to individual personas — automat
 - **🔄 8-Phase Pipeline** — Codebase analysis → Meeting → Task breakdown → Assignment → Development → Code review → QA → PR
 - **🛠️ CLI + API Dual Backend** — Each model works via CLI or API SDK — use whichever is available, or both
 - **⚡ Parallel Development** — Dependency-aware concurrent LLM execution for independent tasks
-- **🖼️ Image Generation** — Personas with `image_model` auto-generate images via Nano Banana 2
+- **🖼️ Image Generation** — Dual engine: Nano Banana 2 (Gemini) + GPT Image 1.5 (OpenAI) — transparent PNG assets auto-route to GPT
 - **📂 Local Workspace** — Reads existing code, writes files directly, manages git branches/commits
 - **🔁 Auto-Fix Loop** — Failed reviews/QA trigger automatic fix → re-review cycles
 - **💬 AI Meetings** — Real-time multi-model discussions with `[PASS]`/`[CONCLUDE]` self-regulation
@@ -121,8 +121,8 @@ The PR created in Phase 7 references all completed Task Issues with `Closes #N`,
 | Nova Cruz | Creative Programmer | Gemini 3.1 Pro | — |
 | Max Planner | Ace Planner | Gemini 3.1 Pro | — |
 | Sam Shield | Security Expert | Claude Opus 4.6 | — |
-| Eve Fielding | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 |
-| Iris Bloom | Illustrator | Gemini 3.1 Pro | Nano Banana 2 |
+| Eve Fielding | UX/Visual Designer | Gemini 3.1 Pro | Nano Banana 2 / GPT Image 1.5 |
+| Iris Bloom | Illustrator | Gemini 3.1 Pro | Nano Banana 2 / GPT Image 1.5 |
 | Tess Hunter | QA Engineer | GPT-5.4 | — |
 
 > All personas join meetings. They self-regulate via `[PASS]` (skip) and `[CONCLUDE]` (end early).
@@ -156,8 +156,8 @@ GITHUB_TOKEN=ghp_xxxxx        # Required
 
 # API keys (optional — enables API backend per provider)
 ANTHROPIC_API_KEY=sk-...       # Claude API
-GOOGLE_API_KEY=AIzaSy...       # Gemini API (required for image generation)
-OPENAI_API_KEY=sk-...          # OpenAI API
+GOOGLE_API_KEY=AIzaSy...       # Gemini API (Nano Banana 2 image generation)
+OPENAI_API_KEY=sk-...          # OpenAI API (GPT Image 1.5 transparent PNG generation)
 ```
 
 ### config.yaml
@@ -182,6 +182,9 @@ models:
   gemini_image:
     cli: gemini
     model: gemini-3.1-flash-image-preview  # Nano Banana 2 (requires GOOGLE_API_KEY)
+  gpt_image:
+    cli: codex
+    model: gpt-image-1.5                   # Transparent PNG (requires OPENAI_API_KEY)
 
 # Persona assignment
 personas:
