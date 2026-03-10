@@ -111,34 +111,39 @@ export async function phaseCodeReview(ctx) {
       `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
     ).start();
 
-    let currentCode = task.code;
-    if (ctx.workspace?.isLocal && task.filePaths?.length) {
-      const diskContent = ctx.workspace.readFile(task.filePaths[0]);
-      if (diskContent) currentCode = diskContent;
-    }
-    currentCode = truncateCode(currentCode);
-    const leadFixBundle = {
-      systemContext: `${reviewBundle.systemContext}\n\n${t("promptAssembler.reviewFeedback")}\n${result.review}`,
-      taskDescription: task.description || "",
-      acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
-      currentCode,
-    };
-    const preSnapshot = takeFileSnapshot(ctx.workspace);
-    const fixResult = await lead.writeCode(leadFixBundle);
-    fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
-    printMeta(fixResult?.meta);
+    try {
+      let currentCode = task.code;
+      if (ctx.workspace?.isLocal && task.filePaths?.length) {
+        const diskContent = ctx.workspace.readFile(task.filePaths[0]);
+        if (diskContent) currentCode = diskContent;
+      }
+      currentCode = truncateCode(currentCode);
+      const leadFixBundle = {
+        systemContext: `${reviewBundle.systemContext}\n\n${t("promptAssembler.reviewFeedback")}\n${result.review}`,
+        taskDescription: task.description || "",
+        acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
+        currentCode,
+      };
+      const preSnapshot = takeFileSnapshot(ctx.workspace);
+      const fixResult = await lead.writeCode(leadFixBundle);
+      fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+      printMeta(fixResult?.meta);
 
-    if (fixResult) {
-      task.code = fixResult.code;
-      await recommitCode(
-        ctx, task, fixResult.code,
-        `fix: lead direct fix for ${task.title} (#${task.issueNumber})`,
-        preSnapshot
-      );
-      await ctx.github.addComment(
-        task.issueNumber,
-        t("pipeline.leadFixComment", { agent: lead.name, model: lead.modelKey })
-      );
+      if (fixResult) {
+        task.code = fixResult.code;
+        await recommitCode(
+          ctx, task, fixResult.code,
+          `fix: lead direct fix for ${task.title} (#${task.issueNumber})`,
+          preSnapshot
+        );
+        await ctx.github.addComment(
+          task.issueNumber,
+          t("pipeline.leadFixComment", { agent: lead.name, model: lead.modelKey })
+        );
+      }
+    } catch (e) {
+      fixSpinner.fail(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+      console.log(chalk.yellow(`    ${e.message}`));
     }
 
     task.reviewApproved = true;
@@ -320,35 +325,40 @@ export async function phaseQA(ctx) {
           `  ${t("pipeline.leadFixSpinner", { agent: lead.name, model: lead.modelKey })}`
         ).start();
 
-        let currentCode = task.code;
-        if (ctx.workspace?.isLocal && task.filePaths?.length) {
-          const diskContent = ctx.workspace.readFile(task.filePaths[0]);
-          if (diskContent) currentCode = diskContent;
-        }
-        currentCode = truncateCode(currentCode);
-        const qaBundle = ctx.assembler.forQA(ctx.state, { taskId: task.id });
-        const leadFixBundle = {
-          systemContext: `${qaBundle.systemContext}\n\n${t("promptAssembler.qaFeedback")}\n${qaResult}`,
-          taskDescription: task.description || "",
-          acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
-          currentCode,
-        };
-        const preSnapshot = takeFileSnapshot(ctx.workspace);
-        const fixResult = await lead.writeCode(leadFixBundle);
-        fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
-        printMeta(fixResult?.meta);
+        try {
+          let currentCode = task.code;
+          if (ctx.workspace?.isLocal && task.filePaths?.length) {
+            const diskContent = ctx.workspace.readFile(task.filePaths[0]);
+            if (diskContent) currentCode = diskContent;
+          }
+          currentCode = truncateCode(currentCode);
+          const qaBundle = ctx.assembler.forQA(ctx.state, { taskId: task.id });
+          const leadFixBundle = {
+            systemContext: `${qaBundle.systemContext}\n\n${t("promptAssembler.qaFeedback")}\n${qaResult}`,
+            taskDescription: task.description || "",
+            acceptanceCriteria: task.acceptance_criteria?.join("\n") || "",
+            currentCode,
+          };
+          const preSnapshot = takeFileSnapshot(ctx.workspace);
+          const fixResult = await lead.writeCode(leadFixBundle);
+          fixSpinner.succeed(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+          printMeta(fixResult?.meta);
 
-        if (fixResult) {
-          task.code = fixResult.code;
-          await recommitCode(
-            ctx, task, fixResult.code,
-            `fix: lead direct fix for QA feedback on ${task.title} (#${task.issueNumber})`,
-            preSnapshot
-          );
-          await ctx.github.addComment(
-            task.issueNumber,
-            t("pipeline.qaFixComment", { agent: lead.name, model: lead.modelKey, attempt })
-          );
+          if (fixResult) {
+            task.code = fixResult.code;
+            await recommitCode(
+              ctx, task, fixResult.code,
+              `fix: lead direct fix for QA feedback on ${task.title} (#${task.issueNumber})`,
+              preSnapshot
+            );
+            await ctx.github.addComment(
+              task.issueNumber,
+              t("pipeline.qaFixComment", { agent: lead.name, model: lead.modelKey, attempt })
+            );
+          }
+        } catch (e) {
+          fixSpinner.fail(`  ${t("pipeline.leadFixComplete", { agent: lead.name })}`);
+          console.log(chalk.yellow(`    ${e.message}`));
         }
       }
 

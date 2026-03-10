@@ -55,6 +55,19 @@ describe("CliError._categorize", () => {
   it("알 수 없는 exit code → unknown", () => {
     assert.equal(CliError._categorize("claude", 99, ""), "unknown");
   });
+
+  it("stdout rate_limit이 stderr 비어있어도 감지", () => {
+    assert.equal(
+      CliError._categorize("claude", 1, "", '{"result":"API Error: Rate limit reached"}'),
+      "rate_limit"
+    );
+  });
+
+  it("CliError 생성자에서 stdout rate limit 감지", () => {
+    const err = new CliError("claude", 1, "", '{"result":"Rate limit reached","is_error":true}');
+    assert.equal(err.category, "rate_limit");
+    assert.equal(err.isRetryable, false);
+  });
 });
 
 // ─── CliError._isRateLimit ───────────────────────────

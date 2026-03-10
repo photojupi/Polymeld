@@ -16,15 +16,15 @@ export class CliError extends Error {
     this.exitCode = exitCode;
     this.stderr = stderr;
     this.stdout = stdout;
-    this.category = CliError._categorize(cli, exitCode, stderr);
+    this.category = CliError._categorize(cli, exitCode, stderr, stdout);
   }
 
   /**
    * CLI 이름과 종료 코드, stderr 내용을 기반으로 에러 카테고리를 분류한다.
    */
-  static _categorize(cli, code, stderr = "") {
+  static _categorize(cli, code, stderr = "", stdout = "") {
     // Rate limit 감지 (모든 CLI 공통, exit code보다 우선)
-    if (CliError._isRateLimit(stderr)) return "rate_limit";
+    if (CliError._isRateLimit(stderr) || CliError._isRateLimit(stdout)) return "rate_limit";
     // Gemini 고유 종료 코드
     if (cli === "gemini") {
       if (code === 41) return "auth";

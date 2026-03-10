@@ -231,6 +231,10 @@ pipeline:
   # true: Tasks without dependencies run LLM calls concurrently (Git ops remain serial)
   # false: Keep sequential execution
   parallel_development: true
+  # Max concurrent LLM calls per phase (dev/review/QA)
+  max_parallel: 3
+  # Cooldown between parallel batches in ms (0 = no delay)
+  batch_delay_ms: 2000
 
   # ─── Fix Loop Settings ───────────────────────────────
   # Max code review retry count
