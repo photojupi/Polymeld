@@ -27,7 +27,7 @@ export function isImageTask(task) {
 /**
  * 파일 경로가 코드/설정 파일인지 판단 (SVG/이미지 등 비코드 파일 필터링용)
  */
-const CODE_FILE_EXT = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|sh|bash|zsh|md|json|yaml|yml|toml|css|scss|html|vue|svelte|c|cpp|h|hpp|cs|swift|kt|gd|gdshader|tscn|tres|conf)$/i;
+const CODE_FILE_EXT = /\.(js|ts|jsx|tsx|mjs|cjs|py|go|rs|java|rb|sh|bash|zsh|md|json|yaml|yml|toml|css|scss|html|vue|svelte|c|cpp|h|hpp|cs|swift|kt|gd|gdshader|godot|tscn|tres|conf)$/i;
 const KNOWN_CODE_BASENAMES = /^(Dockerfile|Makefile|Procfile|Gemfile|Rakefile)$/i;
 
 export function isCodeFile(filePath) {
