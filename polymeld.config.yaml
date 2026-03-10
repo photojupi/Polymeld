@@ -27,7 +27,7 @@ models:
     cli: claude
     model: claude-opus-4-6
     # api_model: claude-sonnet-4-6  # Different model for API usage (defaults to model if omitted)
-    fallback: gemini             # Switch to Gemini on rate limit
+    fallback: codex              # Switch to Codex on rate limit
   gemini:
     cli: gemini
     model: gemini-3.1-pro-preview

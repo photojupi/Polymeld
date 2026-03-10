@@ -148,7 +148,7 @@ export async function runOnboarding() {
 function generateGlobalTemplate(models) {
   // 모델 항목 생성 (fallback 포함)
   const fallbackPrefs = {
-    claude: ["gemini", "codex"],
+    claude: ["codex", "gemini"],
     gemini: ["claude", "codex"],
     codex: ["claude", "gemini"],
   };
