@@ -3,6 +3,7 @@
 // PipelineState에서 작업별 필요한 맥락을 우선순위 기반으로 조립
 
 import { t } from "../i18n/index.js";
+import { isCodeFile } from "../pipeline/helpers.js";
 
 // Phase별 기본 예산 (문자 수)
 // 각 Phase의 정보 필요량에 따라 차등 배분
@@ -308,7 +309,8 @@ export class PromptAssembler {
       }
     }
 
-    const filePaths = task?.filePaths || (task?.filePath ? [task.filePath] : []);
+    const allPaths = task?.filePaths || (task?.filePath ? [task.filePath] : []);
+    const filePaths = allPaths.filter(isCodeFile);
 
     return {
       systemContext: sections.join("\n\n"),

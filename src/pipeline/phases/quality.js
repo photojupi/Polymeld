@@ -7,7 +7,7 @@ import ora from "ora";
 import { t } from "../../i18n/index.js";
 import {
   printMeta, reviewNeedsFix, qaNeedsFix,
-  takeFileSnapshot, recommitCode,
+  takeFileSnapshot, recommitCode, isCodeFile,
 } from "../helpers.js";
 import { truncateCode } from "../../state/prompt-assembler.js";
 import { pMapSettled } from "../../utils/concurrency.js";
@@ -114,7 +114,8 @@ export async function phaseCodeReview(ctx) {
     try {
       let currentCode = task.code;
       if (ctx.workspace?.isLocal && task.filePaths?.length) {
-        const diskContent = ctx.workspace.readFile(task.filePaths[0]);
+        const codeFile = task.filePaths.find(isCodeFile);
+        const diskContent = codeFile ? ctx.workspace.readFile(codeFile) : null;
         if (diskContent) currentCode = diskContent;
       }
       currentCode = truncateCode(currentCode);
@@ -183,14 +184,16 @@ export async function phaseQA(ctx) {
       continue;
     }
 
-    const hasFilePaths = task.filePaths && task.filePaths.length > 0;
-    if (!hasFilePaths) {
+    const allPaths = task.filePaths || (task.filePath ? [task.filePath] : []);
+    const hasCodeFiles = allPaths.some(isCodeFile);
+    if (!hasCodeFiles) {
       console.log(chalk.yellow(`  ${t("pipeline.qaSkippedNoFiles", { title: task.title })}`));
       task.qaPassed = true;
       task.qaAttempts = 0;
       task.qaVerdict = "skipped";
       await ctx.github.updateLabels(task.issueNumber, ["done"], ["in-review"]);
       await ctx.github.closeIssue(task.issueNumber);
+      await ctx.github.setProjectItemStatus(task.projectItemId, "Done");
       ctx.state.completedTasks.push(task);
       continue;
     }
@@ -328,7 +331,8 @@ export async function phaseQA(ctx) {
         try {
           let currentCode = task.code;
           if (ctx.workspace?.isLocal && task.filePaths?.length) {
-            const diskContent = ctx.workspace.readFile(task.filePaths[0]);
+            const codeFile = task.filePaths.find(isCodeFile);
+            const diskContent = codeFile ? ctx.workspace.readFile(codeFile) : null;
             if (diskContent) currentCode = diskContent;
           }
           currentCode = truncateCode(currentCode);
